@@ -39,5 +39,3 @@ asyncio.run(main())
 ```bash
 maturin develop --release
 ```
-
-License: Apache-2.0
