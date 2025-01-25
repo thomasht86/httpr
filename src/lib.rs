@@ -1,3 +1,5 @@
+#![allow(non_local_definitions)]
+
 use pyo3::prelude::*;
 use reqwest::{Client as ReqwestClient, blocking};
 use pyo3::exceptions::PyValueError;
