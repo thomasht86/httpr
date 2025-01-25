@@ -1,6 +1,7 @@
 # HTTPX-RS Development Guidelines
 
 ## Core Principles
+
 1. **API Parity** - Mirror httpx's API surface exactly
 2. **Rust-Python Symbiosis** - Lever Rust's performance where it matters most
 3. **Testing Rigor** - 100% test coverage with property-based testing
@@ -9,6 +10,7 @@
 ## Development Practices
 
 ### Rust Layer
+
 ```rust
 // Error handling example
 fn convert_error(e: reqwest::Error) -> PyErr {
@@ -27,6 +29,7 @@ struct Response {
 - Prefer zero-copy data passing between Rust/Python
 
 ### Python Layer
+
 ```python
 # Test case pattern
 async def test_async_redirects():
@@ -47,6 +50,7 @@ async def test_async_redirects():
    - Property-based: `hypothesis` for edge cases
 
 2. Coverage Enforcement
+
 ```yaml
 # .github/workflows/ci.yml
 - name: Test Coverage
@@ -55,7 +59,8 @@ async def test_async_redirects():
     genhtml -o coverage/ lcov.info
 ```
 
-3. Test Patterns
+1. Test Patterns
+
 ```rust
 #[cfg(test)]
 mod tests {
@@ -67,38 +72,37 @@ mod tests {
 ```
 
 ## Performance Critical Paths
+
 1. Connection pooling
 2. Header parsing
 3. Streaming responses
 4. TLS handshakes
 
 Use `criterion` for microbenchmarks:
+
 ```rust
 c.bench_function("json_parsing", |b| {
     b.iter(|| serde_json::from_slice::<Value>(&big_json));
 });
 ```
 
-## Maintenance Checklist
-- [ ] Weekly dependency updates (cargo update/pip audit)
-- [ ] Biweekly API parity check vs httpx
-- [ ] Monthly fuzzing session
-- [ ] Quarterly performance review
-
 ## PR Requirements
-✅ Matching httpx test cases  
+
+✅ Matching httpx/requests test cases  
 ✅ Rust/Python coverage reports  
 ✅ Benchmark comparison  
 ✅ Panic-free error paths  
 ✅ Resource leak check (Valgrind/miri)
 
 ## Setup Verification
+
 ```bash
 python -m pytest --cov=httprs --cov-report=term-missing
 cargo tarpaulin --ignore-tests --out Html
 ```
 
 Pre-commit hooks enforce:
+
 - Rust fmt/clippy
-- Python black/flake8
+- Python ruff
 - Test coverage guard

@@ -36,3 +36,7 @@ wheels/
 .env
 .aider*
 *-workspace
+
+# Copies for context
+reqwest/
+httpx/
