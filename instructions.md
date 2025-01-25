@@ -1,8 +1,8 @@
-# HTTPX-RS Development Guidelines
+# HTTPR Development Guidelines
 
 ## Core Principles
 
-1. **API Parity** - Mirror httpx's API surface exactly
+1. **API Parity** - Mirror httpx and requests APIs where possible
 2. **Rust-Python Symbiosis** - Lever Rust's performance where it matters most
 3. **Testing Rigor** - 100% test coverage with property-based testing
 4. **Safety First** - Strict error handling and resource management
@@ -97,7 +97,7 @@ c.bench_function("json_parsing", |b| {
 ## Setup Verification
 
 ```bash
-python -m pytest --cov=httprs --cov-report=term-missing
+python -m pytest --cov=httpr --cov-report=term-missing
 cargo tarpaulin --ignore-tests --out Html
 ```
 

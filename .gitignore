@@ -33,6 +33,8 @@ wheels/
 
 *.so
 
+.coverage
+
 .env
 .aider*
 *-workspace

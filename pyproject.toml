@@ -12,6 +12,7 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-asyncio",
+    "pytest-cov",
     "aider-install",
     "pre-commit",
 ]
@@ -19,3 +20,9 @@ dev = [
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "--cov=httpr --cov-report=term-missing"
+asyncio_mode = "strict"
