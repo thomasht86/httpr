@@ -32,3 +32,6 @@ wheels/
 .venv
 
 *.so
+
+.env
+.aider*
