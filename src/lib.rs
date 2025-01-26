@@ -1,10 +1,55 @@
 #![allow(non_local_definitions)]
 
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use pyo3::prelude::*;
-use reqwest::{Client as ReqwestClient, blocking};
+use reqwest::{Client as ReqwestClient, blocking, Method, header};
 use pyo3::exceptions::PyValueError;
+use serde_json::Value;
+
+#[pyclass]
+struct Response {
+    status_code: u16,
+    reason_phrase: String,
+    headers: HashMap<String, String>,
+    content: Vec<u8>,
+    elapsed: f64,
+}
+
+#[pymethods]
+impl Response {
+    #[getter]
+    fn status_code(&self) -> u16 {
+        self.status_code
+    }
+
+    #[getter]
+    fn reason_phrase(&self) -> String {
+        self.reason_phrase.clone()
+    }
+
+    #[getter]
+    fn headers(&self) -> HashMap<String, String> {
+        self.headers.clone()
+    }
+
+    #[getter]
+    fn text(&self) -> PyResult<String> {
+        String::from_utf8(self.content.clone())
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    fn json<'a>(&self, py: Python<'a>) -> PyResult<&'a PyAny> {
+        let v: Value = serde_json::from_slice(&self.content)
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        Ok(v.to_object(py).into_ref(py))
+    }
+
+    #[getter]
+    fn elapsed(&self) -> f64 {
+        self.elapsed
+    }
+}
 
 /// A synchronous HTTP client with configuration options
 #[pyclass]
@@ -71,21 +116,85 @@ impl Client {
         })
     }
 
-    /// Send a GET request to the specified URL
-    ///
-    /// Args:
-    ///     url (str): The URL to send the request to
-    ///
-    /// Returns:
-    ///     str: The response text
-    #[pyo3(text_signature = "(self, url)")]
-    fn get(&self, url: &str) -> PyResult<String> {
-        self.client
-            .get(url)
+    fn request(
+        &self,
+        method: &str,
+        url: &str,
+        params: Option<HashMap<String, String>>,
+        headers: Option<HashMap<String, String>>,
+        content: Option<Vec<u8>>,
+        data: Option<HashMap<String, String>>,
+        json: Option<&PyAny>,
+    ) -> PyResult<Response> {
+        let method = Method::from_bytes(method.as_bytes())
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        
+        let mut request = self.client.request(method, url);
+
+        if let Some(params) = params {
+            request = request.query(&params);
+        }
+
+        if let Some(headers) = headers {
+            let mut header_map = header::HeaderMap::new();
+            for (k, v) in headers {
+                header_map.insert(
+                    header::HeaderName::from_bytes(k.as_bytes())
+                        .map_err(|e| PyValueError::new_err(e.to_string()))?,
+                    header::HeaderValue::from_str(&v)
+                        .map_err(|e| PyValueError::new_err(e.to_string()))?,
+                );
+            }
+            request = request.headers(header_map);
+        }
+
+        if let Some(content) = content {
+            request = request.body(content);
+        }
+
+        if let Some(data) = data {
+            request = request.form(&data);
+        }
+
+        if let Some(json_data) = json {
+            request = request.json(&json_data);
+        }
+
+        let start = Instant::now();
+        let response = request
             .send()
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        
+        let status = response.status();
+        let headers: HashMap<String, String> = response
+            .headers()
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+            .collect();
+        
+        let content = response
+            .bytes()
             .map_err(|e| PyValueError::new_err(e.to_string()))?
-            .text()
-            .map_err(|e| PyValueError::new_err(e.to_string()))
+            .to_vec();
+
+        Ok(Response {
+            status_code: status.as_u16(),
+            reason_phrase: status.canonical_reason().unwrap_or("").to_string(),
+            headers,
+            content,
+            elapsed: start.elapsed().as_secs_f64(),
+        })
+    }
+
+    /// Send a GET request to the specified URL
+    #[pyo3(text_signature = "(self, url, *, params=None, headers=None)")]
+    fn get(
+        &self,
+        url: &str,
+        params: Option<HashMap<String, String>>,
+        headers: Option<HashMap<String, String>>,
+    ) -> PyResult<Response> {
+        self.request("GET", url, params, headers, None, None, None)
     }
 }
 
