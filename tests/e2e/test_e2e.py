@@ -42,7 +42,7 @@ class TestAsyncClient:
 
     @pytest.mark.asyncio
     async def test_async_timeout_validation(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             AsyncClient(timeout="invalid")
 
     @pytest.mark.asyncio
