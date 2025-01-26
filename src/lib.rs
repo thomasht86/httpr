@@ -18,6 +18,26 @@ struct Client {
 
 #[pymethods]
 impl Client {
+    #[getter]
+    fn base_url(&self) -> Option<String> {
+        self.base_url.clone()
+    }
+
+    #[getter]
+    fn timeout(&self) -> Option<u64> {
+        self.timeout
+    }
+
+    #[getter]
+    fn follow_redirects(&self) -> bool {
+        self.follow_redirects
+    }
+
+    #[getter]
+    fn default_headers(&self) -> HashMap<String, String> {
+        self.default_headers.clone()
+    }
+
     /// Create a new Client instance with configuration
     #[new]
     #[pyo3(text_signature = "(*, base_url=None, timeout=30, follow_redirects=False, default_headers=None)")]
@@ -73,28 +93,45 @@ impl Client {
 #[pyclass]
 struct AsyncClient {
     client: ReqwestClient,
+    base_url: Option<String>,
+    timeout: Option<u64>,
     follow_redirects: bool,
+    default_headers: HashMap<String, String>,
 }
 
 #[pymethods]
 impl AsyncClient {
     /// Create a new AsyncClient instance
     #[new]
-    #[pyo3(text_signature = "(*, follow_redirects=False)")]
-    fn new(follow_redirects: Option<bool>) -> Self {
-        let client = ReqwestClient::builder()
-            .redirect(if follow_redirects.unwrap_or(false) {
-                reqwest::redirect::Policy::limited(10)
-            } else {
-                reqwest::redirect::Policy::none()
-            })
-            .build()
-            .unwrap();
-
-        AsyncClient {
-            client,
-            follow_redirects: follow_redirects.unwrap_or(false),
+    #[pyo3(text_signature = "(*, base_url=None, timeout=30, follow_redirects=False, default_headers=None)")]
+    fn new(
+        base_url: Option<String>,
+        timeout: Option<f64>,
+        follow_redirects: Option<bool>,
+        default_headers: Option<HashMap<String, String>>,
+    ) -> PyResult<Self> {
+        let mut client_builder = ReqwestClient::builder();
+        
+        if let Some(timeout_secs) = timeout {
+            client_builder = client_builder.timeout(Duration::from_secs_f64(timeout_secs));
         }
+        
+        if follow_redirects.unwrap_or(false) {
+            client_builder = client_builder.redirect(reqwest::redirect::Policy::limited(10));
+        } else {
+            client_builder = client_builder.redirect(reqwest::redirect::Policy::none());
+        }
+
+        let client = client_builder.build()
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+
+        Ok(AsyncClient {
+            client,
+            base_url,
+            timeout: timeout.map(|t| t as u64),
+            follow_redirects: follow_redirects.unwrap_or(false),
+            default_headers: default_headers.unwrap_or_else(HashMap::new),
+        })
     }
 
     /// Send an asynchronous GET request to the specified URL

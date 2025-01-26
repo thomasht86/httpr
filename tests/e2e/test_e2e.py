@@ -31,9 +31,8 @@ class TestSyncClient:
 # Async Client Tests
 class TestAsyncClient:
     @pytest.fixture
-    async def async_client(self):
-        client = AsyncClient(follow_redirects=True)
-        return client
+    def async_client(self):
+        return AsyncClient(follow_redirects=True)
 
     @pytest.mark.asyncio
     async def test_async_get_success(self, async_client):
@@ -42,7 +41,12 @@ class TestAsyncClient:
         assert '"url": "http://httpbin.org/get"' in response
 
     @pytest.mark.asyncio
-    async def test_async_timeout(self):
+    async def test_async_timeout_validation(self):
+        with pytest.raises(ValueError):
+            AsyncClient(timeout="invalid")
+
+    @pytest.mark.asyncio
+    async def test_async_timeout_behavior(self):
         fast_client = AsyncClient(timeout=0.1)
         with pytest.raises(Exception):
             await fast_client.get("http://httpbin.org/delay/1")
