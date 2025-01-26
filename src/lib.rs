@@ -45,7 +45,7 @@ impl Response {
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
         
         // Use pyo3's serde conversion directly
-        Ok(pyo3::serde::to_pyobject(py, &json_value)?.into())
+        Ok(pyo3::serde::to_py_object(py, &json_value)?.into())
     }
 
     #[getter]
