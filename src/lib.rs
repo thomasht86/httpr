@@ -39,10 +39,9 @@ impl Response {
             .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
-    fn json<'a>(&self, py: Python<'a>) -> PyResult<&'a PyAny> {
-        let v: Value = serde_json::from_slice(&self.content)
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-        Ok(v.to_object(py).into_ref(py))
+    fn json(&self) -> PyResult<serde_json::Value> {
+        serde_json::from_slice(&self.content)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
     #[getter]
@@ -124,7 +123,7 @@ impl Client {
         headers: Option<HashMap<String, String>>,
         content: Option<Vec<u8>>,
         data: Option<HashMap<String, String>>,
-        json: Option<&PyAny>,
+        json: Option<serde_json::Value>,
     ) -> PyResult<Response> {
         let method = Method::from_bytes(method.as_bytes())
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
