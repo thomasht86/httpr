@@ -20,16 +20,17 @@ struct Client {
 impl Client {
     /// Create a new Client instance with configuration
     #[new]
-    #[pyo3(text_signature = "(*, base_url=None, timeout=30, follow_redirects=False)")]
+    #[pyo3(text_signature = "(*, base_url=None, timeout=30, follow_redirects=False, default_headers=None)")]
     fn new(
         base_url: Option<String>,
-        timeout: Option<u64>,
-        follow_redirects: Option<bool>
+        timeout: Option<f64>,
+        follow_redirects: Option<bool>,
+        default_headers: Option<HashMap<String, String>>,
     ) -> PyResult<Self> {
         let mut client_builder = blocking::Client::builder();
         
         if let Some(timeout_secs) = timeout {
-            client_builder = client_builder.timeout(Duration::from_secs(timeout_secs));
+            client_builder = client_builder.timeout(Duration::from_secs_f64(timeout_secs));
         }
         
         if follow_redirects.unwrap_or(false) {
@@ -44,9 +45,9 @@ impl Client {
         Ok(Client {
             client,
             base_url,
-            timeout,
+            timeout: timeout.map(|t| t as u64),
             follow_redirects: follow_redirects.unwrap_or(false),
-            default_headers: HashMap::new(),
+            default_headers: default_headers.unwrap_or_else(HashMap::new),
         })
     }
 
@@ -72,16 +73,27 @@ impl Client {
 #[pyclass]
 struct AsyncClient {
     client: ReqwestClient,
+    follow_redirects: bool,
 }
 
 #[pymethods]
 impl AsyncClient {
     /// Create a new AsyncClient instance
     #[new]
-    #[pyo3(text_signature = "()")]
-    fn new() -> Self {
+    #[pyo3(text_signature = "(*, follow_redirects=False)")]
+    fn new(follow_redirects: Option<bool>) -> Self {
+        let client = ReqwestClient::builder()
+            .redirect(if follow_redirects.unwrap_or(false) {
+                reqwest::redirect::Policy::limited(10)
+            } else {
+                reqwest::redirect::Policy::none()
+            })
+            .build()
+            .unwrap();
+
         AsyncClient {
-            client: ReqwestClient::new(),
+            client,
+            follow_redirects: follow_redirects.unwrap_or(false),
         }
     }
 
