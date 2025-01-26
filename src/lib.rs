@@ -5,7 +5,6 @@ use std::time::{Duration, Instant};
 use pyo3::prelude::*;
 use reqwest::{Client as ReqwestClient, blocking, Method, header};
 use pyo3::exceptions::PyValueError;
-use serde_json::Value;
 
 #[pyclass]
 struct Response {
@@ -39,9 +38,10 @@ impl Response {
             .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
-    fn json(&self) -> PyResult<serde_json::Value> {
-        serde_json::from_slice(&self.content)
-            .map_err(|e| PyValueError::new_err(e.to_string()))
+    fn json<'a>(&self, py: Python<'a>) -> PyResult<PyObject> {
+        let value: serde_json::Value = serde_json::from_slice(&self.content)
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        Ok(value.to_object(py))
     }
 
     #[getter]
@@ -123,7 +123,7 @@ impl Client {
         headers: Option<HashMap<String, String>>,
         content: Option<Vec<u8>>,
         data: Option<HashMap<String, String>>,
-        json: Option<serde_json::Value>,
+        json: Option<&PyAny>,
     ) -> PyResult<Response> {
         let method = Method::from_bytes(method.as_bytes())
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
@@ -156,7 +156,8 @@ impl Client {
         }
 
         if let Some(json_data) = json {
-            request = request.json(&json_data);
+            let json_value: serde_json::Value = json_data.extract()?;
+            request = request.json(&json_value);
         }
 
         let start = Instant::now();
@@ -257,13 +258,30 @@ impl AsyncClient {
         let url = url.to_string();
         
         pyo3_asyncio::tokio::future_into_py(py, async move {
-            match client.get(&url).send().await {
-                Ok(resp) => match resp.text().await {
-                    Ok(text) => Ok(text),
-                    Err(e) => Err(PyValueError::new_err(e.to_string()))
-                },
-                Err(e) => Err(PyValueError::new_err(e.to_string()))
-            }
+            let start = Instant::now();
+            let response = client.get(&url)
+                .send()
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            
+            let status = response.status();
+            let headers: HashMap<String, String> = response
+                .headers()
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+                .collect();
+            
+            let content = response.bytes()
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            
+            Ok(Response {
+                status_code: status.as_u16(),
+                reason_phrase: status.canonical_reason().unwrap_or("").to_string(),
+                headers,
+                content: content.to_vec(),
+                elapsed: start.elapsed().as_secs_f64(),
+            })
         })
     }
 }
