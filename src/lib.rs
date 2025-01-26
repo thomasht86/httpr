@@ -44,7 +44,7 @@ impl Response {
         let json_value: serde_json::Value = serde_json::from_str(&json_str)
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
             
-        Ok(json_value.to_object(py))
+        Ok(json_value.into_py(py))
     }
 
     #[getter]
