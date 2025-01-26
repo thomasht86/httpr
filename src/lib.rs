@@ -39,13 +39,17 @@ impl Response {
     }
 
     #[getter]
-    fn json<'a>(&self, py: Python<'a>) -> PyResult<PyObject> {
-        let json_str = String::from_utf8_lossy(&self.content);
+    fn json<'a>(&self, py: Python<'a>) -> PyResult<&'a PyAny> {
+        let json_str = String::from_utf8(self.content.clone())
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        
         let json_value: serde_json::Value = serde_json::from_str(&json_str)
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
         
-        // Use the correct serde conversion method
-        Ok(pyo3::serde::serde_to_pyobject(py, &json_value)?)
+        Ok(json_value.to_object(py))
+
+        
+
     }
 
     #[getter]
