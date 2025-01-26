@@ -38,10 +38,13 @@ impl Response {
             .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
+    #[getter]
     fn json<'a>(&self, py: Python<'a>) -> PyResult<PyObject> {
-        let value: serde_json::Value = serde_json::from_slice(&self.content)
+        let json_str = String::from_utf8_lossy(&self.content);
+        let json_value: serde_json::Value = serde_json::from_str(&json_str)
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
-        Ok(value.to_object(py))
+            
+        Ok(json_value.to_object(py))
     }
 
     #[getter]
@@ -156,7 +159,9 @@ impl Client {
         }
 
         if let Some(json_data) = json {
-            let json_value: serde_json::Value = json_data.extract()?;
+            let json_str = json_data.to_string();
+            let json_value: serde_json::Value = serde_json::from_str(&json_str)
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
             request = request.json(&json_value);
         }
 
