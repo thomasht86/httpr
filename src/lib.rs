@@ -45,11 +45,10 @@ impl Response {
         
         let json_value: serde_json::Value = serde_json::from_str(&json_str)
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
-        
-        Ok(json_value.to_object(py))
 
-        
-
+        // Use proper serde conversion to Python types
+        pyo3::serde::serde_to_py(py, &json_value)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
     #[getter]
