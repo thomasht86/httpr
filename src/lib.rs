@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use pyo3::prelude::*;
 use reqwest::{Client as ReqwestClient, blocking, Method, header};
 use pyo3::exceptions::PyValueError;
-use pyo3::{Python, types::{PyString, PyAnyMethods}};
+use pyo3::{Python, types::PyAnyMethods};
 use serde_pyobject::to_pyobject;
 
 
@@ -43,13 +43,9 @@ impl Response {
 
     #[getter]
     fn json<'a>(&self, py: Python<'a>) -> PyResult<&'a PyAny> {
-        let json_str = String::from_utf8(self.content.clone())
+        let json_value: serde_json::Value = serde_json::from_slice(&self.content)
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
-        
-        let json_value: serde_json::Value = serde_json::from_str(&json_str)
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-
-        to_pyobject(py, &json_value)
+        to_pyobject(py, &json_value).map(|b| b.into_gil_ref().into())
     }
 
     #[getter]
@@ -92,7 +88,7 @@ impl Client {
 
     /// Create a new Client instance with configuration
     #[new]
-    #[pyo3(text_signature = "(*, base_url=None, timeout=30, follow_redirects=False, default_headers=None)")]
+    #[pyo3(signature = (base_url=None, timeout=None, follow_redirects=None, default_headers=None))]
     fn new(
         base_url: Option<String>,
         timeout: Option<f64>,
@@ -164,9 +160,7 @@ impl Client {
         }
 
         if let Some(json_data) = json {
-            let json_str = json_data.to_string();
-            let json_value: serde_json::Value = serde_json::from_str(&json_str)
-                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            let json_value = json_data.extract::<serde_json::Value>()?;
             request = request.json(&json_value);
         }
 
@@ -262,7 +256,7 @@ impl AsyncClient {
     ///     str: The response text
     ///
     /// This method must be awaited.
-    #[pyo3(text_signature = "(self, url)")]
+    #[pyo3(signature = (url))]
     fn get<'a>(&self, py: Python<'a>, url: &str) -> PyResult<&'a PyAny> {
         let client = self.client.clone();
         let url = url.to_string();
@@ -299,7 +293,7 @@ impl AsyncClient {
 /// A Python library for making HTTP requests using reqwest
 #[pymodule]
 fn httpr(py: Python, m: &PyModule) -> PyResult<()> {
-    m.add("Client", py.get_type::<Client>())?;
-    m.add("AsyncClient", py.get_type::<AsyncClient>())?;
+    m.add_class::<Client>()?;
+    m.add_class::<AsyncClient>()?;
     Ok(())
 }
