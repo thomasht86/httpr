@@ -5,6 +5,9 @@ use std::time::{Duration, Instant};
 use pyo3::prelude::*;
 use reqwest::{Client as ReqwestClient, blocking, Method, header};
 use pyo3::exceptions::PyValueError;
+use pyo3::{Python, types::{PyString, PyAnyMethods}};
+use serde_pyobject::to_pyobject;
+
 
 #[pyclass]
 struct Response {
@@ -46,9 +49,7 @@ impl Response {
         let json_value: serde_json::Value = serde_json::from_str(&json_str)
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
 
-        // Use proper serde conversion to Python types
-        pyo3::serde::serde_to_py(py, &json_value)
-            .map_err(|e| PyValueError::new_err(e.to_string()))
+        to_pyobject(py, &json_value)
     }
 
     #[getter]
