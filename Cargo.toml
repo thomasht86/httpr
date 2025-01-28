@@ -7,11 +7,8 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "^0.23.0", features = ["extension-module", "serde"] }
-reqwest = { version = "^0.11.22", features = ["json", "blocking", "stream"] }
-tokio = { version = "^1.0", features = ["full"] }
-pyo3-async-runtimes = { version = "0.23", features = ["attributes", "async-std-runtime"] }
-pyo3-asyncio = { version = "0.23", features = ["tokio-runtime"] }
-async-std = "1.13"
-serde-pyobject = "^0.5.0"
+pyo3 = { version = "0.18", features = ["extension-module"] }
+pyo3-asyncio = { version = "0.18", features = ["tokio-runtime"] }
+tokio = { version = "1.27", features = ["rt-multi-thread", "macros"] }
+reqwest = { version = "0.11", features = ["blocking", "json"] }
 serde_json = "1.0"

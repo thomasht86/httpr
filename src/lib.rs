@@ -1,78 +1,138 @@
-#![allow(non_local_definitions)]
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::prelude::*;
+use pyo3::types::PyDict;
+
+use pyo3_asyncio::tokio as pyo3_tokio;
+use reqwest::blocking::ClientBuilder as BlockingClientBuilder;
+use reqwest::redirect::Policy as RedirectPolicy;
+use reqwest::{Client as AsyncReqwestClient, ClientBuilder as AsyncClientBuilder};
 
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
-use pyo3::prelude::*;
-use reqwest::{Client as ReqwestClient, blocking, Method, header};
-use pyo3::exceptions::PyValueError;
-use pyo3::{Python, types::PyAnyMethods};
-use serde_pyobject::to_pyobject;
+use std::time::Duration;
 
-
+/// A synchronous HTTP client.
 #[pyclass]
-struct Response {
-    status_code: u16,
-    reason_phrase: String,
-    headers: HashMap<String, String>,
-    content: Vec<u8>,
-    elapsed: f64,
-}
-
-#[pymethods]
-impl Response {
-    #[getter]
-    fn status_code(&self) -> u16 {
-        self.status_code
-    }
-
-    #[getter]
-    fn reason_phrase(&self) -> String {
-        self.reason_phrase.clone()
-    }
-
-    #[getter]
-    fn headers(&self) -> HashMap<String, String> {
-        self.headers.clone()
-    }
-
-    #[getter]
-    fn text(&self) -> PyResult<String> {
-        String::from_utf8(self.content.clone())
-            .map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[getter]
-    fn json<'a>(&self, py: Python<'a>) -> PyResult<&'a PyAny> {
-        let json_value: serde_json::Value = serde_json::from_slice(&self.content)
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-        to_pyobject(py, &json_value).map(|b| b.into_gil_ref().into())
-    }
-
-    #[getter]
-    fn elapsed(&self) -> f64 {
-        self.elapsed
-    }
-}
-
-/// A synchronous HTTP client with configuration options
-#[pyclass]
+#[derive(Debug)]
 struct Client {
-    client: blocking::Client,
     base_url: Option<String>,
-    timeout: Option<u64>,
+    timeout: f64,
     follow_redirects: bool,
     default_headers: HashMap<String, String>,
+    inner: reqwest::blocking::Client,
 }
 
 #[pymethods]
 impl Client {
+    /// Create a new synchronous HTTP client.
+    ///
+    /// :param base_url: Optional base URL to prepend to relative paths.
+    /// :param timeout: Timeout in seconds (float).
+    /// :param follow_redirects: Whether to automatically follow 3xx redirects.
+    /// :param default_headers: A dict of default headers.
+    #[new]
+    #[pyo3(signature = (
+        base_url=None,
+        timeout=10.0,
+        follow_redirects=true,
+        default_headers=None
+    ))]
+    fn new(
+        base_url: Option<String>,
+        timeout: f64,
+        follow_redirects: bool,
+        default_headers: Option<&PyDict>,
+    ) -> PyResult<Self> {
+        // Build the reqwest blocking client
+        let mut builder = BlockingClientBuilder::new();
+
+        // Timeout
+        if timeout < 0.0 {
+            return Err(PyValueError::new_err("timeout must be non-negative"));
+        }
+        builder = builder.timeout(Duration::from_secs_f64(timeout));
+
+        // Redirects
+        if !follow_redirects {
+            builder = builder.redirect(RedirectPolicy::none());
+        }
+
+        // Default headers
+        let mut headers_map = reqwest::header::HeaderMap::new();
+        let mut header_store = HashMap::new();
+
+        if let Some(py_dict) = default_headers {
+            for (k, v) in py_dict {
+                let key_str = k
+                    .extract::<String>()
+                    .map_err(|_| PyValueError::new_err("default_headers keys must be strings"))?;
+                let val_str = v
+                    .extract::<String>()
+                    .map_err(|_| PyValueError::new_err("default_headers values must be strings"))?;
+
+                let header_name = reqwest::header::HeaderName::from_bytes(key_str.as_bytes())
+                    .map_err(|e| PyValueError::new_err(e.to_string()))?;
+                let header_value = reqwest::header::HeaderValue::from_str(&val_str)
+                    .map_err(|e| PyValueError::new_err(e.to_string()))?;
+
+                headers_map.insert(header_name, header_value);
+                header_store.insert(key_str, val_str);
+            }
+        }
+
+        builder = builder.default_headers(headers_map);
+
+        let final_client = builder
+            .build()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to build client: {}", e)))?;
+
+        Ok(Self {
+            base_url,
+            timeout,
+            follow_redirects,
+            default_headers: header_store,
+            inner: final_client,
+        })
+    }
+
+    /// Perform a GET request. Returns the response text as a string.
+    ///
+    /// :param url: Target URL (absolute or relative).
+    /// :return: Response body text.
+    #[pyo3(signature = (url))]
+    fn get(&self, url: &str) -> PyResult<String> {
+        // Construct final URL (handle base_url if present)
+        let final_url = if is_absolute_url(url) {
+            url.to_string()
+        } else if let Some(base) = &self.base_url {
+            if base.ends_with('/') {
+                format!("{}{}", base, url)
+            } else {
+                format!("{}/{}", base, url)
+            }
+        } else {
+            url.to_string()
+        };
+
+        // Send
+        let resp = self
+            .inner
+            .get(&final_url)
+            .send()
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+
+        let text = resp.text().map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        Ok(text)
+    }
+
+    // ========== Python property getters so tests can verify config ==========
+
     #[getter]
     fn base_url(&self) -> Option<String> {
         self.base_url.clone()
     }
 
     #[getter]
-    fn timeout(&self) -> Option<u64> {
+    fn timeout(&self) -> f64 {
         self.timeout
     }
 
@@ -82,217 +142,167 @@ impl Client {
     }
 
     #[getter]
-    fn default_headers(&self) -> HashMap<String, String> {
-        self.default_headers.clone()
-    }
-
-    /// Create a new Client instance with configuration
-    #[new]
-    #[pyo3(signature = (base_url=None, timeout=None, follow_redirects=None, default_headers=None))]
-    fn new(
-        base_url: Option<String>,
-        timeout: Option<f64>,
-        follow_redirects: Option<bool>,
-        default_headers: Option<HashMap<String, String>>,
-    ) -> PyResult<Self> {
-        let mut client_builder = blocking::Client::builder();
-        
-        if let Some(timeout_secs) = timeout {
-            client_builder = client_builder.timeout(Duration::from_secs_f64(timeout_secs));
+    fn default_headers<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
+        let dict = PyDict::new(py);
+        for (k, v) in &self.default_headers {
+            dict.set_item(k, v)?;
         }
-        
-        if follow_redirects.unwrap_or(false) {
-            client_builder = client_builder.redirect(reqwest::redirect::Policy::limited(10));
-        } else {
-            client_builder = client_builder.redirect(reqwest::redirect::Policy::none());
-        }
-
-        let client = client_builder.build()
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-
-        Ok(Client {
-            client,
-            base_url,
-            timeout: timeout.map(|t| t as u64),
-            follow_redirects: follow_redirects.unwrap_or(false),
-            default_headers: default_headers.unwrap_or_else(HashMap::new),
-        })
-    }
-
-    fn request(
-        &self,
-        method: &str,
-        url: &str,
-        params: Option<HashMap<String, String>>,
-        headers: Option<HashMap<String, String>>,
-        content: Option<Vec<u8>>,
-        data: Option<HashMap<String, String>>,
-        json: Option<&PyAny>,
-    ) -> PyResult<Response> {
-        let method = Method::from_bytes(method.as_bytes())
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-        
-        let mut request = self.client.request(method, url);
-
-        if let Some(params) = params {
-            request = request.query(&params);
-        }
-
-        if let Some(headers) = headers {
-            let mut header_map = header::HeaderMap::new();
-            for (k, v) in headers {
-                header_map.insert(
-                    header::HeaderName::from_bytes(k.as_bytes())
-                        .map_err(|e| PyValueError::new_err(e.to_string()))?,
-                    header::HeaderValue::from_str(&v)
-                        .map_err(|e| PyValueError::new_err(e.to_string()))?,
-                );
-            }
-            request = request.headers(header_map);
-        }
-
-        if let Some(content) = content {
-            request = request.body(content);
-        }
-
-        if let Some(data) = data {
-            request = request.form(&data);
-        }
-
-        if let Some(json_data) = json {
-            let json_value = json_data.extract::<serde_json::Value>()?;
-            request = request.json(&json_value);
-        }
-
-        let start = Instant::now();
-        let response = request
-            .send()
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-        
-        let status = response.status();
-        let headers: HashMap<String, String> = response
-            .headers()
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
-            .collect();
-        
-        let content = response
-            .bytes()
-            .map_err(|e| PyValueError::new_err(e.to_string()))?
-            .to_vec();
-
-        Ok(Response {
-            status_code: status.as_u16(),
-            reason_phrase: status.canonical_reason().unwrap_or("").to_string(),
-            headers,
-            content,
-            elapsed: start.elapsed().as_secs_f64(),
-        })
-    }
-
-    /// Send a GET request to the specified URL
-    #[pyo3(text_signature = "(self, url, *, params=None, headers=None)")]
-    fn get(
-        &self,
-        url: &str,
-        params: Option<HashMap<String, String>>,
-        headers: Option<HashMap<String, String>>,
-    ) -> PyResult<Response> {
-        self.request("GET", url, params, headers, None, None, None)
+        Ok(dict)
     }
 }
 
-/// An asynchronous HTTP client
+/// An asynchronous HTTP client.
 #[pyclass]
+#[derive(Clone, Debug)]
 struct AsyncClient {
-    client: ReqwestClient,
     base_url: Option<String>,
-    timeout: Option<u64>,
+    timeout: f64,
     follow_redirects: bool,
     default_headers: HashMap<String, String>,
+    inner: AsyncReqwestClient,
 }
 
 #[pymethods]
 impl AsyncClient {
-    /// Create a new AsyncClient instance
+    /// Create a new asynchronous HTTP client.
+    ///
+    /// :param base_url: Optional base URL.
+    /// :param timeout: Timeout in seconds (float).
+    /// :param follow_redirects: Bool controlling 3xx behavior.
+    /// :param default_headers: Dict of default headers.
     #[new]
-    #[pyo3(text_signature = "(*, base_url=None, timeout=30, follow_redirects=False, default_headers=None)")]
+    #[pyo3(signature = (
+        base_url=None,
+        timeout=10.0,
+        follow_redirects=true,
+        default_headers=None
+    ))]
     fn new(
         base_url: Option<String>,
-        timeout: Option<f64>,
-        follow_redirects: Option<bool>,
-        default_headers: Option<HashMap<String, String>>,
+        timeout: f64,
+        follow_redirects: bool,
+        default_headers: Option<&PyDict>,
     ) -> PyResult<Self> {
-        let mut client_builder = ReqwestClient::builder();
-        
-        if let Some(timeout_secs) = timeout {
-            client_builder = client_builder.timeout(Duration::from_secs_f64(timeout_secs));
+        // Build async client
+        let mut builder = AsyncClientBuilder::new();
+
+        // Timeout
+        if timeout < 0.0 {
+            return Err(PyValueError::new_err("timeout must be non-negative"));
         }
-        
-        if follow_redirects.unwrap_or(false) {
-            client_builder = client_builder.redirect(reqwest::redirect::Policy::limited(10));
-        } else {
-            client_builder = client_builder.redirect(reqwest::redirect::Policy::none());
+        builder = builder.timeout(Duration::from_secs_f64(timeout));
+
+        // Redirects
+        if !follow_redirects {
+            builder = builder.redirect(RedirectPolicy::none());
         }
 
-        let client = client_builder.build()
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        // Default headers
+        let mut headers_map = reqwest::header::HeaderMap::new();
+        let mut header_store = HashMap::new();
 
-        Ok(AsyncClient {
-            client,
+        if let Some(py_dict) = default_headers {
+            for (k, v) in py_dict {
+                let key_str = k
+                    .extract::<String>()
+                    .map_err(|_| PyValueError::new_err("default_headers keys must be strings"))?;
+                let val_str = v
+                    .extract::<String>()
+                    .map_err(|_| PyValueError::new_err("default_headers values must be strings"))?;
+
+                let header_name = reqwest::header::HeaderName::from_bytes(key_str.as_bytes())
+                    .map_err(|e| PyValueError::new_err(e.to_string()))?;
+                let header_value = reqwest::header::HeaderValue::from_str(&val_str)
+                    .map_err(|e| PyValueError::new_err(e.to_string()))?;
+                headers_map.insert(header_name, header_value);
+                header_store.insert(key_str, val_str);
+            }
+        }
+
+        builder = builder.default_headers(headers_map);
+
+        let final_client = builder
+            .build()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to build async client: {}", e)))?;
+
+        Ok(Self {
             base_url,
-            timeout: timeout.map(|t| t as u64),
-            follow_redirects: follow_redirects.unwrap_or(false),
-            default_headers: default_headers.unwrap_or_else(HashMap::new),
+            timeout,
+            follow_redirects,
+            default_headers: header_store,
+            inner: final_client,
         })
     }
 
-    /// Send an asynchronous GET request to the specified URL
+    /// Perform an async GET request. Returns a Python awaitable that yields a string body.
     ///
-    /// Args:
-    ///     url (str): The URL to send the request to
-    ///
-    /// Returns:
-    ///     str: The response text
-    ///
-    /// This method must be awaited.
+    /// :param url: Target URL.
+    /// :return: str with the response body.
     #[pyo3(signature = (url))]
-    fn get<'a>(&self, py: Python<'a>, url: &str) -> PyResult<&'a PyAny> {
-        let client = self.client.clone();
-        let url = url.to_string();
-        
-        pyo3_asyncio::tokio::future_into_py(py, async move {
-            let start = Instant::now();
-            let response = client.get(&url)
+    fn get<'a>(&'a self, py: Python<'a>, url: &str) -> PyResult<&'a PyAny> {
+        let final_url = if is_absolute_url(url) {
+            url.to_string()
+        } else if let Some(base) = &self.base_url {
+            if base.ends_with('/') {
+                format!("{}{}", base, url)
+            } else {
+                format!("{}/{}", base, url)
+            }
+        } else {
+            url.to_string()
+        };
+
+        let client = self.inner.clone();
+        pyo3_tokio::future_into_py(py, async move {
+            let resp = client
+                .get(&final_url)
                 .send()
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))?;
-            
-            let status = response.status();
-            let headers: HashMap<String, String> = response
-                .headers()
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
-                .collect();
-            
-            let content = response.bytes()
+                .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+
+            let text = resp
+                .text()
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))?;
-            
-            Ok(Response {
-                status_code: status.as_u16(),
-                reason_phrase: status.canonical_reason().unwrap_or("").to_string(),
-                headers,
-                content: content.to_vec(),
-                elapsed: start.elapsed().as_secs_f64(),
-            })
+                .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+            Ok(text)
         })
+    }
+
+    // ========== Python property getters ==========
+
+    #[getter]
+    fn base_url(&self) -> Option<String> {
+        self.base_url.clone()
+    }
+
+    #[getter]
+    fn timeout(&self) -> f64 {
+        self.timeout
+    }
+
+    #[getter]
+    fn follow_redirects(&self) -> bool {
+        self.follow_redirects
+    }
+
+    #[getter]
+    fn default_headers<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
+        let dict = PyDict::new(py);
+        for (k, v) in &self.default_headers {
+            dict.set_item(k, v)?;
+        }
+        Ok(dict)
     }
 }
 
-/// A Python library for making HTTP requests using reqwest
+/// Very naive function checking if a URL is absolute.
+fn is_absolute_url(url: &str) -> bool {
+    url.starts_with("http://") || url.starts_with("https://")
+}
+
+/// Define the Python module
 #[pymodule]
-fn httpr(py: Python, m: &PyModule) -> PyResult<()> {
+fn httpr(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<Client>()?;
     m.add_class::<AsyncClient>()?;
     Ok(())
