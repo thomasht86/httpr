@@ -9,6 +9,13 @@ use reqwest::{Client as AsyncReqwestClient, ClientBuilder as AsyncClientBuilder}
 
 use std::collections::HashMap;
 use std::time::Duration;
+use std::sync::{Arc, Mutex};
+
+#[derive(Debug, Clone)]
+struct ResponseMetadata {
+    status_code: u16,
+    headers: HashMap<String, String>,
+}
 
 /// A synchronous HTTP client.
 #[pyclass]
@@ -19,6 +26,8 @@ struct Client {
     follow_redirects: bool,
     default_headers: HashMap<String, String>,
     inner: reqwest::blocking::Client,
+    cookies: Mutex<reqwest::cookie::CookieStore>,
+    last_response: Mutex<Option<ResponseMetadata>>,
 }
 
 #[pymethods]
@@ -160,6 +169,8 @@ struct AsyncClient {
     follow_redirects: bool,
     default_headers: HashMap<String, String>,
     inner: AsyncReqwestClient,
+    cookies: reqwest::cookie::CookieStore,
+    last_response: Arc<tokio::sync::Mutex<Option<ResponseMetadata>>>,
 }
 
 #[pymethods]
