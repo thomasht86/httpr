@@ -16,6 +16,13 @@ struct ResponseMetadata {
     status_code: u16,
     headers: HashMap<String, String>,
 }
+use std::sync::{Arc, Mutex};
+
+#[derive(Debug, Clone)]
+struct ResponseMetadata {
+    status_code: u16,
+    headers: HashMap<String, String>,
+}
 
 /// A synchronous HTTP client.
 #[pyclass]
@@ -26,6 +33,8 @@ struct Client {
     follow_redirects: bool,
     default_headers: HashMap<String, String>,
     inner: reqwest::blocking::Client,
+    cookies: Mutex<reqwest::cookie::CookieStore>,
+    last_response: Mutex<Option<ResponseMetadata>>,
     cookies: Mutex<reqwest::cookie::CookieStore>,
     last_response: Mutex<Option<ResponseMetadata>>,
 }
@@ -169,6 +178,8 @@ struct AsyncClient {
     follow_redirects: bool,
     default_headers: HashMap<String, String>,
     inner: AsyncReqwestClient,
+    cookies: reqwest::cookie::CookieStore,
+    last_response: Arc<tokio::sync::Mutex<Option<ResponseMetadata>>>,
     cookies: reqwest::cookie::CookieStore,
     last_response: Arc<tokio::sync::Mutex<Option<ResponseMetadata>>>,
 }
