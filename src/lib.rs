@@ -16,7 +16,7 @@ use pyo3::types::PyDict;
 
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, SET_COOKIE};
 
-// Import pyo3_serde for converting Python objects to/from serde types.
+use serde_pyobject::from_pyobject;
 
 #[derive(Clone)]
 #[pyclass]
@@ -228,7 +228,7 @@ impl Client {
 
         // If JSON is provided, use it; otherwise, if form data is provided, use that.
         if let Some(py_json) = json {
-            let json_value: serde_json::Value = pyo3_serde::from_pyany(py_json)
+            let json_value: serde_json::Value = from_pyobject(py_json)
                 .map_err(|e| PyValueError::new_err(e.to_string()))?;
             req = req.json(&json_value);
         } else if let Some(py_data) = data {
@@ -473,7 +473,7 @@ impl AsyncClient {
             None
         };
         let json_value_opt = if let Some(j) = json {
-            Some(pyo3_serde::from_pyany(j)
+            Some(from_pyobject(j)
                 .map_err(|e| PyValueError::new_err(e.to_string()))?)
         } else {
             None
