@@ -1,527 +1,594 @@
-use pyo3::{
-    exceptions::{PyRuntimeError, PyValueError},
-    prelude::*,
-    types::PyDict,
-    PyObject, PyResult, Python
-};
-use pyo3_serde::from_pyany;
-use pyo3_asyncio::future_into_py;
-use reqwest::blocking::ClientBuilder as BlockingClientBuilder;
-use reqwest::redirect::Policy as RedirectPolicy;
-use reqwest::{Client as AsyncReqwestClient, ClientBuilder as AsyncClientBuilder};
+//! httpr: A Python package exposing synchronous and asynchronous HTTP clients built on reqwest.
+//!
+//! The synchronous client uses reqwest’s blocking API (and is marked unsendable), while the asynchronous
+//! client uses reqwest’s async API together with pyo3-asyncio. Both support custom configuration,
+//! GET/POST requests, cookie handling, and tracking of the last response’s status code.
+//!
+//! Make sure your Cargo.toml includes the features shown in the example above.
+
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-#[derive(Debug, Clone)]
-struct ResponseMetadata {
-    status_code: u16,
-    headers: HashMap<String, String>,
-}
+use pyo3::exceptions::{PyException, PyValueError};
+use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
-/// Update the cookie store from any `Set-Cookie` headers.
-fn update_cookies(
-    cookie_store: &Mutex<HashMap<String, String>>,
-    headers: &reqwest::header::HeaderMap,
-) {
-    for cookie_val in headers.get_all(reqwest::header::SET_COOKIE).iter() {
-        if let Ok(cookie_str) = cookie_val.to_str() {
-            if let Some((key, value)) = cookie_str.split(';').next().and_then(|s| s.split_once('=')) {
-                let mut store = cookie_store.lock().unwrap();
-                store.insert(key.trim().to_string(), value.trim().to_string());
-            }
-        }
-    }
-}
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, SET_COOKIE};
 
-/// Naively check if a URL is absolute.
-fn is_absolute_url(url: &str) -> bool {
-    url.starts_with("http://") || url.starts_with("https://")
-}
+// Import pyo3_serde for converting Python objects to/from serde types.
 
-/// Synchronous HTTP client.
+#[derive(Clone)]
 #[pyclass]
-#[derive(Debug)]
+struct LastResponse {
+    /// The HTTP status code.
+    #[pyo3(get)]
+    status_code: u16,
+}
+
+/// ---------------------------
+/// Synchronous HTTP Client
+/// ---------------------------
+
+/// A synchronous HTTP client that wraps reqwest’s blocking API.
+///
+/// Note: Because reqwest’s blocking client is not Send, we mark this pyclass as unsendable.
+#[pyclass(unsendable)]
 struct Client {
-    base_url: Option<String>,
-    timeout: f64,
-    follow_redirects: bool,
-    default_headers: HashMap<String, String>,
+    /// The underlying reqwest blocking client.
     inner: reqwest::blocking::Client,
-    cookies: Mutex<HashMap<String, String>>,
-    last_response: Mutex<Option<ResponseMetadata>>,
+    /// Optional base URL to prefix requests.
+    base_url: Option<String>,
+    /// Timeout for requests.
+    timeout: Option<Duration>,
+    /// Whether to follow redirects.
+    follow_redirects: bool,
+    /// Default headers.
+    default_headers: HeaderMap,
+    /// Stored cookies.
+    cookies: HashMap<String, String>,
+    /// The last response’s status code.
+    last_response: Option<LastResponse>,
 }
 
 #[pymethods]
 impl Client {
-    // Provide a Python signature so that default values for all parameters are unambiguous.
+    /// Create a new synchronous Client.
+    ///
+    /// Parameters:
+    ///     base_url (str, optional): Base URL to prefix all requests.
+    ///     timeout (float, optional): Timeout in seconds.
+    ///     follow_redirects (bool, optional): Whether to follow redirects (default: True).
+    ///     default_headers (dict, optional): Headers to include on every request.
     #[new]
-    #[pyo3(signature = (base_url=None, timeout=10.0, follow_redirects=True, default_headers=None))]
+    #[pyo3(text_signature = "($self, base_url=None, timeout=None, follow_redirects=None, default_headers=None)")]
     fn new(
         base_url: Option<String>,
-        timeout: f64,
-        follow_redirects: bool,
+        timeout: Option<f64>,
+        follow_redirects: Option<bool>,
         default_headers: Option<&PyDict>,
     ) -> PyResult<Self> {
-        if timeout < 0.0 {
-            return Err(PyValueError::new_err("timeout must be non-negative"));
+        let timeout_duration = timeout.map(Duration::from_secs_f64);
+        let follow = follow_redirects.unwrap_or(true);
+
+        // The cookie_store(true) method requires the "cookies" feature in reqwest.
+        let mut builder = reqwest::blocking::Client::builder().cookie_store(true);
+        if let Some(t) = timeout_duration {
+            builder = builder.timeout(t);
         }
-        let mut builder = BlockingClientBuilder::new();
-        builder = builder.timeout(Duration::from_secs_f64(timeout));
-        if !follow_redirects {
-            builder = builder.redirect(RedirectPolicy::none());
+        if !follow {
+            builder = builder.redirect(reqwest::redirect::Policy::none());
         }
-        let mut headers_map = reqwest::header::HeaderMap::new();
-        let mut header_store = HashMap::new();
-        if let Some(py_dict) = default_headers {
-            for (k, v) in py_dict {
-                let key_str = k.extract::<String>()
-                    .map_err(|_| PyValueError::new_err("default_headers keys must be strings"))?;
-                let val_str = v.extract::<String>()
-                    .map_err(|_| PyValueError::new_err("default_headers values must be strings"))?;
-                let header_name = reqwest::header::HeaderName::from_bytes(key_str.as_bytes())
+
+        // Build default headers from the provided Python dict.
+        let mut header_map = HeaderMap::new();
+        if let Some(dict) = default_headers {
+            for (key, value) in dict.iter() {
+                let key_str = key
+                    .extract::<String>()
                     .map_err(|e| PyValueError::new_err(e.to_string()))?;
-                let header_value = reqwest::header::HeaderValue::from_str(&val_str)
+                let value_str = value
+                    .extract::<String>()
                     .map_err(|e| PyValueError::new_err(e.to_string()))?;
-                headers_map.insert(header_name, header_value);
-                header_store.insert(key_str, val_str);
+                let header_name = HeaderName::from_bytes(key_str.as_bytes()).map_err(|e| {
+                    PyValueError::new_err(format!("Invalid header name '{}': {}", key_str, e))
+                })?;
+                let header_value = HeaderValue::from_str(&value_str).map_err(|e| {
+                    PyValueError::new_err(format!(
+                        "Invalid header value for '{}': {}",
+                        key_str, e
+                    ))
+                })?;
+                header_map.insert(header_name, header_value);
             }
         }
-        builder = builder.default_headers(headers_map);
-        let final_client = builder.build()
-            .map_err(|e| PyRuntimeError::new_err(format!("Failed to build client: {}", e)))?;
-        Ok(Self {
+
+        let client = builder
+            .build()
+            .map_err(|e| PyException::new_err(format!("Failed to build client: {}", e)))?;
+
+        Ok(Client {
+            inner: client,
             base_url,
-            timeout,
-            follow_redirects,
-            default_headers: header_store,
-            inner: final_client,
-            cookies: Mutex::new(HashMap::new()),
-            last_response: Mutex::new(None),
+            timeout: timeout_duration,
+            follow_redirects: follow,
+            default_headers: header_map,
+            cookies: HashMap::new(),
+            last_response: None,
         })
     }
 
-    #[pyo3(signature = (url, params=None, headers=None))]
-    fn get(&self, url: &str, params: Option<&PyDict>, headers: Option<&PyDict>) -> PyResult<String> {
-        let final_url = if is_absolute_url(url) {
-            url.to_string()
-        } else if let Some(base) = &self.base_url {
-            if base.ends_with('/') {
-                format!("{}{}", base, url)
+    /// Perform a synchronous GET request.
+    ///
+    /// Parameters:
+    ///     url (str): The request URL (absolute or relative).
+    ///     params (dict, optional): Query parameters.
+    ///     headers (dict, optional): Additional headers.
+    ///
+    /// Returns:
+    ///     str: The response text.
+    #[pyo3(text_signature = "($self, url, params=None, headers=None)")]
+    fn get(&mut self, url: String, params: Option<&PyAny>, headers: Option<&PyAny>) -> PyResult<String> {
+        let full_url = if let Some(base) = &self.base_url {
+            if url.starts_with("http") {
+                url.clone()
             } else {
-                format!("{}/{}", base, url)
+                format!("{}{}", base, url)
             }
         } else {
-            url.to_string()
+            url.clone()
         };
 
-        let mut request = self.inner.get(&final_url);
+        let mut req = self.inner.get(&full_url);
+
         if let Some(py_params) = params {
-            let mut param_map = HashMap::new();
-            for (k, v) in py_params {
-                let key = k.extract::<String>()?;
-                let value = v.extract::<String>()?;
-                param_map.insert(key, value);
-            }
-            request = request.query(&param_map);
-        }
-        if let Some(py_headers) = headers {
-            for (k, v) in py_headers {
-                let key_str = k.extract::<String>()?;
-                let val_str = v.extract::<String>()?;
-                request = request.header(key_str, val_str);
-            }
-        }
-        let resp = request.send().map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-        let meta = ResponseMetadata {
-            status_code: resp.status().as_u16(),
-            headers: resp.headers().iter()
-                .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
-                .collect(),
-        };
-        {
-            let mut lr = self.last_response.lock().unwrap();
-            *lr = Some(meta);
-        }
-        update_cookies(&self.cookies, resp.headers());
-        resp.text().map_err(|e| PyRuntimeError::new_err(e.to_string()))
-    }
-
-    #[pyo3(signature = (url, data=None, json=None, params=None, headers=None))]
-    fn post(
-        &self,
-        url: &str,
-        data: Option<&PyDict>,
-        json: Option<&PyAny>,
-        params: Option<&PyDict>,
-        headers: Option<&PyDict>,
-    ) -> PyResult<String> {
-        let final_url = if is_absolute_url(url) {
-            url.to_string()
-        } else if let Some(base) = &self.base_url {
-            if base.ends_with('/') {
-                format!("{}{}", base, url)
-            } else {
-                format!("{}/{}", base, url)
-            }
-        } else {
-            url.to_string()
-        };
-
-        let mut request = self.inner.post(&final_url);
-        if let Some(py_params) = params {
-            let mut param_map = HashMap::new();
-            for (k, v) in py_params {
-                let key = k.extract::<String>()?;
-                let value = v.extract::<String>()?;
-                param_map.insert(key, value);
-            }
-            request = request.query(&param_map);
-        }
-        if let Some(py_headers) = headers {
-            for (k, v) in py_headers {
-                let key_str = k.extract::<String>()?;
-                let val_str = v.extract::<String>()?;
-                request = request.header(key_str, val_str);
-            }
-        }
-        if let Some(form_data) = data {
-            let mut form_map = HashMap::new();
-            for (k, v) in form_data {
-                let key = k.extract::<String>()?;
-                let value = v.extract::<String>()?;
-                form_map.insert(key, value);
-            }
-            request = request.form(&form_map);
-        } else if let Some(json_obj) = json {
-            // Use pyo3_serde to convert the PyAny into a serde_json::Value.
-            let json_value = from_pyany(json_obj)
+            let params_map: HashMap<String, String> = py_params
+                .extract()
                 .map_err(|e| PyValueError::new_err(e.to_string()))?;
-            request = request.json(&json_value);
+            req = req.query(&params_map);
         }
-        let resp = request.send().map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-        let meta = ResponseMetadata {
+
+        let mut header_map = self.default_headers.clone();
+        if let Some(py_headers) = headers {
+            let headers_map: HashMap<String, String> = py_headers
+                .extract()
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            for (k, v) in headers_map {
+                let header_name = HeaderName::from_bytes(k.as_bytes()).map_err(|e| {
+                    PyValueError::new_err(format!("Invalid header name '{}': {}", k, e))
+                })?;
+                let header_value = HeaderValue::from_str(&v).map_err(|e| {
+                    PyValueError::new_err(format!("Invalid header value for '{}': {}", k, e))
+                })?;
+                header_map.insert(header_name, header_value);
+            }
+        }
+        req = req.headers(header_map);
+
+        let resp = req
+            .send()
+            .map_err(|e| PyException::new_err(format!("Request error: {}", e)))?;
+
+        self.last_response = Some(LastResponse {
             status_code: resp.status().as_u16(),
-            headers: resp.headers().iter()
-                .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
-                .collect(),
-        };
-        {
-            let mut lr = self.last_response.lock().unwrap();
-            *lr = Some(meta);
+        });
+
+        for cookie in resp.headers().get_all(SET_COOKIE).iter() {
+            if let Ok(cookie_str) = cookie.to_str() {
+                if let Some((name, value)) = parse_set_cookie(cookie_str) {
+                    self.cookies.insert(name, value);
+                }
+            }
         }
-        update_cookies(&self.cookies, resp.headers());
-        resp.text().map_err(|e| PyRuntimeError::new_err(e.to_string()))
+
+        resp.text()
+            .map_err(|e| PyException::new_err(format!("Error reading response: {}", e)))
     }
 
-    // Property getters.
-    #[getter]
-    fn cookies<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        let dict = PyDict::new(py);
-        let store = self.cookies.lock().unwrap();
-        for (k, v) in &*store {
-            dict.set_item(k, v)?;
-        }
-        Ok(dict)
-    }
-
-    #[getter(_last_response)]
-    fn last_response_py(&self, py: Python) -> PyResult<Option<PyObject>> {
-        let lr = self.last_response.lock().unwrap();
-        if let Some(meta) = &*lr {
-            let dict = PyDict::new(py);
-            dict.set_item("status_code", meta.status_code)?;
-            dict.set_item("headers", &meta.headers)?;
-            Ok(Some(dict.to_object(py)))
+    /// Perform a synchronous POST request.
+    ///
+    /// Parameters:
+    ///     url (str): The request URL.
+    ///     data (dict, optional): Form data.
+    ///     json (dict, optional): JSON data.
+    ///     headers (dict, optional): Additional headers.
+    ///
+    /// Returns:
+    ///     str: The response text.
+    #[pyo3(text_signature = "($self, url, data=None, json=None, headers=None)")]
+    fn post(&mut self, url: String, data: Option<&PyAny>, json: Option<&PyAny>, headers: Option<&PyAny>) -> PyResult<String> {
+        let full_url = if let Some(base) = &self.base_url {
+            if url.starts_with("http") {
+                url.clone()
+            } else {
+                format!("{}{}", base, url)
+            }
         } else {
-            Ok(None)
+            url.clone()
+        };
+
+        let mut req = self.inner.post(&full_url);
+
+        let mut header_map = self.default_headers.clone();
+        if let Some(py_headers) = headers {
+            let headers_map: HashMap<String, String> = py_headers
+                .extract()
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            for (k, v) in headers_map {
+                let header_name = HeaderName::from_bytes(k.as_bytes()).map_err(|e| {
+                    PyValueError::new_err(format!("Invalid header name '{}': {}", k, e))
+                })?;
+                let header_value = HeaderValue::from_str(&v).map_err(|e| {
+                    PyValueError::new_err(format!("Invalid header value for '{}': {}", k, e))
+                })?;
+                header_map.insert(header_name, header_value);
+            }
         }
+        req = req.headers(header_map);
+
+        // If JSON is provided, use it; otherwise, if form data is provided, use that.
+        if let Some(py_json) = json {
+            let json_value: serde_json::Value = pyo3_serde::from_pyany(py_json)
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            req = req.json(&json_value);
+        } else if let Some(py_data) = data {
+            let form_map: HashMap<String, String> = py_data
+                .extract()
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            req = req.form(&form_map);
+        }
+
+        let resp = req
+            .send()
+            .map_err(|e| PyException::new_err(format!("Request error: {}", e)))?;
+
+        self.last_response = Some(LastResponse {
+            status_code: resp.status().as_u16(),
+        });
+
+        for cookie in resp.headers().get_all(SET_COOKIE).iter() {
+            if let Ok(cookie_str) = cookie.to_str() {
+                if let Some((name, value)) = parse_set_cookie(cookie_str) {
+                    self.cookies.insert(name, value);
+                }
+            }
+        }
+
+        resp.text()
+            .map_err(|e| PyException::new_err(format!("Error reading response: {}", e)))
     }
 
+    /// Return stored cookies as a Python dictionary.
     #[getter]
-    fn base_url(&self) -> Option<String> {
-        self.base_url.clone()
-    }
-
-    #[getter]
-    fn timeout(&self) -> f64 {
-        self.timeout
-    }
-
-    #[getter]
-    fn follow_redirects(&self) -> bool {
-        self.follow_redirects
-    }
-
-    #[getter]
-    fn default_headers<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
+    fn cookies<'py>(&self, py: Python<'py>) -> PyResult<PyObject> {
         let dict = PyDict::new(py);
-        for (k, v) in &self.default_headers {
+        for (k, v) in &self.cookies {
             dict.set_item(k, v)?;
         }
-        Ok(dict)
+        Ok(dict.to_object(py))
+    }
+
+    /// Getter for the last response (exposed as `_last_response`).
+    #[getter("_last_response")]
+    fn last_response_py(&self) -> PyResult<Option<LastResponse>> {
+        Ok(self.last_response.clone())
     }
 }
 
-/// Asynchronous HTTP client.
+/// ---------------------------
+/// Asynchronous HTTP Client
+/// ---------------------------
+
+/// An asynchronous HTTP client using reqwest’s async API and pyo3-asyncio.
+/// Mutable state is stored in Arcs/Mutexes so that async closures can own clones.
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct AsyncClient {
+    inner: reqwest::Client,
     base_url: Option<String>,
-    timeout: f64,
+    timeout: Option<Duration>,
     follow_redirects: bool,
-    default_headers: HashMap<String, String>,
-    inner: AsyncReqwestClient,
+    default_headers: HeaderMap,
     cookies: Arc<Mutex<HashMap<String, String>>>,
-    last_response: Arc<Mutex<Option<ResponseMetadata>>>,
+    last_response: Arc<Mutex<Option<LastResponse>>>,
 }
 
 #[pymethods]
 impl AsyncClient {
+    /// Create a new AsyncClient.
+    ///
+    /// Parameters are the same as for the synchronous Client.
     #[new]
-    #[pyo3(signature = (base_url=None, timeout=10.0, follow_redirects=True, default_headers=None))]
+    #[pyo3(text_signature = "($self, base_url=None, timeout=None, follow_redirects=None, default_headers=None)")]
     fn new(
         base_url: Option<String>,
-        timeout: f64,
-        follow_redirects: bool,
+        timeout: Option<f64>,
+        follow_redirects: Option<bool>,
         default_headers: Option<&PyDict>,
     ) -> PyResult<Self> {
-        if timeout < 0.0 {
-            return Err(PyValueError::new_err("timeout must be non-negative"));
+        let timeout_duration = timeout.map(Duration::from_secs_f64);
+        let follow = follow_redirects.unwrap_or(true);
+
+        let mut builder = reqwest::Client::builder().cookie_store(true);
+        if let Some(t) = timeout_duration {
+            builder = builder.timeout(t);
         }
-        let mut builder = AsyncClientBuilder::new();
-        builder = builder.timeout(Duration::from_secs_f64(timeout));
-        if !follow_redirects {
-            builder = builder.redirect(RedirectPolicy::none());
+        if !follow {
+            builder = builder.redirect(reqwest::redirect::Policy::none());
         }
-        let mut headers_map = reqwest::header::HeaderMap::new();
-        let mut header_store = HashMap::new();
-        if let Some(py_dict) = default_headers {
-            for (k, v) in py_dict {
-                let key_str = k.extract::<String>()
-                    .map_err(|_| PyValueError::new_err("default_headers keys must be strings"))?;
-                let val_str = v.extract::<String>()
-                    .map_err(|_| PyValueError::new_err("default_headers values must be strings"))?;
-                let header_name = reqwest::header::HeaderName::from_bytes(key_str.as_bytes())
+
+        let mut header_map = HeaderMap::new();
+        if let Some(dict) = default_headers {
+            for (key, value) in dict.iter() {
+                let key_str = key
+                    .extract::<String>()
                     .map_err(|e| PyValueError::new_err(e.to_string()))?;
-                let header_value = reqwest::header::HeaderValue::from_str(&val_str)
+                let value_str = value
+                    .extract::<String>()
                     .map_err(|e| PyValueError::new_err(e.to_string()))?;
-                headers_map.insert(header_name, header_value);
-                header_store.insert(key_str, val_str);
+                let header_name = HeaderName::from_bytes(key_str.as_bytes()).map_err(|e| {
+                    PyValueError::new_err(format!("Invalid header name '{}': {}", key_str, e))
+                })?;
+                let header_value = HeaderValue::from_str(&value_str).map_err(|e| {
+                    PyValueError::new_err(format!("Invalid header value for '{}': {}", key_str, e))
+                })?;
+                header_map.insert(header_name, header_value);
             }
         }
-        builder = builder.default_headers(headers_map);
-        let final_client = builder.build()
-            .map_err(|e| PyRuntimeError::new_err(format!("Failed to build async client: {}", e)))?;
-        Ok(Self {
+        let client = builder
+            .build()
+            .map_err(|e| PyException::new_err(format!("Failed to build client: {}", e)))?;
+
+        Ok(AsyncClient {
+            inner: client,
             base_url,
-            timeout,
-            follow_redirects,
-            default_headers: header_store,
-            inner: final_client,
+            timeout: timeout_duration,
+            follow_redirects: follow,
+            default_headers: header_map,
             cookies: Arc::new(Mutex::new(HashMap::new())),
             last_response: Arc::new(Mutex::new(None)),
         })
     }
 
-    #[pyo3(signature = (url, params=None, headers=None))]
-    fn get<'a>(
-        &'a self,
-        py: Python<'a>,
-        url: &str,
-        params: Option<&PyDict>,
-        headers: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
-        let final_url = if is_absolute_url(url) {
-            url.to_string()
-        } else if let Some(base) = &self.base_url {
-            if base.ends_with('/') {
-                format!("{}{}", base, url)
+    /// Asynchronous GET request.
+    ///
+    /// Parameters:
+    ///     url (str): The request URL.
+    ///     params (dict, optional): Query parameters.
+    ///     headers (dict, optional): Additional headers.
+    ///
+    /// Returns an awaitable resolving to the response text.
+    #[pyo3(text_signature = "($self, url, params=None, headers=None)")]
+    fn get<'p>(
+        &self,
+        py: Python<'p>,
+        url: String,
+        params: Option<&PyAny>,
+        headers: Option<&PyAny>,
+    ) -> PyResult<&'p PyAny> {
+        let this = self.clone();
+        let params_map = if let Some(p) = params {
+            Some(p.extract::<HashMap<String, String>>()
+                .map_err(|e| PyValueError::new_err(e.to_string()))?)
+        } else {
+            None
+        };
+        let headers_map_opt = if let Some(h) = headers {
+            Some(h.extract::<HashMap<String, String>>()
+                .map_err(|e| PyValueError::new_err(e.to_string()))?)
+        } else {
+            None
+        };
+
+        pyo3_asyncio::tokio::future_into_py(py, async move {
+            let full_url = if let Some(base) = &this.base_url {
+                if url.starts_with("http") {
+                    url.clone()
+                } else {
+                    format!("{}{}", base, url)
+                }
             } else {
-                format!("{}/{}", base, url)
+                url.clone()
+            };
+
+            let mut req = this.inner.get(&full_url);
+            if let Some(params_map) = params_map {
+                req = req.query(&params_map);
             }
-        } else {
-            url.to_string()
-        };
-        let client = self.inner.clone();
-        let cookies_store = self.cookies.clone();
-        let last_response = self.last_response.clone();
-        let params_map = if let Some(py_params) = params {
-            let mut map = HashMap::new();
-            for (k, v) in py_params {
-                map.insert(k.extract::<String>()?, v.extract::<String>()?);
+
+            let header_map = if let Some(headers_map) = headers_map_opt {
+                let mut hm = this.default_headers.clone();
+                for (k, v) in headers_map {
+                    let header_name = HeaderName::from_bytes(k.as_bytes()).map_err(|e| {
+                        PyValueError::new_err(format!("Invalid header name '{}': {}", k, e))
+                    })?;
+                    let header_value = HeaderValue::from_str(&v).map_err(|e| {
+                        PyValueError::new_err(format!("Invalid header value for '{}': {}", k, e))
+                    })?;
+                    hm.insert(header_name, header_value);
+                }
+                hm
+            } else {
+                this.default_headers.clone()
+            };
+            req = req.headers(header_map);
+
+            let resp = req.send().await.map_err(|e| {
+                PyException::new_err(format!("Request error: {}", e))
+            })?;
+
+            {
+                let mut lr = this.last_response.lock().unwrap();
+                *lr = Some(LastResponse { status_code: resp.status().as_u16() });
             }
-            Some(map)
-        } else {
-            None
-        };
-        let headers_map = if let Some(py_headers) = headers {
-            let mut map = HashMap::new();
-            for (k, v) in py_headers {
-                map.insert(k.extract::<String>()?, v.extract::<String>()?);
-            }
-            Some(map)
-        } else {
-            None
-        };
-        future_into_py(py, async move {
-            let mut request = client.get(&final_url);
-            if let Some(ref params) = params_map {
-                request = request.query(params);
-            }
-            if let Some(ref headers) = headers_map {
-                for (k, v) in headers {
-                    request = request.header(k, v);
+
+            let headers_received = resp.headers().clone();
+            let text = resp.text().await.map_err(|e| {
+                PyException::new_err(format!("Error reading response: {}", e))
+            })?;
+
+            {
+                let mut cookies = this.cookies.lock().unwrap();
+                for cookie in headers_received.get_all(SET_COOKIE).iter() {
+                    if let Ok(cookie_str) = cookie.to_str() {
+                        if let Some((name, value)) = parse_set_cookie(cookie_str) {
+                            cookies.insert(name, value);
+                        }
+                    }
                 }
             }
-            let resp = request.send().await.map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-            let meta = ResponseMetadata {
-                status_code: resp.status().as_u16(),
-                headers: resp.headers().iter()
-                    .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
-                    .collect(),
-            };
-            {
-                let mut lr = last_response.lock().unwrap();
-                *lr = Some(meta);
-            }
-            update_cookies(&*cookies_store, resp.headers());
-            let text = resp.text().await.map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
             Ok(text)
         })
     }
 
-    #[pyo3(signature = (url, data=None, json=None, params=None, headers=None))]
-    fn post<'a>(
-        &'a self,
-        py: Python<'a>,
-        url: &str,
-        data: Option<&PyDict>,
+    /// Asynchronous POST request.
+    ///
+    /// Parameters:
+    ///     url (str): The request URL.
+    ///     data (dict, optional): Form data.
+    ///     json (dict, optional): JSON data.
+    ///     headers (dict, optional): Additional headers.
+    ///
+    /// Returns an awaitable resolving to the response text.
+    #[pyo3(text_signature = "($self, url, data=None, json=None, headers=None)")]
+    fn post<'p>(
+        &self,
+        py: Python<'p>,
+        url: String,
+        data: Option<&PyAny>,
         json: Option<&PyAny>,
-        params: Option<&PyDict>,
-        headers: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
-        let final_url = if is_absolute_url(url) {
-            url.to_string()
-        } else if let Some(base) = &self.base_url {
-            if base.ends_with('/') {
-                format!("{}{}", base, url)
+        headers: Option<&PyAny>,
+    ) -> PyResult<&'p PyAny> {
+        let this = self.clone();
+        let headers_map_opt = if let Some(h) = headers {
+            Some(h.extract::<HashMap<String, String>>()
+                .map_err(|e| PyValueError::new_err(e.to_string()))?)
+        } else {
+            None
+        };
+        let data_map_opt = if let Some(d) = data {
+            Some(d.extract::<HashMap<String, String>>()
+                .map_err(|e| PyValueError::new_err(e.to_string()))?)
+        } else {
+            None
+        };
+        let json_value_opt = if let Some(j) = json {
+            Some(pyo3_serde::from_pyany(j)
+                .map_err(|e| PyValueError::new_err(e.to_string()))?)
+        } else {
+            None
+        };
+
+        pyo3_asyncio::tokio::future_into_py(py, async move {
+            let full_url = if let Some(base) = &this.base_url {
+                if url.starts_with("http") {
+                    url.clone()
+                } else {
+                    format!("{}{}", base, url)
+                }
             } else {
-                format!("{}/{}", base, url)
-            }
-        } else {
-            url.to_string()
-        };
-        let client = self.inner.clone();
-        let cookies_store = self.cookies.clone();
-        let last_response = self.last_response.clone();
-        let params_map = if let Some(py_params) = params {
-            let mut map = HashMap::new();
-            for (k, v) in py_params {
-                map.insert(k.extract::<String>()?, v.extract::<String>()?);
-            }
-            Some(map)
-        } else {
-            None
-        };
-        let headers_map = if let Some(py_headers) = headers {
-            let mut map = HashMap::new();
-            for (k, v) in py_headers {
-                map.insert(k.extract::<String>()?, v.extract::<String>()?);
-            }
-            Some(map)
-        } else {
-            None
-        };
-        pyo3_tokio::future_into_py(py, async move {
-            let mut request = client.post(&final_url);
-            if let Some(ref params) = params_map {
-                request = request.query(params);
-            }
-            if let Some(ref headers) = headers_map {
-                for (k, v) in headers {
-                    request = request.header(k, v);
-                }
-            }
-            if let Some(form_data) = data {
-                let mut map = HashMap::new();
-                for (k, v) in form_data {
-                    map.insert(k.extract::<String>()?, v.extract::<String>()?);
-                }
-                request = request.form(&map);
-            } else if let Some(json_obj) = json {
-                let json_value = from_pyany(json_obj)
-                    .map_err(|e| PyValueError::new_err(e.to_string()))?;
-                request = request.json(&json_value);
-            }
-            let resp = request.send().await.map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-            let meta = ResponseMetadata {
-                status_code: resp.status().as_u16(),
-                headers: resp.headers().iter()
-                    .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
-                    .collect(),
+                url.clone()
             };
-            {
-                let mut lr = last_response.lock().unwrap();
-                *lr = Some(meta);
+
+            let mut req = this.inner.post(&full_url);
+
+            let header_map = if let Some(headers_map) = headers_map_opt {
+                let mut hm = this.default_headers.clone();
+                for (k, v) in headers_map {
+                    let header_name = HeaderName::from_bytes(k.as_bytes()).map_err(|e| {
+                        PyValueError::new_err(format!("Invalid header name '{}': {}", k, e))
+                    })?;
+                    let header_value = HeaderValue::from_str(&v).map_err(|e| {
+                        PyValueError::new_err(format!("Invalid header value for '{}': {}", k, e))
+                    })?;
+                    hm.insert(header_name, header_value);
+                }
+                hm
+            } else {
+                this.default_headers.clone()
+            };
+            req = req.headers(header_map);
+
+            if let Some(json_value) = json_value_opt {
+                req = req.json(&json_value);
+            } else if let Some(data_map) = data_map_opt {
+                req = req.form(&data_map);
             }
-            update_cookies(&*cookies_store, resp.headers());
-            let text = resp.text().await.map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+
+            let resp = req.send().await.map_err(|e| {
+                PyException::new_err(format!("Request error: {}", e))
+            })?;
+
+            {
+                let mut lr = this.last_response.lock().unwrap();
+                *lr = Some(LastResponse { status_code: resp.status().as_u16() });
+            }
+
+            let headers_received = resp.headers().clone();
+            let text = resp.text().await.map_err(|e| {
+                PyException::new_err(format!("Error reading response: {}", e))
+            })?;
+
+            {
+                let mut cookies = this.cookies.lock().unwrap();
+                for cookie in headers_received.get_all(SET_COOKIE).iter() {
+                    if let Ok(cookie_str) = cookie.to_str() {
+                        if let Some((name, value)) = parse_set_cookie(cookie_str) {
+                            cookies.insert(name, value);
+                        }
+                    }
+                }
+            }
             Ok(text)
         })
     }
 
-    #[pyo3(get)]
-    fn cookies<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
+    /// Return stored cookies as a Python dictionary.
+    #[getter]
+    fn cookies<'py>(&self, py: Python<'py>) -> PyResult<PyObject> {
         let dict = PyDict::new(py);
-        let store = self.cookies.lock().unwrap();
-        for (k, v) in &*store {
+        let cookies = self.cookies.lock().unwrap();
+        for (k, v) in cookies.iter() {
             dict.set_item(k, v)?;
         }
-        Ok(dict)
+        Ok(dict.to_object(py))
     }
 
-    #[getter(_last_response)]
-    fn last_response_py(&self, py: Python) -> PyResult<Option<PyObject>> {
+    /// Getter for the last response (exposed as `_last_response`).
+    #[getter("_last_response")]
+    fn last_response_py(&self) -> PyResult<Option<LastResponse>> {
         let lr = self.last_response.lock().unwrap();
-        if let Some(meta) = &*lr {
-            let dict = PyDict::new(py);
-            dict.set_item("status_code", meta.status_code)?;
-            dict.set_item("headers", &meta.headers)?;
-            Ok(Some(dict.to_object(py)))
-        } else {
-            Ok(None)
-        }
-    }
-
-    #[getter]
-    fn base_url(&self) -> Option<String> {
-        self.base_url.clone()
-    }
-
-    #[getter]
-    fn timeout(&self) -> f64 {
-        self.timeout
-    }
-
-    #[getter]
-    fn follow_redirects(&self) -> bool {
-        self.follow_redirects
-    }
-
-    #[getter]
-    fn default_headers<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        let dict = PyDict::new(py);
-        for (k, v) in &self.default_headers {
-            dict.set_item(k, v)?;
-        }
-        Ok(dict)
+        Ok(lr.clone())
     }
 }
+
+/// ---------------------------
+/// Helper Function
+/// ---------------------------
+
+/// A simple parser for a Set-Cookie header.
+/// It splits on ';' and then on '=' to extract the cookie name and value.
+/// (A production-quality parser would be more robust.)
+fn parse_set_cookie(cookie: &str) -> Option<(String, String)> {
+    let parts: Vec<&str> = cookie.split(';').collect();
+    if parts.is_empty() {
+        return None;
+    }
+    let kv: Vec<&str> = parts[0].splitn(2, '=').collect();
+    if kv.len() != 2 {
+        return None;
+    }
+    Some((kv[0].trim().to_string(), kv[1].trim().to_string()))
+}
+
+/// ---------------------------
+/// Module Initialization
+/// ---------------------------
 
 #[pymodule]
 fn httpr(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Client>()?;
     m.add_class::<AsyncClient>()?;
+    m.add_class::<LastResponse>()?;
     Ok(())
 }
