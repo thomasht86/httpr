@@ -1,11 +1,11 @@
-#[macro_use]
-extern crate pyo3;
-
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
-use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::{
+    exceptions::{PyRuntimeError, PyValueError},
+    prelude::*,
+    types::PyDict,
+    PyObject, PyResult, Python
+};
 use pyo3_serde::from_pyany;
-use pyo3_asyncio::tokio as pyo3_tokio;
+use pyo3_asyncio::tokio::future_into_py;
 use reqwest::blocking::ClientBuilder as BlockingClientBuilder;
 use reqwest::redirect::Policy as RedirectPolicy;
 use reqwest::{Client as AsyncReqwestClient, ClientBuilder as AsyncClientBuilder};
@@ -215,7 +215,7 @@ impl Client {
     }
 
     // Property getters.
-    #[pyo3(get)]
+    #[getter]
     fn cookies<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
         let dict = PyDict::new(py);
         let store = self.cookies.lock().unwrap();
@@ -225,7 +225,7 @@ impl Client {
         Ok(dict)
     }
 
-    #[pyo3(get, name = "_last_response")]
+    #[getter(_last_response)]
     fn last_response_py(&self, py: Python) -> PyResult<Option<PyObject>> {
         let lr = self.last_response.lock().unwrap();
         if let Some(meta) = &*lr {
@@ -264,7 +264,7 @@ impl Client {
 }
 
 /// Asynchronous HTTP client.
-#[pyclass(signature = "(base_url=None, timeout=10.0, follow_redirects=True, default_headers=None)")]
+#[pyclass]
 #[derive(Debug, Clone)]
 struct AsyncClient {
     base_url: Option<String>,
