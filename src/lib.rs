@@ -5,7 +5,7 @@ use pyo3::{
     PyObject, PyResult, Python
 };
 use pyo3_serde::from_pyany;
-use pyo3_asyncio::tokio::future_into_py;
+use pyo3_asyncio::future_into_py;
 use reqwest::blocking::ClientBuilder as BlockingClientBuilder;
 use reqwest::redirect::Policy as RedirectPolicy;
 use reqwest::{Client as AsyncReqwestClient, ClientBuilder as AsyncClientBuilder};
@@ -238,22 +238,22 @@ impl Client {
         }
     }
 
-    #[pyo3(get)]
+    #[getter]
     fn base_url(&self) -> Option<String> {
         self.base_url.clone()
     }
 
-    #[pyo3(get)]
+    #[getter]
     fn timeout(&self) -> f64 {
         self.timeout
     }
 
-    #[pyo3(get)]
+    #[getter]
     fn follow_redirects(&self) -> bool {
         self.follow_redirects
     }
 
-    #[pyo3(get)]
+    #[getter]
     fn default_headers<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
         let dict = PyDict::new(py);
         for (k, v) in &self.default_headers {
@@ -364,7 +364,7 @@ impl AsyncClient {
         } else {
             None
         };
-        pyo3_tokio::future_into_py(py, async move {
+        future_into_py(py, async move {
             let mut request = client.get(&final_url);
             if let Some(ref params) = params_map {
                 request = request.query(params);
@@ -481,7 +481,7 @@ impl AsyncClient {
         Ok(dict)
     }
 
-    #[pyo3(get, name = "_last_response")]
+    #[getter(_last_response)]
     fn last_response_py(&self, py: Python) -> PyResult<Option<PyObject>> {
         let lr = self.last_response.lock().unwrap();
         if let Some(meta) = &*lr {
@@ -494,22 +494,22 @@ impl AsyncClient {
         }
     }
 
-    #[pyo3(get)]
+    #[getter]
     fn base_url(&self) -> Option<String> {
         self.base_url.clone()
     }
 
-    #[pyo3(get)]
+    #[getter]
     fn timeout(&self) -> f64 {
         self.timeout
     }
 
-    #[pyo3(get)]
+    #[getter]
     fn follow_redirects(&self) -> bool {
         self.follow_redirects
     }
 
-    #[pyo3(get)]
+    #[getter]
     fn default_headers<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
         let dict = PyDict::new(py);
         for (k, v) in &self.default_headers {
