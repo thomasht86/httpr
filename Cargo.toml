@@ -7,8 +7,9 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.18", features = ["extension-module"] }
-pyo3-asyncio = { version = "0.18", features = ["tokio-runtime"] }
+
+pyo3 = { version = "0.20", features = ["extension-module", "auto-initialize"] }
+pyo3-asyncio = "0.20"
 tokio = { version = "1.27", features = ["rt-multi-thread", "macros"] }
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 serde_json = "1.0"
