@@ -277,7 +277,7 @@ impl AsyncClient {
         let mut header_map = HeaderMap::new();
         if let Some(dict) = default_headers {
             for (k, v) in dict.iter() {
-                let key: String = k.extract()?;
+                let key: String = k.extract()?.to_lowercase();
                 let value: String = v.extract()?;
                 let header_name = HeaderName::from_bytes(key.trim().as_bytes())
                     .map_err(|e| PyValueError::new_err(e.to_string()))?;
