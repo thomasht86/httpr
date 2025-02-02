@@ -66,8 +66,8 @@ impl Client {
         let mut header_map = HeaderMap::new();
         if let Some(dict) = default_headers {
             for (k, v) in dict.iter() {
-                let key: String = k.extract()?.to_lowercase();
-                let value: String = v.extract()?;
+                let key: String = k.extract::<String>()?.to_lowercase();
+                let value: String = v.extract::<String>()?;
                 let header_name = HeaderName::from_bytes(key.trim().as_bytes())
                     .map_err(|e| PyValueError::new_err(e.to_string()))?;
                 let header_value = HeaderValue::from_str(value.trim())
@@ -156,12 +156,11 @@ impl Client {
         let resp = req.send().map_err(|e| PyException::new_err(e.to_string()))?;
         let status_code = resp.status().as_u16();
         self.last_response = Some(Py::new(py, LastResponse { status_code })?);
-        if let Some(cookies) = resp.headers().get_all(SET_COOKIE) {
-            for cookie in cookies.iter() {
-                if let Ok(cookie_str) = cookie.to_str() {
-                    if let Some((name, value)) = parse_set_cookie(cookie_str) {
-                        self.cookies.insert(name, value);
-                    }
+        let cookies = resp.headers().get_all(SET_COOKIE);
+        for cookie in cookies.iter() {
+            if let Ok(cookie_str) = cookie.to_str() {
+                if let Some((name, value)) = parse_set_cookie(cookie_str) {
+                    self.cookies.insert(name, value);
                 }
             }
         }
@@ -277,8 +276,8 @@ impl AsyncClient {
         let mut header_map = HeaderMap::new();
         if let Some(dict) = default_headers {
             for (k, v) in dict.iter() {
-                let key: String = k.extract()?.to_lowercase();
-                let value: String = v.extract()?;
+                let key: String = k.extract::<String>()?.to_lowercase();
+                let value: String = v.extract::<String>()?;
                 let header_name = HeaderName::from_bytes(key.trim().as_bytes())
                     .map_err(|e| PyValueError::new_err(e.to_string()))?;
                 let header_value = HeaderValue::from_str(value.trim())
@@ -388,13 +387,12 @@ impl AsyncClient {
                 })?;
             }
 
-            if let Some(cookies) = resp.headers().get_all(SET_COOKIE) {
-                for cookie in cookies.iter() {
-                    if let Ok(cookie_str) = cookie.to_str() {
-                        if let Some((name, value)) = parse_set_cookie(cookie_str) {
-                            let mut cookies_lock = client.cookies.lock().unwrap();
-                            cookies_lock.insert(name, value);
-                        }
+            let cookies = resp.headers().get_all(SET_COOKIE);
+            for cookie in cookies.iter() {
+                if let Ok(cookie_str) = cookie.to_str() {
+                    if let Some((name, value)) = parse_set_cookie(cookie_str) {
+                        let mut cookies_lock = client.cookies.lock().unwrap();
+                        cookies_lock.insert(name, value);
                     }
                 }
             }
