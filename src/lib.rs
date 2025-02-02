@@ -15,7 +15,11 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue, SET_COOKIE};
 
 // Add at module level
 fn parse_set_cookie(cookie_str: &str) -> Option<(String, String)> {
-    cookie_str.split_once('=').map(|(k, v)| (k.to_string(), v.to_string()))
+    cookie_str.split_once('=')
+        .map(|(k, v)| {
+            let value = v.split(';').next().unwrap_or("").trim().to_string();
+            (k.trim().to_string(), value)
+        })
 }
 
 // --------- LastResponse ---------
@@ -62,7 +66,7 @@ impl Client {
         let mut header_map = HeaderMap::new();
         if let Some(dict) = default_headers {
             for (k, v) in dict.iter() {
-                let key: String = k.extract()?;
+                let key: String = k.extract()?.to_lowercase();
                 let value: String = v.extract()?;
                 let header_name = HeaderName::from_bytes(key.trim().as_bytes())
                     .map_err(|e| PyValueError::new_err(e.to_string()))?;
@@ -106,7 +110,7 @@ impl Client {
     fn default_headers<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
         let dict = PyDict::new(py);
         for (key, value) in self.default_headers.iter() {
-            let key_str = key.as_str();
+            let key_str = key.as_str().to_lowercase();
             let value_str = value.to_str().unwrap_or("");
             dict.set_item(key_str, value_str)?;
         }
@@ -152,10 +156,12 @@ impl Client {
         let resp = req.send().map_err(|e| PyException::new_err(e.to_string()))?;
         let status_code = resp.status().as_u16();
         self.last_response = Some(Py::new(py, LastResponse { status_code })?);
-        if let Some(set_cookie) = resp.headers().get(SET_COOKIE) {
-            if let Ok(cookie_str) = set_cookie.to_str() {
-                if let Some((name, value)) = parse_set_cookie(cookie_str) {
-                    self.cookies.insert(name, value);
+        if let Some(cookies) = resp.headers().get_all(SET_COOKIE) {
+            for cookie in cookies.iter() {
+                if let Ok(cookie_str) = cookie.to_str() {
+                    if let Some((name, value)) = parse_set_cookie(cookie_str) {
+                        self.cookies.insert(name, value);
+                    }
                 }
             }
         }
@@ -382,11 +388,13 @@ impl AsyncClient {
                 })?;
             }
 
-            if let Some(set_cookie) = resp.headers().get(SET_COOKIE) {
-                if let Ok(cookie_str) = set_cookie.to_str() {
-                    if let Some((name, value)) = parse_set_cookie(cookie_str) {
-                        let mut cookies_lock = client.cookies.lock().unwrap();
-                        cookies_lock.insert(name, value);
+            if let Some(cookies) = resp.headers().get_all(SET_COOKIE) {
+                for cookie in cookies.iter() {
+                    if let Ok(cookie_str) = cookie.to_str() {
+                        if let Some((name, value)) = parse_set_cookie(cookie_str) {
+                            let mut cookies_lock = client.cookies.lock().unwrap();
+                            cookies_lock.insert(name, value);
+                        }
                     }
                 }
             }
