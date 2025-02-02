@@ -15,6 +15,7 @@ dev = [
     "pytest-cov",
     "aider-install",
     "pre-commit",
+    "httpx",
 ]
 
 [build-system]
