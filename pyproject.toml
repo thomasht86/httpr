@@ -16,6 +16,8 @@ dev = [
     "aider-install",
     "pre-commit",
     "httpx",
+    "ipykernel",
+    "jupyter",
 ]
 
 [build-system]
