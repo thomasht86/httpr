@@ -141,6 +141,47 @@ class TestAsyncClient:
 
 
 # -----------------------------
+# Module-Level Function Tests
+# -----------------------------
+class TestModuleLevelFunctions:
+    def test_module_get_success(self, base_url):
+        """Test module-level GET function"""
+        response = httpr.get(f"{base_url}/get")
+        assert isinstance(response, str)
+        response_data = json.loads(response)
+        assert response_data["url"] == f"{base_url}/get"
+
+    def test_module_post_form(self, base_url):
+        """Test module-level POST with form data"""
+        response = httpr.post(f"{base_url}/post", data={"key": "value"})
+        response_data = json.loads(response)
+        assert response_data["form"] == {"key": "value"}
+
+    def test_module_post_json(self, base_url):
+        """Test module-level POST with JSON data"""
+        response = httpr.post(f"{base_url}/post", json={"key": "value"})
+        response_data = json.loads(response)
+        assert response_data["json"] == {"key": "value"}
+
+    def test_module_request_with_params(self, base_url):
+        """Test module-level GET with URL params"""
+        response = httpr.get(
+            f"{base_url}/get",
+            params={"test": "value"}
+        )
+        response_data = json.loads(response)
+        assert response_data["args"] == {"test": "value"}
+
+    def test_module_request_with_headers(self, base_url):
+        """Test module-level GET with custom headers"""
+        response = httpr.get(
+            f"{base_url}/headers",
+            headers={"User-Agent": "httpr-module-test"}
+        )
+        response_data = json.loads(response)
+        assert response_data["headers"]["User-Agent"] == "httpr-module-test"
+
+# -----------------------------
 # Configuration Tests
 # -----------------------------
 def test_client_configuration():

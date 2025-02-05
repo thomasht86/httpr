@@ -525,9 +525,36 @@ impl AsyncClient {
 
 // ...existing code...
 
+#[pyfunction]
+fn get(
+    url: String,
+    params: Option<&Bound<'_, PyAny>>,
+    headers: Option<&Bound<'_, PyDict>>,
+) -> PyResult<String> {
+    Python::with_gil(|py| {
+        let mut client = Client::new(None, None, None, None)?;
+        client.get(py, url, params, headers)
+    })
+}
+
+#[pyfunction]
+fn post(
+    url: String,
+    data: Option<&Bound<'_, PyAny>>,
+    json: Option<&Bound<'_, PyAny>>,
+    headers: Option<&Bound<'_, PyDict>>,
+) -> PyResult<String> {
+    Python::with_gil(|py| {
+        let mut client = Client::new(None, None, None, None)?;
+        client.post(py, url, data, json, headers)
+    })
+}
+
 #[pymodule]
 fn httpr(m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<Client>()?;
     m.add_class::<AsyncClient>()?;
+    m.add_function(wrap_pyfunction!(get, m)?)?;
+    m.add_function(wrap_pyfunction!(post, m)?)?;
     Ok(())
 }
