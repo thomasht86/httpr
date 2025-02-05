@@ -9,6 +9,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods};
 use pyo3::{Bound, Py, PyAny, PyResult};
 use serde_pyobject::from_pyobject;
+use pyo3::wrap_pyfunction;
 
 use reqwest::blocking;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, SET_COOKIE};
@@ -20,6 +21,19 @@ fn parse_set_cookie(cookie_str: &str) -> Option<(String, String)> {
             let value = v.split(';').next().unwrap_or("").trim().to_string();
             (k.trim().to_string(), value)
         })
+}
+
+// Add helper function for URL construction
+fn build_full_url(base_url: &Option<String>, url: &str) -> String {
+    if let Some(base) = base_url {
+        if url.starts_with("http") {
+            url.to_string()
+        } else {
+            format!("{}{}", base, url)
+        }
+    } else {
+        url.to_string()
+    }
 }
 
 // --------- LastResponse ---------
@@ -34,13 +48,47 @@ struct LastResponse {
 // --------- Synchronous HTTP Client ---------
 #[pyclass(unsendable)]
 struct Client {
-    inner: blocking::Client,
+    http_client: blocking::Client,
     base_url: Option<String>,
     timeout: Option<Duration>,
     follow_redirects: bool,
     default_headers: HeaderMap,
     cookies: HashMap<String, String>,
     last_response: Option<Py<LastResponse>>,
+}
+
+impl Client {
+    // Helper method to extract and store cookies
+    fn extract_cookies(&mut self, response: &blocking::Response) {
+        for header in response.headers().get_all(SET_COOKIE).iter() {
+            if let Ok(cookie_str) = header.to_str() {
+                if let Some((name, value)) = parse_set_cookie(cookie_str) {
+                    self.cookies.insert(name, value);
+                }
+            }
+        }
+    }
+
+    // Modify request methods to use cookie extraction
+    fn handle_response(&mut self, response: blocking::Response) -> PyResult<String> {
+        // Extract cookies from response
+        self.extract_cookies(&response);
+        
+        // Store last response
+        Python::with_gil(|py| -> PyResult<()> {
+            self.last_response = Some(Py::new(
+            py,
+            LastResponse {
+                status_code: response.status().as_u16(),
+            }
+            )?);
+            Ok::<(), PyErr>(())
+        })?;
+
+        // Return response text
+        response.text()
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
 }
 
 #[pymethods]
@@ -77,7 +125,7 @@ impl Client {
         }
         let client = builder.build().map_err(|e| PyException::new_err(e.to_string()))?;
         Ok(Client {
-            inner: client,
+            http_client: client,
             base_url,
             timeout: timeout_duration,
             follow_redirects: follow,
@@ -121,22 +169,14 @@ impl Client {
     #[pyo3(signature = (url, params=None, headers=None))]
     fn get(
         &mut self,
-        py: Python<'_>,
+        _py: Python<'_>,
         url: String,
         params: Option<&Bound<'_, PyAny>>,
         headers: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<String> {
-        let full_url = if let Some(base) = &self.base_url {
-            if url.starts_with("http") {
-                url
-            } else {
-                format!("{}{}", base, url)
-            }
-        } else {
-            url
-        };
+        let full_url = build_full_url(&self.base_url, &url);
 
-        let mut req = self.inner.get(&full_url);
+        let mut req = self.http_client.get(&full_url);
         if let Some(py_params) = params {
             let params_map: HashMap<String, String> = from_pyobject(py_params.clone())?;
             req = req.query(&params_map);
@@ -154,41 +194,22 @@ impl Client {
         }
         req = req.headers(header_map);
         let resp = req.send().map_err(|e| PyException::new_err(e.to_string()))?;
-        let status_code = resp.status().as_u16();
-        self.last_response = Some(Py::new(py, LastResponse { status_code })?);
-        let cookies = resp.headers().get_all(SET_COOKIE);
-        for cookie in cookies.iter() {
-            if let Ok(cookie_str) = cookie.to_str() {
-                if let Some((name, value)) = parse_set_cookie(cookie_str) {
-                    self.cookies.insert(name, value);
-                }
-            }
-        }
-        let text = resp.text().map_err(|e| PyException::new_err(e.to_string()))?;
-        Ok(text)
+        self.handle_response(resp)
     }
 
     /// Perform a synchronous POST request.
     #[pyo3(signature = (url, data=None, json=None, headers=None))]
     fn post(
         &mut self,
-        py: Python<'_>,
+        _py: Python<'_>,
         url: String,
         data: Option<&Bound<'_, PyAny>>,
         json: Option<&Bound<'_, PyAny>>,
         headers: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<String> {
-        let full_url = if let Some(base) = &self.base_url {
-            if url.starts_with("http") {
-                url
-            } else {
-                format!("{}{}", base, url)
-            }
-        } else {
-            url
-        };
+        let full_url = build_full_url(&self.base_url, &url);
 
-        let mut req = self.inner.post(&full_url);
+        let mut req = self.http_client.post(&full_url);
         let mut header_map = self.default_headers.clone();
         if let Some(py_headers) = headers {
             let headers_map: HashMap<String, String> = from_pyobject(py_headers.clone())?;
@@ -209,17 +230,7 @@ impl Client {
             req = req.form(&form_data);
         }
         let resp = req.send().map_err(|e| PyException::new_err(e.to_string()))?;
-        let status_code = resp.status().as_u16();
-        self.last_response = Some(Py::new(py, LastResponse { status_code })?);
-        if let Some(set_cookie) = resp.headers().get(SET_COOKIE) {
-            if let Ok(cookie_str) = set_cookie.to_str() {
-                if let Some((name, value)) = parse_set_cookie(cookie_str) {
-                    self.cookies.insert(name, value);
-                }
-            }
-        }
-        let text = resp.text().map_err(|e| PyException::new_err(e.to_string()))?;
-        Ok(text)
+        self.handle_response(resp)
     }
 
     /// Return stored cookies as a Python dictionary.
@@ -238,8 +249,6 @@ impl Client {
         Ok(self.last_response.as_ref().map(|p| p.clone_ref(py)))
     }
 }
-
-// ...existing code...
 
 #[pyclass]
 #[derive(Clone)]
@@ -526,32 +535,21 @@ impl AsyncClient {
 // ...existing code...
 
 #[pyfunction]
-fn get(
-    url: String,
-    params: Option<&Bound<'_, PyAny>>,
-    headers: Option<&Bound<'_, PyDict>>,
-) -> PyResult<String> {
-    Python::with_gil(|py| {
-        let mut client = Client::new(None, None, None, None)?;
-        client.get(py, url, params, headers)
-    })
+#[pyo3(signature = (url, params=None, headers=None))]
+fn get(py: Python, url: String, params: Option<&Bound<PyAny>>, headers: Option<&Bound<PyAny>>) -> PyResult<String> {
+    let mut client = Client::new(None, None, None, None)?;
+    client.get(py, url, params, headers)
 }
 
 #[pyfunction]
-fn post(
-    url: String,
-    data: Option<&Bound<'_, PyAny>>,
-    json: Option<&Bound<'_, PyAny>>,
-    headers: Option<&Bound<'_, PyDict>>,
-) -> PyResult<String> {
-    Python::with_gil(|py| {
-        let mut client = Client::new(None, None, None, None)?;
-        client.post(py, url, data, json, headers)
-    })
+#[pyo3(signature = (url, data=None, json=None, headers=None))]
+fn post(py: Python, url: String, data: Option<&Bound<PyAny>>, json: Option<&Bound<PyAny>>, headers: Option<&Bound<PyAny>>) -> PyResult<String> {
+    let mut client = Client::new(None, None, None, None)?;
+    client.post(py, url, data, json, headers)
 }
 
 #[pymodule]
-fn httpr(m: &Bound<PyModule>) -> PyResult<()> {
+fn httpr(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Client>()?;
     m.add_class::<AsyncClient>()?;
     m.add_function(wrap_pyfunction!(get, m)?)?;
