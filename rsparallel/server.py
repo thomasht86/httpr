@@ -13,10 +13,12 @@ inflight_lock = asyncio.Lock()
 @app.api_route("/test", methods=["GET", "POST", "PUT"])
 async def test_endpoint(
     # Mean response time in seconds (default: 0.1 sec)
-    mean_response_time: float = Query(0.1, description="Mean response time in seconds"),
+    mean_response_time: float = Query(
+        0.010, description="Mean response time in seconds"
+    ),
     # Standard deviation for response time (default: 0.01 sec)
     resp_time_std: float = Query(
-        0.01, description="Response time standard deviation in seconds"
+        0.005, description="Response time standard deviation in seconds"
     ),
     # Maximum number of in-flight requests before the server responds with a 429 error
     num_inflight_before_429: int = Query(

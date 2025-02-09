@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use std::error::Error;
 use clap::Parser;
 use tokio::time::{sleep, Duration};
+use std::time::{Instant};
+use log::{debug, info, error};
 
 #[derive(Debug)]
 struct RequestError {
@@ -88,7 +90,9 @@ async fn make_request(
             request_builder = request_builder.body(body);
         }
 
+        let start = Instant::now();
         let response = request_builder.send().await;
+        let elapsed = start.elapsed();
 
         match response {
             Ok(response) => {
@@ -101,7 +105,7 @@ async fn make_request(
                             message: format!("Retry limit exceeded. Last error: {}", error_text),
                         });
                     } else {
-                        eprintln!("Request failed with status {}. Retrying...", status);
+                        debug!("Request failed with status {}. Retrying...", status);
                         let delay = Duration::from_secs_f32(retry_settings.backoff_factor.powi(attempts as i32));
                         sleep(delay).await;
                         continue;
@@ -109,13 +113,14 @@ async fn make_request(
                 }
 
                 let json: Value = response.json().await?;
+                debug!("Request time: {:?}", elapsed);
                 return Ok(json);
             }
             Err(err) => {
                 if attempts > retry_settings.max_retries {
                     return Err(RequestError::from(err));
                 } else {
-                    eprintln!("Request failed: {}. Retrying...", err);
+                    debug!("Request failed: {}. Retrying...", err);
                     let delay = Duration::from_secs_f32(retry_settings.backoff_factor.powi(attempts as i32));
                     sleep(delay).await;
                     continue;
@@ -181,6 +186,8 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::init();
+
     let args = Args::parse();
 
     // Load the certificate.
@@ -227,15 +234,41 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     // Make the requests.
+    let start_time = Instant::now();
     let results = make_requests(client, requests_config, &retry_settings).await;
+    let total_duration = start_time.elapsed();
+
+    let mut success_count = 0;
+    let mut error_count = 0;
 
     // Iterate over the results and print each JSON response.
     for (i, result) in results.into_iter().enumerate() {
         match result {
-            Ok(json) => println!("Response {}: {:#?}", i + 1, json),
-            Err(e) => eprintln!("Request {} failed: {}", i + 1, e),
+            Ok(json) => {
+                success_count += 1;
+                info!("Response {}: {:#?}", i + 1, json);
+            }
+            Err(e) => {
+                error_count += 1;
+                error!("Request {} failed: {}", i + 1, e);
+            }
         }
     }
+
+    let avg_request_time = if success_count > 0 {
+        total_duration / success_count as u32
+    } else {
+        Duration::new(0, 0)
+    };
+
+    info!("----------------------------------");
+    info!("Total requests: {}", args.num_requests);
+    info!("Successes: {}", success_count);
+    info!("Errors: {}", error_count);
+    info!("Total duration: {:?}", total_duration);
+    info!("Average request time: {:?}", avg_request_time);
+    info!("Throughput: {:.2} requests/second", args.num_requests as f64 / total_duration.as_secs_f64());
+    info!("----------------------------------");
 
     Ok(())
 }
