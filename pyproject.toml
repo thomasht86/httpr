@@ -29,3 +29,6 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "--cov=httpr --cov-report=term-missing"
 asyncio_mode = "strict"
+
+[tool.uv.workspace]
+members = ["rsparallel"]
