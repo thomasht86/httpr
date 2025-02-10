@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "primp"
 description = "HTTP client that can impersonate web browsers, mimicking their headers and `TLS/JA3/JA4/HTTP2` fingerprints"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT License"}
 keywords = ["python", "request", "impersonate"]
 authors = [
@@ -37,7 +37,8 @@ dev = [
     "pytest-asyncio>=0.25.3",
     "typing_extensions; python_version <= '3.11'",  # for Unpack[TypedDict]
     "mypy>=1.14.1",
-    "ruff>=0.9.2"
+    "ruff>=0.9.2",
+    "maturin"
 ]
 
 [tool.maturin]

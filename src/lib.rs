@@ -9,11 +9,11 @@ use indexmap::IndexMap;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pythonize::depythonize;
-use rquest::{
+use reqwest::{
     header::{HeaderValue, COOKIE},
     multipart,
     redirect::Policy,
-    Body, Impersonate, ImpersonateOS, Method,
+    Body, Method,
 };
 use serde_json::Value;
 use tokio::{
@@ -27,10 +27,10 @@ mod response;
 use response::Response;
 
 mod traits;
-use traits::{CookiesTraits, HeadersTraits, ImpersonateFromStr, ImpersonateOSFromStr};
+use traits::{CookiesTraits, HeadersTraits};
 
 mod utils;
-use utils::load_ca_certs;
+//use utils::load_ca_certs;
 
 type IndexMapSSR = IndexMap<String, String, RandomState>;
 
@@ -45,7 +45,8 @@ static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
 #[pyclass(subclass)]
 /// HTTP client that can impersonate web browsers.
 pub struct RClient {
-    client: Arc<Mutex<rquest::Client>>,
+    client: Arc<Mutex<reqwest::Client>>,
+    headers: Arc<Mutex<reqwest::header::HeaderMap>>,
     #[pyo3(get, set)]
     auth: Option<(String, Option<String>)>,
     #[pyo3(get, set)]
@@ -56,10 +57,6 @@ pub struct RClient {
     proxy: Option<String>,
     #[pyo3(get, set)]
     timeout: Option<f64>,
-    #[pyo3(get)]
-    impersonate: Option<String>,
-    #[pyo3(get)]
-    impersonate_os: Option<String>,
 }
 
 #[pymethods]
@@ -117,8 +114,8 @@ impl RClient {
     /// ```
     #[new]
     #[pyo3(signature = (auth=None, auth_bearer=None, params=None, headers=None, cookies=None,
-        cookie_store=true, referer=true, proxy=None, timeout=None, impersonate=None, impersonate_os=None, follow_redirects=true,
-        max_redirects=20, verify=true, ca_cert_file=None, https_only=false, http2_only=false))]
+        cookie_store=true, referer=true, proxy=None, timeout=None, follow_redirects=true,
+        max_redirects=20, verify=true, ca_cert_file=None, https_only=false))]
     fn new(
         auth: Option<(String, Option<String>)>,
         auth_bearer: Option<String>,
@@ -129,32 +126,15 @@ impl RClient {
         referer: Option<bool>,
         proxy: Option<String>,
         timeout: Option<f64>,
-        impersonate: Option<String>,
-        impersonate_os: Option<String>,
         follow_redirects: Option<bool>,
         max_redirects: Option<usize>,
         verify: Option<bool>,
         ca_cert_file: Option<String>,
         https_only: Option<bool>,
-        http2_only: Option<bool>,
+        // http2_only: Option<bool>,
     ) -> Result<Self> {
         // Client builder
-        let mut client_builder = rquest::Client::builder();
-
-        // Impersonate
-        if let Some(impersonate) = &impersonate {
-            let imp = Impersonate::from_str(&impersonate.as_str())?;
-            let imp_os = if let Some(impersonate_os) = &impersonate_os {
-                ImpersonateOS::from_str(&impersonate_os.as_str())?
-            } else {
-                ImpersonateOS::default()
-            };
-            let impersonate_builder = Impersonate::builder()
-                .impersonate(imp)
-                .impersonate_os(imp_os)
-                .build();
-            client_builder = client_builder.impersonate(impersonate_builder);
-        }
+        let mut client_builder = reqwest::Client::builder();
 
         // Headers || Cookies
         if headers.is_some() || cookies.is_some() {
@@ -180,7 +160,7 @@ impl RClient {
         // Proxy
         let proxy = proxy.or_else(|| std::env::var("PRIMP_PROXY").ok());
         if let Some(proxy) = &proxy {
-            client_builder = client_builder.proxy(rquest::Proxy::all(proxy)?);
+            client_builder = client_builder.proxy(reqwest::Proxy::all(proxy)?);
         }
 
         // Timeout
@@ -196,16 +176,21 @@ impl RClient {
         }
 
         // Ca_cert_file. BEFORE!!! verify (fn load_ca_certs() reads env var PRIMP_CA_BUNDLE)
-        if let Some(ca_bundle_path) = &ca_cert_file {
-            std::env::set_var("PRIMP_CA_BUNDLE", ca_bundle_path);
-        }
+        // if let Some(ca_bundle_path) = &ca_cert_file {
+        //     std::env::set_var("PRIMP_CA_BUNDLE", ca_bundle_path);
+        // }
 
-        // Verify
-        if verify.unwrap_or(true) {
-            client_builder = client_builder.root_cert_store(load_ca_certs);
-        } else {
-            client_builder = client_builder.danger_accept_invalid_certs(true);
-        }
+        // // Verify
+        // if verify.unwrap_or(true) {
+        //     client_builder = client_builder.tls_built_in_root_certs(true);
+        //     if let Ok(certs) = load_ca_certs() {
+        //         for cert in certs {
+        //             client_builder = client_builder.add_root_certificate(cert);
+        //         }
+        //     }
+        // } else {
+        //     client_builder = client_builder.danger_accept_invalid_certs(true);
+        // }
 
         // Https_only
         if let Some(true) = https_only {
@@ -213,37 +198,34 @@ impl RClient {
         }
 
         // Http2_only
-        if let Some(true) = http2_only {
-            client_builder = client_builder.http2_only();
-        }
-
+        // if let Some(true) = http2_only {
+        //     client_builder = client_builder.http2_only();
+        // }
         let client = Arc::new(Mutex::new(client_builder.build()?));
+        let headers = Arc::new(Mutex::new(reqwest::header::HeaderMap::new()));
 
         Ok(RClient {
             client,
+            headers,
             auth,
             auth_bearer,
             params,
             proxy,
             timeout,
-            impersonate,
-            impersonate_os,
         })
     }
 
     #[getter]
     pub fn get_headers(&self) -> Result<IndexMapSSR> {
-        let client = self.client.lock().unwrap();
-        let mut headers = client.headers().clone();
-        headers.remove(COOKIE);
-        Ok(headers.to_indexmap())
+        let headers = self.headers.lock().unwrap();
+        let mut headers_clone = headers.clone();
+        headers_clone.remove(COOKIE);
+        Ok(headers_clone.to_indexmap())
     }
 
     #[setter]
     pub fn set_headers(&self, new_headers: Option<IndexMapSSR>) -> Result<()> {
-        let mut client = self.client.lock().unwrap();
-        let mut mclient = client.as_mut();
-        let headers = mclient.headers();
+        let mut headers = self.headers.lock().unwrap();
         headers.clear();
         if let Some(new_headers) = new_headers {
             for (k, v) in new_headers {
@@ -255,8 +237,7 @@ impl RClient {
 
     #[getter]
     pub fn get_cookies(&self) -> Result<IndexMapSSR> {
-        let client = self.client.lock().unwrap();
-        let headers = client.headers();
+        let headers = self.headers.lock().unwrap();
         let mut cookies: IndexMapSSR = IndexMap::with_hasher(RandomState::default());
         if let Some(cookie_header) = headers.get(COOKIE) {
             for part in cookie_header.to_str()?.split(';') {
@@ -270,11 +251,11 @@ impl RClient {
 
     #[setter]
     pub fn set_cookies(&self, cookies: Option<IndexMapSSR>) -> Result<()> {
-        let mut client = self.client.lock().unwrap();
-        let mut mclient = client.as_mut();
-        let headers = mclient.headers();
+        let mut headers = self.headers.lock().unwrap();
         if let Some(cookies) = cookies {
             headers.insert(COOKIE, HeaderValue::from_str(&cookies.to_string())?);
+        } else {
+            headers.remove(COOKIE);
         }
         Ok(())
     }
@@ -286,42 +267,13 @@ impl RClient {
 
     #[setter]
     pub fn set_proxy(&mut self, proxy: String) -> Result<()> {
+        let rproxy = reqwest::Proxy::all(proxy.clone())?;
+        let new_client = reqwest::Client::builder()
+            .proxy(rproxy)
+            .build()?;
         let mut client = self.client.lock().unwrap();
-        let rproxy = rquest::Proxy::all(proxy.clone())?;
-        client.as_mut().proxies(vec![rproxy]);
+        *client = new_client;
         self.proxy = Some(proxy);
-        Ok(())
-    }
-
-    #[setter]
-    pub fn set_impersonate(&mut self, impersonate: String) -> Result<()> {
-        let mut client = self.client.lock().unwrap();
-        let imp = Impersonate::from_str(&impersonate.as_str())?;
-        let imp_os = if let Some(impersonate_os) = &self.impersonate_os {
-            ImpersonateOS::from_str(&impersonate_os.as_str())?
-        } else {
-            ImpersonateOS::default()
-        };
-        let impersonate_builder = Impersonate::builder()
-            .impersonate(imp)
-            .impersonate_os(imp_os)
-            .build();
-        client.as_mut().impersonate(impersonate_builder);
-        self.impersonate = Some(impersonate);
-        Ok(())
-    }
-
-    #[setter]
-    pub fn set_impersonate_os(&mut self, impersonate_os: String) -> Result<()> {
-        let mut client = self.client.lock().unwrap();
-        let imp_os = ImpersonateOS::from_str(&impersonate_os.as_str())?;
-        let mut impersonate_builder = Impersonate::builder().impersonate_os(imp_os);
-        if let Some(impersonate) = &self.impersonate {
-            let imp = Impersonate::from_str(&impersonate.as_str())?;
-            impersonate_builder = impersonate_builder.impersonate(imp);
-        }
-        client.as_mut().impersonate(impersonate_builder.build());
-        self.impersonate_os = Some(impersonate_os);
         Ok(())
     }
 

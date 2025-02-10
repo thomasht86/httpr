@@ -285,6 +285,7 @@ def test_put():
     assert json_data["form"] == {"key1": "value1", "key2": "value2"}
 
 
+@pytest.mark.skip(reason="No impersonation")
 @retry()
 def test_get_impersonate_firefox133():
     response = primp.get(
