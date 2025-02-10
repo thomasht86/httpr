@@ -9,7 +9,6 @@ use tracing;
 use std::{env, fs};
 
 use anyhow::{Context, Result};
-// use reqwest::Certificate;
 
 /// Load CA certificates from a file specified by the environment variable `HTTPR_CA_BUNDLE`.
 pub fn load_ca_certs() -> Result<Vec<Certificate>> {
