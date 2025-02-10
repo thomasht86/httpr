@@ -44,7 +44,7 @@ jobs:
       - name: Install openssl
         run: |
           sudo apt-get update
-          sudo apt-get install -y libssl-dev
+          sudo apt-get install -y libssl-dev pkg-config
       - name: Set OpenSSL environment variable
         run: |
           echo "export OPENSSL_DIR=/usr/lib/ssl" >> $GITHUB_ENV
@@ -114,7 +114,7 @@ jobs:
       - name: Install openssl
         run: |
           sudo apt-get update
-          sudo apt-get install -y libssl-dev
+          sudo apt-get install -y libssl-dev pkg-config
       - name: Set OpenSSL environment variable
         run: |
           echo "export OPENSSL_DIR=/usr/lib/ssl" >> $GITHUB_ENV
