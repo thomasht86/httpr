@@ -1133,6 +1133,7 @@ dependencies = [
  "pyo3-log",
  "pythonize",
  "reqwest",
+ "rustls-pemfile",
  "serde_json",
  "tokio",
  "tokio-util",

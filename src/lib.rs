@@ -30,7 +30,7 @@ mod traits;
 use traits::{CookiesTraits, HeadersTraits};
 
 mod utils;
-//use utils::load_ca_certs;
+use utils::load_ca_certs;
 
 type IndexMapSSR = IndexMap<String, String, RandomState>;
 
@@ -158,7 +158,7 @@ impl RClient {
         }
 
         // Proxy
-        let proxy = proxy.or_else(|| std::env::var("PRIMP_PROXY").ok());
+        let proxy = proxy.or_else(|| std::env::var("HTTPR_PROXY").ok());
         if let Some(proxy) = &proxy {
             client_builder = client_builder.proxy(reqwest::Proxy::all(proxy)?);
         }
@@ -175,22 +175,22 @@ impl RClient {
             client_builder = client_builder.redirect(Policy::none());
         }
 
-        // Ca_cert_file. BEFORE!!! verify (fn load_ca_certs() reads env var PRIMP_CA_BUNDLE)
-        // if let Some(ca_bundle_path) = &ca_cert_file {
-        //     std::env::set_var("PRIMP_CA_BUNDLE", ca_bundle_path);
-        // }
+         // Ca_cert_file. BEFORE!!! verify (fn load_ca_certs() reads env var HTTPR_CA_BUNDLE)
+         if let Some(ca_bundle_path) = &ca_cert_file {
+            std::env::set_var("HTTPR_CA_BUNDLE", ca_bundle_path);
+        }
 
-        // // Verify
-        // if verify.unwrap_or(true) {
-        //     client_builder = client_builder.tls_built_in_root_certs(true);
-        //     if let Ok(certs) = load_ca_certs() {
-        //         for cert in certs {
-        //             client_builder = client_builder.add_root_certificate(cert);
-        //         }
-        //     }
-        // } else {
-        //     client_builder = client_builder.danger_accept_invalid_certs(true);
-        // }
+        // Verify
+        if verify.unwrap_or(true) {
+            client_builder = client_builder.tls_built_in_root_certs(true);
+            if let Ok(certs) = load_ca_certs() {
+                for cert in certs {
+                    client_builder = client_builder.add_root_certificate(cert);
+                }
+            }
+        } else {
+            client_builder = client_builder.danger_accept_invalid_certs(true);
+        }
 
         // Https_only
         if let Some(true) = https_only {

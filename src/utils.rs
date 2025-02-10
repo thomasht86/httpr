@@ -3,49 +3,51 @@ use std::sync::LazyLock;
 
 use foldhash::fast::RandomState;
 use indexmap::IndexMap;
-// use reqwest
+use reqwest::Certificate;
 use tracing;
 
-// use std::{env, fs};
+use std::{env, fs};
 
-// use anyhow::{Context, Result};
+use anyhow::{Context, Result};
 // use reqwest::Certificate;
 
-/// Load CA certificates from a file specified by the environment variable `PRIMP_CA_BUNDLE`.
-// pub fn load_ca_certs() -> Result<Vec<Certificate>> {
-//     let ca_bundle_path = env::var("PRIMP_CA_BUNDLE").ok();
+/// Load CA certificates from a file specified by the environment variable `HTTPR_CA_BUNDLE`.
+pub fn load_ca_certs() -> Result<Vec<Certificate>> {
+    let ca_bundle_path = env::var("HTTPR_CA_BUNDLE").ok();
 
-//     match ca_bundle_path {
-//         Some(path) => {
-//             tracing::info!("Loading CA certificates from {}", path);
-//             let ca_certs = read_pem_certificates(&path)
-//                 .with_context(|| format!("Failed to read CA certificates from {}", path))?;
-//             Ok(ca_certs)
-//         }
-//         None => {
-//             tracing::warn!("PRIMP_CA_BUNDLE environment variable not set. Skipping loading CA certificates.");
-//             Ok(Vec::new())
-//         }
-//     }
-// }
+    match ca_bundle_path {
+        Some(path) => {
+            tracing::info!("Loading CA certificates from {}", path);
+            let ca_certs = read_pem_certificates(&path)
+                .with_context(|| format!("Failed to read CA certificates from {}", path))?;
+            Ok(ca_certs)
+        }
+        None => {
+            tracing::warn!("HTTPR_CA_BUNDLE environment variable not set. Skipping loading CA certificates.");
+            Ok(Vec::new())
+        }
+    }
+}
 
-// fn read_pem_certificates(path: &str) -> Result<Vec<Certificate>> {
-//     let cert_bytes = fs::read(path).context("Failed to read certificate file")?;
-//     let mut certificates = vec![];
-//     let mut cursor = std::io::Cursor::new(cert_bytes);
-//     while let Ok(Some(cert)) = rustls_pemfile::read_one(&mut cursor) {
-//         match cert {
-//             rustls_pemfile::Item::X509Certificate(cert) => {
-//                 let certificate = Certificate::from_der(&cert)?;
-//                 certificates.push(certificate);
-//             }
-//             _ => {
-//                 tracing::warn!("Skipping non-certificate item");
-//             }
-//         }
-//     }
-//     Ok(certificates)
-// }
+fn read_pem_certificates(path: &str) -> Result<Vec<Certificate>> {
+    let cert_bytes = fs::read(path).context("Failed to read certificate file")?;
+    let mut certificates = vec![];
+    let mut cursor = std::io::Cursor::new(cert_bytes);
+    while let Ok(Some(cert)) = rustls_pemfile::read_one(&mut cursor) {
+        match cert {
+            rustls_pemfile::Item::X509Certificate(cert) => {
+                let certificate = Certificate::from_der(&cert)?;
+                certificates.push(certificate);
+            }
+            _ => {
+                tracing::warn!("Skipping non-certificate item");
+            }
+        }
+    }
+    Ok(certificates)
+}
+
+/// Get encoding from the "Content-Type" header
 
 /// Get encoding from the "Content-Type" header
 pub fn get_encoding_from_headers(
@@ -97,53 +99,53 @@ pub fn get_encoding_from_content(raw_bytes: &[u8]) -> Option<String> {
     None
 }
 
-// #[cfg(test)]
-// mod load_ca_certs_tests {
-//     use super::*;
-//     use std::env;
-//     use std::fs;
-//     use std::path::Path;
+#[cfg(test)]
+mod load_ca_certs_tests {
+    use super::*;
+    use std::env;
+    use std::fs;
+    use std::path::Path;
 
-//     #[test]
-//     fn test_load_ca_certs_with_env_var() {
-//         // Create a temporary file with a CA certificate
-//         let ca_cert_path = Path::new("test_ca_cert.pem");
-//         let ca_cert = "-----BEGIN CERTIFICATE-----
-// MIIDdTCCAl2gAwIBAgIVAMIIujU9wQIBADANBgkqhkiG9w0BAQUFADBGMQswCQYD
-// VQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4g
-// Q29sbGVjdGlvbjEgMB4GA1UECgwXUG9zdGdyZXMgQ29uc3VsdGF0aW9uczEhMB8G
-// A1UECwwYUG9zdGdyZXMgQ29uc3VsdGF0aW9uczEhMB8GA1UEAwwYUG9zdGdyZXMg
-// Q29uc3VsdGF0aW9uczEiMCAGCSqGSIb3DQEJARYTcGVyc29uYWwtZW1haWwuY29t
-// MIIDdTCCAl2gAwIBAgIVAMIIujU9wQIBADANBgkqhkiG9w0BAQUFADBGMQswCQYD
-// VQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4g
-// Q29sbGVjdGlvbjEgMB4GA1UECgwXUG9zdGdyZXMgQ29uc3VsdGF0aW9uczEhMB8G
-// A1UECwwYUG9zdGdyZXMgQ29uc3VsdGF0aW9uczEhMB8GA1UEAwwYUG9zdGdyZXMg
-// Q29uc3VsdGF0aW9uczEiMCAGCSqGSIb3DQEJARYTcGVyc29uYWwtZW1haWwuY29t
-// -----END CERTIFICATE-----";
-//         fs::write(ca_cert_path, ca_cert).unwrap();
+    #[test]
+    fn test_load_ca_certs_with_env_var() {
+        // Create a temporary file with a CA certificate
+        let ca_cert_path = Path::new("test_ca_cert.pem");
+        let ca_cert = "-----BEGIN CERTIFICATE-----
+MIIDdTCCAl2gAwIBAgIVAMIIujU9wQIBADANBgkqhkiG9w0BAQUFADBGMQswCQYD
+VQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4g
+Q29sbGVjdGlvbjEgMB4GA1UECgwXUG9zdGdyZXMgQ29uc3VsdGF0aW9uczEhMB8G
+A1UECwwYUG9zdGdyZXMgQ29uc3VsdGF0aW9uczEhMB8GA1UEAwwYUG9zdGdyZXMg
+Q29uc3VsdGF0aW9uczEiMCAGCSqGSIb3DQEJARYTcGVyc29uYWwtZW1haWwuY29t
+MIIDdTCCAl2gAwIBAgIVAMIIujU9wQIBADANBgkqhkiG9w0BAQUFADBGMQswCQYD
+VQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4g
+Q29sbGVjdGlvbjEgMB4GA1UECgwXUG9zdGdyZXMgQ29uc3VsdGF0aW9uczEhMB8G
+A1UECwwYUG9zdGdyZXMgQ29uc3VsdGF0aW9uczEhMB8GA1UEAwwYUG9zdGdyZXMg
+Q29uc3VsdGF0aW9uczEiMCAGCSqGSIb3DQEJARYTcGVyc29uYWwtZW1haWwuY29t
+-----END CERTIFICATE-----";
+        fs::write(ca_cert_path, ca_cert).unwrap();
 
-//         // Set the environment variable
-//         env::set_var("PRIMP_CA_BUNDLE", ca_cert_path);
+        // Set the environment variable
+        env::set_var("HTTPR_CA_BUNDLE", ca_cert_path);
 
-//         // Call the function
-//         let result = load_ca_certs();
+        // Call the function
+        let result = load_ca_certs();
 
-//         // Check the result
-//         assert!(result.is_some());
+        // Check the result
+        assert!(result.is_ok());
 
-//         // Clean up
-//         fs::remove_file(ca_cert_path).unwrap();
-//     }
+        // Clean up
+        fs::remove_file(ca_cert_path).unwrap();
+    }
 
-//     #[test]
-//     fn test_load_ca_certs_without_env_var() {
-//         // Call the function
-//         let result = load_ca_certs();
+    #[test]
+    fn test_load_ca_certs_without_env_var() {
+        // Call the function
+        let result = load_ca_certs();
 
-//         // Check the result
-//         assert!(result.is_some());
-//     }
-// }
+        // Check the result
+        assert!(result.is_ok());
+    }
+}
 
 #[cfg(test)]
 mod utils_tests {
