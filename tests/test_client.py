@@ -67,7 +67,7 @@ def test_client_setters():
     assert json_data["method"] == "GET"
     print(json_data)
     assert json_data["headers"]["X-Test"] == "TesT"
-    # assert json_data["headers"]["Cookie"] == "ccc=ddd; cccc=dddd"
+    assert json_data["headers"]["Cookie"] == "ccc=ddd; cccc=dddd"
     assert json_data["headers"]["Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
     assert json_data["args"] == {"x": "aaa", "y": "bbb"}
     assert "Basic dXNlcjpwYXNzd29yZA==" in response.text

@@ -339,6 +339,11 @@ impl RClient {
                 request_builder = request_builder.query(&params);
             }
 
+            // Headers from client
+            let client_headers = self.headers.lock().unwrap().clone();
+            request_builder = request_builder.headers(client_headers);
+
+
             // Headers
             if let Some(headers) = headers {
                 request_builder = request_builder.headers(headers.to_headermap());
