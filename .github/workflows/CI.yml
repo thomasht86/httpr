@@ -45,9 +45,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libssl-dev pkg-config
-      - name: Set OpenSSL environment variable
+      - name: Set OpenSSL environment variable and PKG_CONFIG_PATH
         run: |
           echo "export OPENSSL_DIR=/usr/lib/ssl" >> $GITHUB_ENV
+          echo "export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/local/lib/pkgconfig" >> $GITHUB_ENV
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
