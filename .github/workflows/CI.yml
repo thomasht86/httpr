@@ -47,10 +47,8 @@ jobs:
           sudo apt-get install -y openssl libssl-dev pkg-config
       - name: Set OpenSSL environment variable and PKG_CONFIG_PATH
         run: |
-          echo "OPENSSL_DIR=/usr" >> $GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=/usr/lib" >> $GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=/usr/include" >> $GITHUB_ENV
-          echo "export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/local/lib/pkgconfig" >> $GITHUB_ENV
+          echo "OPENSSL_DIR=/usr/lib/ssl" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/local/lib/pkgconfig" >> $GITHUB_ENV
       - name: Verify OpenSSL working
         run: |
           openssl version -a
