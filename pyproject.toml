@@ -1,34 +1,62 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
 [project]
-name = "httpr"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-    "maturin>=1.8.1",
+name = "primp"
+description = "HTTP client that can impersonate web browsers, mimicking their headers and `TLS/JA3/JA4/HTTP2` fingerprints"
+requires-python = ">=3.9"
+license = {text = "MIT License"}
+keywords = ["python", "request", "impersonate"]
+authors = [
+  {name = "deedy5"}
 ]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dynamic = ["version"]
+
+dependencies = []
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "pytest-asyncio",
-    "pytest-cov",
-    "aider-install",
-    "pre-commit",
-    "httpx",
-    "ipykernel",
-    "jupyter",
+    "certifi",
+    "pytest>=8.1.1",
+    "pytest-asyncio>=0.25.3",
+    "typing_extensions; python_version <= '3.11'",  # for Unpack[TypedDict]
+    "mypy>=1.14.1",
+    "ruff>=0.9.2",
+    "maturin"
 ]
 
-[build-system]
-requires = ["maturin>=1.0,<2.0"]
-build-backend = "maturin"
+[tool.maturin]
+features = ["pyo3/extension-module"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-addopts = "--cov=httpr --cov-report=term-missing"
-asyncio_mode = "strict"
+[tool.ruff]
+line-length = 120
+exclude = ["tests"]
 
-[tool.uv.workspace]
-members = ["rsparallel"]
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle
+    "F",  # Pyflakes
+    "UP",  # pyupgrade
+    "B",  # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",  # isort
+]
+
+[tool.mypy]
+python_version = "3.8"
