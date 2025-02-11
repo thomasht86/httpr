@@ -59,13 +59,12 @@ def test_client_setters():
     assert response.status_code == 200
     assert response.status_code == 200
     assert client.auth == ("user", "password")
-    assert client.headers == {"x-test": "TesT"}
+    assert client.headers == {"x-test": "TesT"} # Headers are lowercased (necessary for HTTP/2)
     assert client.cookies == {"ccc": "ddd", "cccc": "dddd"}
     assert client.params == {"x": "aaa", "y": "bbb"}
     assert client.timeout == 20.0
     json_data = response.json()
     assert json_data["method"] == "GET"
-    print(json_data)
     assert json_data["headers"]["X-Test"] == "TesT"
     assert json_data["headers"]["Cookie"] == "ccc=ddd; cccc=dddd"
     assert json_data["headers"]["Authorization"] == "Basic dXNlcjpwYXNzd29yZA=="
