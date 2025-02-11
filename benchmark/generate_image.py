@@ -1,11 +1,12 @@
+import csv
+
 import matplotlib.pyplot as plt
 import numpy as np
-import csv
 
 
 # Function to read and plot data from a CSV file
 def plot_data(file_name, ax, offset):
-    with open(file_name, "r") as file:
+    with open(file_name) as file:
         reader = csv.reader(file)
         next(reader)  # Skip the header row
         data = list(reader)
@@ -75,9 +76,7 @@ ax3.set_ylim(y_min, new_y_max)
 
 # Add some text for labels, title and custom x-axis tick labels, etc.
 ax1.set_ylabel("Time (s)")
-ax1.set_title(
-    "Benchmark get(url).text | Session=False | Requests: 400 | Response: gzip, utf-8, size 5Kb,50Kb,200Kb"
-)
+ax1.set_title("Benchmark get(url).text | Session=False | Requests: 400 | Response: gzip, utf-8, size 5Kb,50Kb,200Kb")
 ax1.set_xticks(
     x1 + 3 * width - width / 2
 )  # Adjust the x-ticks to be after the 3rd bar, moved 0.5 bar width to the left
@@ -86,9 +85,7 @@ ax1.legend(loc="upper left", ncols=6, prop={"size": 8})
 ax1.tick_params(axis="x", labelsize=8)
 
 ax2.set_ylabel("Time (s)")
-ax2.set_title(
-    "Benchmark get(url).text | Session=True | Requests: 400 | Response: gzip, utf-8, size 5Kb,50Kb,200Kb"
-)
+ax2.set_title("Benchmark get(url).text | Session=True | Requests: 400 | Response: gzip, utf-8, size 5Kb,50Kb,200Kb")
 ax2.set_xticks(
     x2 + 3 * width - width / 2
 )  # Adjust the x-ticks to be after the 3rd bar, moved 0.5 bar width to the left
@@ -97,9 +94,7 @@ ax2.legend(loc="upper left", ncols=6, prop={"size": 8})
 ax2.tick_params(axis="x", labelsize=8)
 
 ax3.set_ylabel("Time (s)")
-ax3.set_title(
-    "Benchmark get(url).text | Session=Async | Requests: 400 | Response: gzip, utf-8, size 5Kb,50Kb,200Kb"
-)
+ax3.set_title("Benchmark get(url).text | Session=Async | Requests: 400 | Response: gzip, utf-8, size 5Kb,50Kb,200Kb")
 ax3.set_xticks(
     x3 + 3 * width - width / 2
 )  # Adjust the x-ticks to be after the 3rd bar, moved 0.5 bar width to the left
