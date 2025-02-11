@@ -41,17 +41,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
-      - name: Install openssl
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openssl libssl-dev pkg-config
-      - name: Set OpenSSL environment variable and PKG_CONFIG_PATH
-        run: |
-          echo "OPENSSL_DIR=/usr" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/local/lib/pkgconfig" >> $GITHUB_ENV
-      - name: Verify OpenSSL working
-        run: |
-          openssl version -a
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -187,10 +176,6 @@ jobs:
         with:
           python-version: 3.x
           architecture: ${{ matrix.platform.target }}
-      - name: Install openssl
-        run: |
-          choco install openssl
-          $env:OPENSSL_DIR = "C:\Program Files\OpenSSL-Win64"
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
