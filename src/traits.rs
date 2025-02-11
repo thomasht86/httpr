@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Error, Ok, Result};
+use anyhow::{Error, Ok, Result};
 use foldhash::fast::RandomState;
 use indexmap::IndexMap;
 

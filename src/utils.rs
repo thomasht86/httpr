@@ -1,5 +1,4 @@
 use std::cmp::min;
-use std::sync::LazyLock;
 
 use foldhash::fast::RandomState;
 use indexmap::IndexMap;
