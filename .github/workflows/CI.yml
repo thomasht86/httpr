@@ -36,12 +36,12 @@ jobs:
           - runner: ubuntu-22.04
             target: armv7
             manylinux: manylinux_2_28
-          - runner: ubuntu-22.04
-            target: s390x
-            manylinux: auto
-          - runner: ubuntu-22.04
-            target: ppc64le
-            manylinux: auto
+          # - runner: ubuntu-22.04
+          #   target: s390x
+          #   manylinux: auto
+          # - runner: ubuntu-22.04
+          #   target: ppc64le
+          #   manylinux: auto
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -193,13 +193,12 @@ jobs:
           name: wheels-windows-${{ matrix.platform.target }}
           path: dist
       - name: pytest
-        if: ${{ !startsWith(matrix.platform.target, 'aarch64') }}
         shell: bash
         run: |
           set -e
           python3 -m venv .venv
           source .venv/Scripts/activate
-          pip install primp --find-links dist --force-reinstall
+          pip install primp --only-binary :all: --find-links dist --force-reinstall
           pip install pytest certifi
           pytest
 
