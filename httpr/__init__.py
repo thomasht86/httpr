@@ -27,7 +27,7 @@ else:
 
 
 class Client(RClient):
-    """Initializes an HTTP client that can impersonate web browsers."""
+    """Initializes an HTTP client"""
 
     def __init__(
         self,
