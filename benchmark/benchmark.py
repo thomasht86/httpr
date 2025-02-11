@@ -5,12 +5,13 @@ from importlib.metadata import version
 from io import BytesIO
 
 import curl_cffi.requests
-import httpr
 import httpx
 import pandas as pd
 import pycurl
 import requests
 import tls_client
+
+import httpr
 
 
 class PycurlSession:
