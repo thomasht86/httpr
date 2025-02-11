@@ -151,9 +151,11 @@ jobs:
           distro: alpine_latest
           githubToken: ${{ github.token }}
           install: |
-            apk add py3-virtualenv
+            apk add py3-virtualenv libgcc curl
           run: |
             set -e
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+            source $HOME/.cargo/env
             python3 -m virtualenv .venv
             source .venv/bin/activate
             pip install pytest certifi
