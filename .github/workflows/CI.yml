@@ -85,8 +85,8 @@ jobs:
           githubToken: ${{ github.token }}
           install: |
             apt-get update
-            apt-get install -y --no-install-recommends python3 python3-pip
-            pip3 install -U pip pytest
+            apt-get install -y --no-install-recommends python3 python3-pip rustc cargo
+            pip3 install -U pip pytest certifi
           run: |
             set -e
             pip3 install primp --find-links dist --force-reinstall
@@ -151,11 +151,9 @@ jobs:
           distro: alpine_latest
           githubToken: ${{ github.token }}
           install: |
-            apk add py3-virtualenv libgcc curl
+            apk add py3-virtualenv rust cargo
           run: |
             set -e
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-            source $HOME/.cargo/env
             python3 -m virtualenv .venv
             source .venv/bin/activate
             pip install pytest certifi
@@ -183,6 +181,10 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+      - name: Set up Python 3.13
+        uses: Quansight-Labs/setup-python@v5
+        with:
+          python-version: "3.13t"
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
