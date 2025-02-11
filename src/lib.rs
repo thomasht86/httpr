@@ -91,7 +91,7 @@ impl RClient {
     /// # Example
     ///
     /// ```
-    /// from primp import Client
+    /// from httpr import Client
     ///
     /// client = Client(
     ///     auth=("name", "password"),
@@ -430,7 +430,7 @@ impl RClient {
 }
 
 #[pymodule]
-fn primp(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn httpr(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
 
     m.add_class::<RClient>()?;

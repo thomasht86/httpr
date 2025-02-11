@@ -11,10 +11,10 @@ else:
     from typing import Unpack
 
 
-from .primp import RClient
+from .httpr import RClient
 
 if TYPE_CHECKING:
-    from .primp import ClientRequestParams, HttpMethod, RequestParams, Response
+    from .httpr import ClientRequestParams, HttpMethod, RequestParams, Response
 else:
 
     class _Unpack:

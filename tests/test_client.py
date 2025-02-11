@@ -3,7 +3,7 @@ from time import sleep
 import pytest
 
 import certifi
-import primp  # type: ignore
+import httpr  # type: ignore
 
 
 def retry(max_retries=3, delay=1):
@@ -30,7 +30,7 @@ def test_client_init_params():
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
     params = {"x": "aaa", "y": "bbb"}
-    client = primp.Client(
+    client = httpr.Client(
         auth=auth,
         params=params,
         headers=headers,
@@ -48,7 +48,7 @@ def test_client_init_params():
 
 @retry()
 def test_client_setters():
-    client = primp.Client()
+    client = httpr.Client()
     client.auth = ("user", "password")
     client.headers = {"X-Test": "TesT"}
     client.cookies = {"ccc": "ddd", "cccc": "dddd"}
@@ -76,7 +76,7 @@ def test_client_setters():
 
 @retry()
 def test_client_request_get():
-    client = primp.Client()
+    client = httpr.Client()
     auth_bearer = "bearerXXXXXXXXXXXXXXXXXXXX"
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
@@ -102,7 +102,7 @@ def test_client_request_get():
 
 @retry()
 def test_client_get():
-    client = primp.Client()
+    client = httpr.Client()
     auth_bearer = "bearerXXXXXXXXXXXXXXXXXXXX"
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
@@ -127,7 +127,7 @@ def test_client_get():
 
 @retry()
 def test_client_post_content():
-    client = primp.Client()
+    client = httpr.Client()
     auth = ("user", "password")
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
@@ -153,7 +153,7 @@ def test_client_post_content():
 
 @retry()
 def test_client_post_data():
-    client = primp.Client()
+    client = httpr.Client()
     auth_bearer = "bearerXXXXXXXXXXXXXXXXXXXX"
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
@@ -179,7 +179,7 @@ def test_client_post_data():
 
 @retry()
 def test_client_post_json():
-    client = primp.Client()
+    client = httpr.Client()
     auth_bearer = "bearerXXXXXXXXXXXXXXXXXXXX"
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
@@ -217,7 +217,7 @@ def test_files(tmp_path_factory):
 
 def test_client_post_files(test_files):
     temp_file1, temp_file2 = test_files
-    client = primp.Client()
+    client = httpr.Client()
     auth_bearer = "bearerXXXXXXXXXXXXXXXXXXXX"
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
@@ -244,7 +244,7 @@ def test_client_post_files(test_files):
 @pytest.mark.skip(reason="No impersonate")
 @retry()
 def test_client_impersonate_chrome131():
-    client = primp.Client(
+    client = httpr.Client(
         impersonate="chrome_131",
         impersonate_os="windows",
     )

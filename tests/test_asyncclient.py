@@ -2,7 +2,7 @@ import asyncio
 import pytest
 
 import certifi
-import primp
+import httpr
 
 
 def async_retry(max_retries=3, delay=1):
@@ -30,7 +30,7 @@ async def test_asyncclient_init():
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
     params = {"x": "aaa", "y": "bbb"}
-    client = primp.AsyncClient(
+    client = httpr.AsyncClient(
         auth=auth,
         params=params,
         headers=headers,

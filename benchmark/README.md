@@ -1,10 +1,10 @@
 ## Benchmark
 
-Benchmark between `primp` and other python http clients:
+Benchmark between `httpr` and other python http clients:
 
 - curl_cffi
 - httpx
-- primp
+- httpr
 - pycurl
 - python-tls-client
 - requests

@@ -132,7 +132,7 @@ wheels = [
 ]
 
 [[package]]
-name = "primp"
+name = "httpr"
 source = { editable = "." }
 
 [package.optional-dependencies]

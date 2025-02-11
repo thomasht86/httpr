@@ -3,7 +3,7 @@ from time import sleep
 import pytest
 
 import certifi
-import primp  # type: ignore
+import httpr  # type: ignore
 
 
 def retry(max_retries=3, delay=1):
@@ -30,7 +30,7 @@ def test_request_get():
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
     params = {"x": "aaa", "y": "bbb"}
-    response = primp.request(
+    response = httpr.request(
         "GET",
         "https://httpbin.org/anything",
         auth_bearer=auth_bearer,
@@ -56,7 +56,7 @@ def test_get():
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
     params = {"x": "aaa", "y": "bbb"}
-    response = primp.get(
+    response = httpr.get(
         "https://httpbin.org/anything",
         auth_bearer=auth_bearer,
         headers=headers,
@@ -76,14 +76,14 @@ def test_get():
 
 @retry()
 def test_head():
-    response = primp.head("https://httpbin.org/anything", ca_cert_file=certifi.where())
+    response = httpr.head("https://httpbin.org/anything", ca_cert_file=certifi.where())
     assert response.status_code == 200
     assert "content-length" in response.headers
 
 
 @retry()
 def test_options():
-    response = primp.options(
+    response = httpr.options(
         "https://httpbin.org/anything", ca_cert_file=certifi.where()
     )
     assert response.status_code == 200
@@ -105,7 +105,7 @@ def test_delete():
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
     params = {"x": "aaa", "y": "bbb"}
-    response = primp.delete(
+    response = httpr.delete(
         "https://httpbin.org/anything",
         auth_bearer=auth_bearer,
         headers=headers,
@@ -130,7 +130,7 @@ def test_post_content():
     cookies = {"ccc": "ddd", "cccc": "dddd"}
     params = {"x": "aaa", "y": "bbb"}
     content = b"test content"
-    response = primp.post(
+    response = httpr.post(
         "https://httpbin.org/anything",
         auth=auth,
         headers=headers,
@@ -155,7 +155,7 @@ def test_post_data():
     cookies = {"ccc": "ddd", "cccc": "dddd"}
     params = {"x": "aaa", "y": "bbb"}
     data = {"key1": "value1", "key2": "value2"}
-    response = primp.post(
+    response = httpr.post(
         "https://httpbin.org/anything",
         auth_bearer=auth_bearer,
         headers=headers,
@@ -180,7 +180,7 @@ def test_post_json():
     cookies = {"ccc": "ddd", "cccc": "dddd"}
     params = {"x": "aaa", "y": "bbb"}
     data = {"key1": "value1", "key2": "value2"}
-    response = primp.post(
+    response = httpr.post(
         "https://httpbin.org/anything",
         auth_bearer=auth_bearer,
         headers=headers,
@@ -217,7 +217,7 @@ def test_client_post_files(test_files):
     cookies = {"ccc": "ddd", "cccc": "dddd"}
     params = {"x": "aaa", "y": "bbb"}
     files = {"file1": temp_file1, "file2": temp_file2}
-    response = primp.post(
+    response = httpr.post(
         "https://httpbin.org/anything",
         auth_bearer=auth_bearer,
         headers=headers,
@@ -242,7 +242,7 @@ def test_patch():
     cookies = {"ccc": "ddd", "cccc": "dddd"}
     params = {"x": "aaa", "y": "bbb"}
     data = {"key1": "value1", "key2": "value2"}
-    response = primp.patch(
+    response = httpr.patch(
         "https://httpbin.org/anything",
         auth_bearer=auth_bearer,
         headers=headers,
@@ -267,7 +267,7 @@ def test_put():
     cookies = {"ccc": "ddd", "cccc": "dddd"}
     params = {"x": "aaa", "y": "bbb"}
     data = {"key1": "value1", "key2": "value2"}
-    response = primp.put(
+    response = httpr.put(
         "https://httpbin.org/anything",
         auth_bearer=auth_bearer,
         headers=headers,
@@ -288,7 +288,7 @@ def test_put():
 @pytest.mark.skip(reason="No impersonation")
 @retry()
 def test_get_impersonate_firefox133():
-    response = primp.get(
+    response = httpr.get(
         # "https://tls.peet.ws/api/clean",
         "https://tls.http.rw/api/all",
         impersonate="firefox_133",

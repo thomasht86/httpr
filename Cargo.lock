@@ -462,6 +462,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2d708df4e7140240a16cd6ab0ab65c972d7433ab77819ea693fde9c43811e2a"
 
 [[package]]
+name = "httpr"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "encoding_rs",
+ "foldhash",
+ "html2text",
+ "indexmap",
+ "pyo3",
+ "pyo3-log",
+ "pythonize",
+ "reqwest",
+ "rustls-pemfile",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "webpki-root-certs",
+]
+
+[[package]]
 name = "hyper"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -975,28 +997,6 @@ name = "precomputed-hash"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
-
-[[package]]
-name = "primp"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "encoding_rs",
- "foldhash",
- "html2text",
- "indexmap",
- "pyo3",
- "pyo3-log",
- "pythonize",
- "reqwest",
- "rustls-pemfile",
- "serde_json",
- "tokio",
- "tokio-util",
- "tracing",
- "webpki-root-certs",
-]
 
 [[package]]
 name = "proc-macro2"

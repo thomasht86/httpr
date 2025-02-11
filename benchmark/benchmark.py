@@ -5,13 +5,12 @@ from importlib.metadata import version
 from io import BytesIO
 
 import curl_cffi.requests
+import httpr
 import httpx
 import pandas as pd
 import pycurl
 import requests
 import tls_client
-
-import primp
 
 
 class PycurlSession:
@@ -46,12 +45,12 @@ PACKAGES = [
     ("tls_client", tls_client.Session),
     ("curl_cffi", curl_cffi.requests.Session),
     ("pycurl", PycurlSession),
-    ("primp", primp.Client),
+    ("httpr", httpr.Client),
 ]
 AsyncPACKAGES = [
     ("httpx", httpx.AsyncClient),
     ("curl_cffi", curl_cffi.requests.AsyncSession),
-    ("primp", primp.AsyncClient),
+    ("httpr", httpr.AsyncClient),
 ]
 
 

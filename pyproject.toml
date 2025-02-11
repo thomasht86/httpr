@@ -3,14 +3,12 @@ requires = ["maturin>=1.5,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "primp"
-description = "HTTP client that can impersonate web browsers, mimicking their headers and `TLS/JA3/JA4/HTTP2` fingerprints"
+name = "httpr"
+description = "Fast HTTP client for Python"
 requires-python = ">=3.9"
-license = {text = "MIT License"}
-keywords = ["python", "request", "impersonate"]
-authors = [
-  {name = "deedy5"}
-]
+license = { text = "MIT License" }
+keywords = ["python", "request"]
+authors = [{ name = "thomasht86" }]
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: 3",
@@ -35,10 +33,10 @@ dev = [
     "certifi",
     "pytest>=8.1.1",
     "pytest-asyncio>=0.25.3",
-    "typing_extensions; python_version <= '3.11'",  # for Unpack[TypedDict]
+    "typing_extensions; python_version <= '3.11'", # for Unpack[TypedDict]
     "mypy>=1.14.1",
     "ruff>=0.9.2",
-    "maturin"
+    "maturin",
 ]
 
 [tool.maturin]
@@ -50,12 +48,12 @@ exclude = ["tests"]
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle
-    "F",  # Pyflakes
+    "E",   # pycodestyle
+    "F",   # Pyflakes
     "UP",  # pyupgrade
-    "B",  # flake8-bugbear
-    "SIM",  # flake8-simplify
-    "I",  # isort
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I",   # isort
 ]
 
 [tool.mypy]

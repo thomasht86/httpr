@@ -1,5 +1,5 @@
 [package]
-name = "primp"
+name = "httpr"
 version = "0.1.0"
 edition = "2021"
 description = "Fast HTTP client for python"
@@ -8,7 +8,7 @@ authors = ["thomasht86"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "primp"
+name = "httpr"
 crate-type = ["cdylib"]
 
 [dependencies]

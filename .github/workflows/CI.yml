@@ -73,7 +73,7 @@ jobs:
           set -e
           python3 -m venv .venv
           source .venv/bin/activate
-          pip install primp --find-links dist --force-reinstall
+          pip install httpr --find-links dist --force-reinstall
           pip install pytest certifi
           pytest
       - name: pytest
@@ -89,7 +89,7 @@ jobs:
             pip3 install -U pip pytest certifi
           run: |
             set -e
-            pip3 install primp --find-links dist --force-reinstall
+            pip3 install httpr --find-links dist --force-reinstall
             pytest
 
   musllinux:
@@ -140,7 +140,7 @@ jobs:
             apk add py3-pip py3-virtualenv
             python3 -m virtualenv .venv
             source .venv/bin/activate
-            pip install primp --no-index --find-links dist --force-reinstall
+            pip install httpr --no-index --find-links dist --force-reinstall
             pip install pytest certifi
             pytest
       - name: pytest
@@ -157,7 +157,7 @@ jobs:
             python3 -m virtualenv .venv
             source .venv/bin/activate
             pip install pytest certifi
-            pip install primp --find-links dist --force-reinstall
+            pip install httpr --find-links dist --force-reinstall
             pytest
 
   windows:
@@ -198,7 +198,7 @@ jobs:
           set -e
           python3 -m venv .venv
           source .venv/Scripts/activate
-          pip install primp --only-binary :all: --find-links dist --force-reinstall
+          pip install httpr --only-binary :all: --find-links dist --force-reinstall
           pip install pytest certifi
           pytest
 
@@ -238,7 +238,7 @@ jobs:
           set -e
           python3 -m venv .venv
           source .venv/bin/activate
-          pip install primp --find-links dist --force-reinstall
+          pip install httpr --find-links dist --force-reinstall
           pip install pytest certifi
           pytest
 
