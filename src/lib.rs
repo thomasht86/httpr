@@ -115,7 +115,7 @@ impl RClient {
     #[new]
     #[pyo3(signature = (auth=None, auth_bearer=None, params=None, headers=None, cookies=None,
         cookie_store=true, referer=true, proxy=None, timeout=None, follow_redirects=true,
-        max_redirects=20, verify=true, ca_cert_file=None, https_only=false))]
+        max_redirects=20, verify=true, ca_cert_file=None, https_only=false, http2_only=false))]
     fn new(
         auth: Option<(String, Option<String>)>,
         auth_bearer: Option<String>,
@@ -131,7 +131,7 @@ impl RClient {
         verify: Option<bool>,
         ca_cert_file: Option<String>,
         https_only: Option<bool>,
-        // http2_only: Option<bool>,
+        http2_only: Option<bool>,
     ) -> Result<Self> {
         // Client builder
         let mut client_builder = reqwest::Client::builder();
@@ -198,9 +198,9 @@ impl RClient {
         }
 
         // Http2_only
-        // if let Some(true) = http2_only {
-        //     client_builder = client_builder.http2_only();
-        // }
+        if let Some(true) = http2_only {
+            client_builder = client_builder.http2_prior_knowledge();
+        }
         let client = Arc::new(Mutex::new(client_builder.build()?));
         let headers = Arc::new(Mutex::new(reqwest::header::HeaderMap::new()));
 
