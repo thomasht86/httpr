@@ -68,7 +68,7 @@ jobs:
           python3 -m venv .venv
           source .venv/bin/activate
           pip install primp --find-links dist --force-reinstall
-          pip install pytest
+          pip install pytest certifi
           pytest
       - name: pytest
         if: ${{ !startsWith(matrix.platform.target, 'x86') && matrix.platform.target != 'ppc64' }}
@@ -104,13 +104,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
-      - name: Install openssl
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config
-      - name: Set OpenSSL environment variable
-        run: |
-          echo "export OPENSSL_DIR=/usr/lib/ssl" >> $GITHUB_ENV
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -142,7 +135,7 @@ jobs:
             python3 -m virtualenv .venv
             source .venv/bin/activate
             pip install primp --no-index --find-links dist --force-reinstall
-            pip install pytest
+            pip install pytest certifi
             pytest
       - name: pytest
         if: ${{ !startsWith(matrix.platform.target, 'x86') }}
@@ -157,7 +150,7 @@ jobs:
             set -e
             python3 -m virtualenv .venv
             source .venv/bin/activate
-            pip install pytest
+            pip install pytest certifi
             pip install primp --find-links dist --force-reinstall
             pytest
 
@@ -201,7 +194,7 @@ jobs:
           python3 -m venv .venv
           source .venv/Scripts/activate
           pip install primp --find-links dist --force-reinstall
-          pip install pytest
+          pip install pytest certifi
           pytest
 
   macos:
@@ -218,10 +211,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
-      - name: Install openssl
-        run: |
-          brew install openssl
-          echo 'export OPENSSL_DIR="/usr/local/opt/openssl@1.1"' >> $GITHUB_ENV
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -245,7 +234,7 @@ jobs:
           python3 -m venv .venv
           source .venv/bin/activate
           pip install primp --find-links dist --force-reinstall
-          pip install pytest
+          pip install pytest certifi
           pytest
 
   sdist:

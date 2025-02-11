@@ -1,9 +1,9 @@
 [package]
 name = "primp"
-version = "0.12.0"
+version = "0.1.0"
 edition = "2021"
-description = "HTTP client that can impersonate web browsers, mimicking their headers and `TLS/JA3/JA4/HTTP2` fingerprints"
-authors = ["deedy5"]
+description = "Fast HTTP client for python"
+authors = ["thomasht86"]
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -21,7 +21,7 @@ pyo3 = { version = "0.23.4", features = [
 anyhow = "1.0.95"
 tracing = { version = "0.1.41", features = ["log-always"] }
 pyo3-log = "0.12.1"
-reqwest = { version = "0.12", default_features = false, features = [
+reqwest = { version = "0.12", default-features = false, features = [
     "cookies",
     "json",
     "rustls-tls",
