@@ -2,18 +2,19 @@
 
 **Blazing fast http-client** for Python in Rust 🦀 that can be used as drop-in replacement for `httpx` in most cases.
 
-
-Provides precompiled wheels:</br>
-  * 🐧 linux: `amd64`, `aarch64`, `armv7` (⚠️aarch64 and armv7 builds are `manylinux_2_34` compatible - `ubuntu>=22.04`, `debian>=12`);</br>
-  * 🐧 musllinux: `amd64`, `aarch64`;</br>
-  * 🪟 windows: `amd64`;</br>
-  * 🍏 macos: `amd64`, `aarch64`.</br>
+- **Fast**: httpr is built on top of `reqwests` which is a blazing fast http client in Rust. Check out the [benchmark](#benchmark).
+- **Lightweight**: httpr is a lightweight http client with 0 python-dependencies.
+- **Async**: first-class support for async/await. 
+- **http2**: httpr supports http2.
+- **mTLS**: httpr supports mTLS.
 
 ## Table of Contents
 
 - [httpr](#httpr)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
+    - [Install with uv](#install-with-uv)
+    - [Install from PyPI](#install-from-pypi)
   - [Benchmark](#benchmark)
   - [Usage](#usage)
     - [I. Client](#i-client)
@@ -21,8 +22,24 @@ Provides precompiled wheels:</br>
       - [Response object](#response-object)
       - [Examples](#examples)
     - [II. AsyncClient](#ii-asyncclient)
+  - [Precompiled wheels](#precompiled-wheels)
+  - [Acknowledgements](#acknowledgements)
 
 ## Installation
+
+### Install with uv
+
+```python
+uv add httpr
+```
+
+or
+
+```python
+uv pip install httpr
+```
+
+### Install from PyPI
 
 ```python
 pip install -U httpr
@@ -234,3 +251,18 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
 ```
+
+## Precompiled wheels
+
+Provides precompiled wheels for the following platforms:
+- 🐧 linux: `amd64`, `aarch64`, `armv7` (aarch64 and armv7 builds are `manylinux_2_34` compatible. `ubuntu>=22.04`, `debian>=12`)
+- 🐧 musllinux: `amd64`, `aarch64`
+- 🪟 windows: `amd64`
+- 🍏 macos: `amd64`, `aarch64`.
+  
+## Acknowledgements
+
+- [PRIMP](https://github.com/deedy5/primp): *A lot* of code is borrowed from PRIMP, that wraps rust library `rquest` for python in a similar way.
+- [reqwests](https://github.com/seanmonstar/reqwest): The rust library that powers httpr.
+- [pyo3](https://github.com/PyO3/pyo3)
+- [maturin](https://github.com/PyO3/maturin)
