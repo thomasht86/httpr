@@ -38,6 +38,7 @@ dev = [
     "ruff>=0.9.2",
     "maturin",
 ]
+docs = ["mkdocs-material"]
 scratch = [
     "httpr[dev]",
     "matplotlib",
@@ -71,3 +72,6 @@ select = [
 
 [tool.mypy]
 python_version = "3.8"
+
+[tool.uv.workspace]
+members = ["benchmark"]
