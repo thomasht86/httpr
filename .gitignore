@@ -77,3 +77,6 @@ benchmark/*.jpg
 
 .aider*
 .env
+
+*.pem
+*.key
