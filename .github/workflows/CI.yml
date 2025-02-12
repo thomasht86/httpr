@@ -73,7 +73,8 @@ jobs:
           set -e
           python3 -m venv .venv
           source .venv/bin/activate
-          pip install httpr[dev] --find-links dist --force-reinstall
+          pip install httpr --find-links dist --force-reinstall
+          pip install httpr[dev]
           pytest
       - name: pytest
         if: ${{ !startsWith(matrix.platform.target, 'x86') && matrix.platform.target != 'ppc64le' }}
@@ -85,10 +86,10 @@ jobs:
           install: |
             apt-get update
             apt-get install -y --no-install-recommends python3 python3-pip rustc cargo
-            pip3 install -U pip pytest certifi
           run: |
             set -e
-            pip3 install httpr[dev] --find-links dist --force-reinstall
+            pip3 install httpr --find-links dist --force-reinstall
+            pip3 install httpr[dev]
             pytest
 
   musllinux:
@@ -139,8 +140,8 @@ jobs:
             apk add py3-pip py3-virtualenv
             python3 -m virtualenv .venv
             source .venv/bin/activate
-            pip install httpr[dev] --no-index --find-links dist --force-reinstall
-
+            pip install httpr --no-index --find-links dist --force-reinstall
+            pip install httpr[dev]
             pytest
       - name: pytest
         if: ${{ !startsWith(matrix.platform.target, 'x86') }}
@@ -155,7 +156,8 @@ jobs:
             set -e
             python3 -m virtualenv .venv
             source .venv/bin/activate
-            pip install httpr[dev] --find-links dist --force-reinstall
+            pip install httpr --find-links dist --force-reinstall
+            pip install httpr[dev]
             pytest
 
   windows:
@@ -236,7 +238,8 @@ jobs:
           set -e
           python3 -m venv .venv
           source .venv/bin/activate
-          pip install httpr[dev] --find-links dist --force-reinstall
+          pip install httpr --find-links dist --force-reinstall
+          pip install httpr[dev]
           pytest
 
   sdist:
