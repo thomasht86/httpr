@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from importlib.metadata import version
 from io import BytesIO
 
+import aiohttp
 import curl_cffi.requests
 import httpx
 import pandas as pd
@@ -52,6 +53,7 @@ AsyncPACKAGES = [
     ("httpx", httpx.AsyncClient),
     ("curl_cffi", curl_cffi.requests.AsyncSession),
     ("httpr", httpr.AsyncClient),
+    ("aiohttp", aiohttp.ClientSession),
 ]
 
 
@@ -69,20 +71,26 @@ def get_test(session_class, requests_number):
                 s.close()
 
 
-def session_get_test(session_class, requests_number):
+def session_get_test(session_class, requests_number, json_response=False):
     s = session_class()
     try:
         for _ in range(requests_number):
-            s.get(url).text
+            if json_response:
+                s.get(url).json()
+            else:
+                s.get(url).text
     finally:
         if hasattr(s, "close"):
             s.close()
 
 
-async def async_session_get_test(session_class, requests_number):
+async def async_session_get_test(session_class, requests_number, json_response=False):
     async def aget(s, url):
         resp = await s.get(url)
-        return resp.text
+        if json_response:
+            return resp.json()
+        else:
+            return resp.text
 
     async with session_class() as s:
         tasks = [aget(s, url) for _ in range(requests_number)]
@@ -126,7 +134,7 @@ for response_size in ["5k", "50k", "200k"]:
     for name, session_class in AsyncPACKAGES:
         start = time.perf_counter()
         cpu_start = time.process_time()
-        asyncio.run(async_session_get_test(session_class, requests_number))
+        asyncio.run(async_session_get_test(session_class, requests_number, json_response=False))
         dur = round(time.perf_counter() - start, 2)
         cpu_dur = round(time.process_time() - cpu_start, 2)
 
@@ -141,6 +149,34 @@ for response_size in ["5k", "50k", "200k"]:
         )
 
         print(f"    name: {name:<30} time: {dur} cpu_time: {cpu_dur}")
+
+# -------------------------------
+# New tests for JSON endpoints
+# -------------------------------
+
+# JSON endpoints async tests
+for json_endpoint in ["json/1", "json/10"]:  # , "json/100"]:
+    for gzip_param in ["false", "true"]:
+        url = f"http://127.0.0.1:8000/{json_endpoint}?gzip={gzip_param}"
+        print(f"\nThreads=1, session=Async, {json_endpoint=}, gzip={gzip_param}, {requests_number=}")
+        for name, session_class in AsyncPACKAGES:
+            start = time.perf_counter()
+            cpu_start = time.process_time()
+            asyncio.run(async_session_get_test(session_class, requests_number, json_response=True))
+            dur = round(time.perf_counter() - start, 2)
+            cpu_dur = round(time.process_time() - cpu_start, 2)
+
+            results.append(
+                {
+                    "name": name,
+                    "session": "Async",
+                    "size": f"{json_endpoint}?gzip={gzip_param}",
+                    "time": dur,
+                    "cpu_time": cpu_dur,
+                }
+            )
+
+            print(f"    name: {name:<30} time: {dur} cpu_time: {cpu_dur}")
 
 df = pd.DataFrame(results)
 pivot_df = df.pivot_table(
