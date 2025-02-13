@@ -50,13 +50,12 @@ pip install -U httpr
 ![](https://github.com/thomasht86/httpr/blob/main/benchmark.jpg?raw=true)
 
 ## Usage
-### I. Client
 
-HTTP client that can impersonate web browsers.
+### I. Client
 
 ```python
 class Client:
-    """Initializes an HTTP client that can impersonate web browsers.
+    """Initializes an HTTP client.
 
     Args:
         auth (tuple[str, str| None] | None): Username and password for basic authentication. Default is None.
@@ -222,7 +221,6 @@ print(resp.json())
 
 # You can also use convenience functions that use a default Client instance under the hood:
 # httpr.get() | httpr.head() | httpr.options() | httpr.delete() | httpr.post() | httpr.patch() | httpr.put()
-# These functions can accept the `impersonate` parameter:
 resp = httpr.get("https://httpbin.org/anything")
 print(r.text)
 ```
@@ -255,6 +253,7 @@ if __name__ == "__main__":
 ## Precompiled wheels
 
 Provides precompiled wheels for the following platforms:
+
 - 🐧 linux: `amd64`, `aarch64`, `armv7` (aarch64 and armv7 builds are `manylinux_2_34` compatible. `ubuntu>=22.04`, `debian>=12`)
 - 🐧 musllinux: `amd64`, `aarch64`
 - 🪟 windows: `amd64`
