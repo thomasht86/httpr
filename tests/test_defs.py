@@ -283,26 +283,3 @@ def test_put():
     assert json_data["headers"]["Authorization"] == "Bearer bearerXXXXXXXXXXXXXXXXXXXX"
     assert json_data["args"] == {"x": "aaa", "y": "bbb"}
     assert json_data["form"] == {"key1": "value1", "key2": "value2"}
-
-
-@pytest.mark.skip(reason="No impersonation")
-@retry()
-def test_get_impersonate_firefox133():
-    response = httpr.get(
-        # "https://tls.peet.ws/api/clean",
-        "https://tls.http.rw/api/all",
-        impersonate="firefox_133",
-        impersonate_os="linux",
-    )
-    assert response.status_code == 200
-    json_data = response.json()
-    assert (
-        json_data["user_agent"]
-        == "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0"
-    )
-    assert json_data["tls"]["ja4"] == "t13d1716h2_5b57614c22b0_bed828528d07"
-    assert (
-        json_data["http2"]["akamai_fingerprint_hash"]
-        == "87a68d774464f75f8b88395030c79a80"
-    )
-    assert json_data["tls"]["peetprint_hash"] == "199f9cf4a47bfc51995a9f3942190094"
