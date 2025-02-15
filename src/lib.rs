@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Duration;
+use std::{fs, str};
 
 use anyhow::{Error, Result};
 use bytes::Bytes;
@@ -14,6 +15,7 @@ use reqwest::{
     multipart,
     redirect::Policy,
     Body, Method,
+    Identity,
 };
 use serde_json::Value;
 use tokio::{
@@ -102,12 +104,11 @@ impl RClient {
     ///     referer=False,
     ///     proxy="http://127.0.0.1:8080",
     ///     timeout=10,
-    ///     impersonate="chrome_123",
-    ///     impersonate_os="windows",
     ///     follow_redirects=True,
     ///     max_redirects=1,
     ///     verify=True,
     ///     ca_cert_file="/cert/cacert.pem",
+    ///     client_pem="/cert/client.pem",
     ///     https_only=True,
     ///     http2_only=True,
     /// )
@@ -115,7 +116,7 @@ impl RClient {
     #[new]
     #[pyo3(signature = (auth=None, auth_bearer=None, params=None, headers=None, cookies=None,
         cookie_store=true, referer=true, proxy=None, timeout=None, follow_redirects=true,
-        max_redirects=20, verify=true, ca_cert_file=None, https_only=false, http2_only=false))]
+        max_redirects=20, verify=true, ca_cert_file=None, client_pem=None, https_only=false, http2_only=false))]
     fn new(
         auth: Option<(String, Option<String>)>,
         auth_bearer: Option<String>,
@@ -130,6 +131,7 @@ impl RClient {
         max_redirects: Option<usize>,
         verify: Option<bool>,
         ca_cert_file: Option<String>,
+        client_pem: Option<String>,
         https_only: Option<bool>,
         http2_only: Option<bool>,
     ) -> Result<Self> {
@@ -187,6 +189,12 @@ impl RClient {
                 for cert in certs {
                     client_builder = client_builder.add_root_certificate(cert);
                 }
+            }
+            // Load client pem identity if provided
+            if let Some(client_pem) = &client_pem {
+                let client_identity_pem = fs::read(client_pem)?;
+                let identity = Identity::from_pem(&client_identity_pem)?;
+                client_builder = client_builder.identity(identity);
             }
         } else {
             client_builder = client_builder.danger_accept_invalid_certs(true);

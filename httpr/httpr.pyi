@@ -25,6 +25,7 @@ class RequestParams(TypedDict, total=False):
 class ClientRequestParams(RequestParams):
     verify: bool | None
     ca_cert_file: str | None
+    client_pem: str | None
 
 class Response:
     @property
@@ -65,6 +66,7 @@ class RClient:
         max_redirects: int | None = 20,
         verify: bool | None = True,
         ca_cert_file: str | None = None,
+        client_pem: str | None = None,
         https_only: bool | None = False,
         http2_only: bool | None = False,
     ): ...

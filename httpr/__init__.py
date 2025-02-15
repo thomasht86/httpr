@@ -44,6 +44,7 @@ class Client(RClient):
         max_redirects: int | None = 20,
         verify: bool | None = True,
         ca_cert_file: str | None = None,
+        client_pem: str | None = None,
         https_only: bool | None = False,
         # http2_only: bool | None = False,
     ):
@@ -63,6 +64,7 @@ class Client(RClient):
             max_redirects: the maximum number of redirects if `follow_redirects` is True. Default is 20.
             verify: an optional boolean indicating whether to verify SSL certificates. Default is True.
             ca_cert_file: path to CA certificate store. Default is None.
+            client_pem: path to client certificate file. Default is None.
             https_only: restrict the Client to be used with HTTPS only requests. Default is False.
             http2_only: if true - use only HTTP/2, if false - use only HTTP/1. Default is False.
         """
@@ -143,6 +145,7 @@ def request(
     url: str,
     verify: bool | None = True,
     ca_cert_file: str | None = None,
+    client_pem: str | None = None,
     **kwargs: Unpack[RequestParams],
 ):
     """
@@ -151,6 +154,7 @@ def request(
         url: the URL to which the request will be made.
         verify: an optional boolean indicating whether to verify SSL certificates. Default is True.
         ca_cert_file: path to CA certificate store. Default is None.
+        client_pem: path to client certificate file. Default is None.
         auth: a tuple containing the username and an optional password for basic authentication. Default is None.
         auth_bearer: a string representing the bearer token for bearer token authentication. Default is None.
         params: a map of query parameters to append to the URL. Default is None.
@@ -165,6 +169,7 @@ def request(
     with Client(
         verify=verify,
         ca_cert_file=ca_cert_file,
+        client_pem=client_pem,
     ) as client:
         return client.request(method, url, **kwargs)
 
