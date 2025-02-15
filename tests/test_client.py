@@ -238,26 +238,3 @@ def test_client_post_files(test_files):
     assert json_data["headers"]["Authorization"] == "Bearer bearerXXXXXXXXXXXXXXXXXXXX"
     assert json_data["args"] == {"x": "aaa", "y": "bbb"}
     assert json_data["files"] == {"file1": "aaa111", "file2": "bbb222"}
-
-
-@pytest.mark.skip(reason="No impersonate")
-@retry()
-def test_client_impersonate_chrome131():
-    client = httpr.Client(
-        impersonate="chrome_131",
-        impersonate_os="windows",
-    )
-    # response = client.get("https://tls.peet.ws/api/all")
-    response = client.get("https://tls.http.rw/api/all")
-    assert response.status_code == 200
-    json_data = response.json()
-    assert (
-        json_data["user_agent"]
-        == "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    )
-    assert json_data["tls"]["ja4"] == "t13d1516h2_8daaf6152771_b1ff8ab2d16f"
-    assert (
-        json_data["http2"]["akamai_fingerprint_hash"]
-        == "90224459f8bf70b7d0a8797eb916dbc9"
-    )
-    assert json_data["tls"]["peetprint_hash"] == "7466733991096b3f4e6c0e79b0083559"
