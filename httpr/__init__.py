@@ -53,7 +53,7 @@ class Client(RClient):
             auth: a tuple containing the username and an optional password for basic authentication. Default is None.
             auth_bearer: a string representing the bearer token for bearer token authentication. Default is None.
             params: a map of query parameters to append to the URL. Default is None.
-            headers: an optional map of HTTP headers to send with requests. Ignored if `impersonate` is set.
+            headers: an optional map of HTTP headers to send with requests.
             cookies: an optional map of cookies to send with requests as the `Cookie` header.
             cookie_store: enable a persistent cookie store. Received cookies will be preserved and included
                  in additional requests. Default is True.

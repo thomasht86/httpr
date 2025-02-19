@@ -65,8 +65,8 @@ pub struct RClient {
 impl RClient {
     /// Initializes an HTTP client that can impersonate web browsers.
     ///
-    /// This function creates a new HTTP client instance that can impersonate various web browsers.
-    /// It allows for customization of headers, proxy settings, timeout, impersonation type, SSL certificate verification,
+    /// This function creates a new HTTP client instance.
+    /// It allows for customization of headers, proxy settings, timeout, SSL certificate verification,
     /// and HTTP version preferences.
     ///
     /// # Arguments
@@ -74,15 +74,13 @@ impl RClient {
     /// * `auth` - A tuple containing the username and an optional password for basic authentication. Default is None.
     /// * `auth_bearer` - A string representing the bearer token for bearer token authentication. Default is None.
     /// * `params` - A map of query parameters to append to the URL. Default is None.
-    /// * `headers` - An optional map of HTTP headers to send with requests. If `impersonate` is set, this will be ignored.
+    /// * `headers` - An optional map of HTTP headers to send with requests. 
     /// * `cookies` - An optional map of cookies to send with requests as the `Cookie` header.
     /// * `cookie_store` - Enable a persistent cookie store. Received cookies will be preserved and included
     ///         in additional requests. Default is `true`.
     /// * `referer` - Enable or disable automatic setting of the `Referer` header. Default is `true`.
     /// * `proxy` - An optional proxy URL for HTTP requests.
     /// * `timeout` - An optional timeout for HTTP requests in seconds.
-    /// * `impersonate` - An optional entity to impersonate. Supported browsers and versions include Chrome, Safari, OkHttp, and Edge.
-    /// * `impersonate_os` - An optional entity to impersonate OS. Supported OS: android, ios, linux, macos, windows.
     /// * `follow_redirects` - A boolean to enable or disable following redirects. Default is `true`.
     /// * `max_redirects` - The maximum number of redirects to follow. Default is 20. Applies if `follow_redirects` is `true`.
     /// * `verify` - An optional boolean indicating whether to verify SSL certificates. Default is `true`.
