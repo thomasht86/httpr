@@ -21,7 +21,7 @@ pub fn load_ca_certs() -> Result<Vec<Certificate>> {
             Ok(ca_certs)
         }
         None => {
-            tracing::warn!("HTTPR_CA_BUNDLE environment variable not set. Skipping loading CA certificates.");
+            tracing::info!("HTTPR_CA_BUNDLE environment variable not set. Skipping loading CA certificates.");
             Ok(Vec::new())
         }
     }
