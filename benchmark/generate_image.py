@@ -72,10 +72,10 @@ def plot_json_data(file_name, ax, offset, gzip):
     x = np.arange(len(names)) + offset
     width = 0.25  # slightly wider bars for only two groups
 
-    rects = ax.bar(x, time_json_10, width, label="JSON 10")
+    rects = ax.bar(x, time_json_10, width, label="JSON vector [1,1024]")
     ax.bar_label(rects, padding=3, fontsize=7, rotation=90)
 
-    rects = ax.bar(x + width, time_json_1, width, label="JSON 1")
+    rects = ax.bar(x + width, time_json_1, width, label="JSON vector [10,1024]")
     ax.bar_label(rects, padding=3, fontsize=7, rotation=90)
 
     ax.set_xticks(x + width)
@@ -83,7 +83,9 @@ def plot_json_data(file_name, ax, offset, gzip):
     ax.legend(loc="upper left", ncols=2, prop={"size": 8})
     ax.tick_params(axis="x", labelsize=8)
     ax.set_ylabel("Time (s)")
-    ax.set_title(f"Benchmark get(url).json() | Session=False | {title_suffix}")
+    ax.set_title(
+        f"Benchmark get(url).json() | Session=Async | {title_suffix} | Requests: 400 | Size: ~20kb, ~200kb, ~2mb"
+    )
 
     return x, width, names
 
