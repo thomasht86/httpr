@@ -77,6 +77,9 @@ class Client(RClient):
         del self
 
     def request(self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> Response:
+        # Validate the HTTP method. Raise an exception if it's not supported.
+        if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
+            raise ValueError(f"Unsupported HTTP method: {method}")
         return super().request(method=method, url=url, **kwargs)
 
     def get(self, url: str, **kwargs: Unpack[RequestParams]) -> Response:
