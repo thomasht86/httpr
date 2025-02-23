@@ -292,6 +292,8 @@ jobs:
     needs: [linux]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
