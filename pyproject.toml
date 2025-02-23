@@ -74,5 +74,14 @@ select = [
 [tool.mypy]
 python_version = "3.8"
 
+[tool.uv]
+# Rebuild package when any rust files change
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "rust/Cargo.toml" },
+    { file = "**/*.rs" },
+]
+# Uncomment to build rust code in development mode
+# config-settings = { build-args = '--profile=dev' }
 [tool.uv.workspace]
 members = ["benchmark"]
