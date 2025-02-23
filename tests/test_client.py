@@ -1,10 +1,8 @@
+# filepath: /Users/thomas/Repos/httpr-1/tests/test_client_exceptions.py
 from time import sleep
-
 import pytest
-
-import certifi
 import httpr  # type: ignore
-
+import certifi
 
 def retry(max_retries=3, delay=1):
     def decorator(func):
@@ -18,14 +16,53 @@ def retry(max_retries=3, delay=1):
                         continue
                     else:
                         raise e
-
         return wrapper
-
     return decorator
 
+@retry()
+def test_invalid_url_exception():
+    client = httpr.Client()
+    # Should raise an exception for an invalid URL format.
+    with pytest.raises(Exception):
+        client.get("invalid_url://")
 
 @retry()
-def test_client_init_params():
+def test_invalid_method_exception():
+    client = httpr.Client()
+    # Passing an unsupported HTTP method should trigger an exception.
+    with pytest.raises(Exception):
+        client.request("INVALID", "https://httpbin.org/anything")
+
+@retry()
+def test_invalid_headers_setter_exception():
+    client = httpr.Client()
+    # Attempting to set headers with a non-dict type should raise an exception.
+    with pytest.raises(Exception):
+        client.headers = "not a dict"
+
+@retry()
+def test_invalid_cookies_setter_exception():
+    client = httpr.Client()
+    # Attempting to set cookies with a non-dict type should raise an exception.
+    with pytest.raises(Exception):
+        client.cookies = "not a dict"
+
+@retry()
+def test_invalid_file_path_exception():
+    client = httpr.Client()
+    # Passing a non-existent file path in files should raise an exception.
+    with pytest.raises(Exception):
+        client.post(
+            "https://httpbin.org/anything",
+            files={"file": "/non/existent/path.file"}
+        )
+
+@retry()
+def test_request_exception_timeout():
+    client = httpr.Client(timeout=0.0001)  # unrealistic timeout to force a timeout error
+    # A very short timeout should cause a timeout exception.
+    with pytest.raises(Exception):
+        client.get("https://httpbin.org/delay/2")
     auth = ("user", "password")
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
