@@ -3,10 +3,12 @@
 **Blazing fast http-client** for Python in Rust 🦀 that can be used as drop-in replacement for `httpx` in most cases.
 
 - **Fast**: httpr is built on top of `reqwests` which is a blazing fast http client in Rust. Check out the [benchmark](#benchmark).
+- **Both async and sync**: httpr provides both a sync and async client.
 - **Lightweight**: httpr is a lightweight http client with 0 python-dependencies.
 - **Async**: first-class support for async/await. 
 - **http2**: httpr supports http2.
 - **mTLS**: httpr supports mTLS.
+- **Zero python dependencies**: httpr is a pure rust library with no python dependencies.
 
 ## Table of Contents
 
