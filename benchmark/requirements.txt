@@ -1,6 +1,7 @@
 matplotlib
 pandas
 starlette
+aiohttp
 uvicorn
 requests
 httpx
