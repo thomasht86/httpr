@@ -1,6 +1,7 @@
 import asyncio
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import partial
 from importlib.metadata import version
 from io import BytesIO
 
@@ -43,7 +44,7 @@ class PycurlSession:
 results = []
 PACKAGES = [
     ("requests", requests.Session),
-    ("httpx", httpx.Client),
+    ("httpx", partial(httpx.Client, timeout=httpx.Timeout(10.0, pool=60.0))),
     ("tls_client", tls_client.Session),
     ("curl_cffi", curl_cffi.requests.Session),
     ("pycurl", PycurlSession),
