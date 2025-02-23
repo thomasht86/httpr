@@ -6,7 +6,6 @@ uvicorn
 requests
 httpx
 tls-client
-httpr
 curl_cffi
 pycurl
 typing_extensions  # tls-client py3.12 dependence
