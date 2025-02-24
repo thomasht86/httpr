@@ -1,4 +1,41 @@
 site_name: httpr
 site_url: https://thomasht86.github.io/httpr
+plugins:
+  - search
+  - blog:
+      blog_dir: writings
+  - social:
+      enabled: true
+
+nav:
+  - Home: index.md
+  - Docs: docs.md
+  - Blog: writings/index.md
+
 theme:
   name: material
+  font:
+    text: Lato
+    code: Fira Code
+  features:
+    - content.code.copy
+    - search.suggest
+
+markdown_extensions:
+  - attr_list
+  - admonition
+  - pymdownx.betterem
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+        alternate_style: true
+  - pymdownx.emoji
+  - pymdownx.keys
+  - footnotes

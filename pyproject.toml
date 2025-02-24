@@ -39,7 +39,7 @@ dev = [
     "maturin",
     "trustme",
 ]
-docs = ["mkdocs-material"]
+docs = ["mkdocs-material[imaging]"]
 scratch = [
     "httpr[dev]",
     "matplotlib",

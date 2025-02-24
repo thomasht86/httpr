@@ -80,3 +80,5 @@ benchmark/*.jpg
 
 *.pem
 *.key
+
+*.dylib
