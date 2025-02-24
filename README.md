@@ -1,18 +1,23 @@
 # httpr
 
-**Blazing fast http-client** for Python in Rust 🦀 that can be used as drop-in replacement for `httpx` in most cases.
+**Blazing fast http-client** for Python in Rust 🦀 that can be used as drop-in replacement for `httpx` and `requests` in most cases.
 
-- **Fast**: httpr is built on top of `reqwests` which is a blazing fast http client in Rust. Check out the [benchmark](#benchmark).
-- **Both async and sync**: httpr provides both a sync and async client.
-- **Lightweight**: httpr is a lightweight http client with 0 python-dependencies.
-- **Async**: first-class support for async/await. 
-- **http2**: httpr supports http2.
-- **mTLS**: httpr supports mTLS.
-- **Zero python dependencies**: httpr is a pure rust library with no python dependencies.
+- **Fast**: `httpr` is built on top of `reqwests`, which is a blazing fast http client in Rust. Check out the [benchmark](#benchmark).
+- **Both async and sync**: `httpr` provides both a sync and async client.
+- **Lightweight**: `httpr` is a lightweight http client with zero python-dependencies.
+- **Async**: first-class async support.
+- **http2**: `httpr` supports HTTP/2.
+- **mTLS**: `httpr` supports mTLS.
+
+## Not implemented yet
+
+- **Streaming**: Streaming is not implemented yet.
+- **Fine-grained error handling**: Fine-grained error handling is not implemented yet.
 
 ## Table of Contents
 
 - [httpr](#httpr)
+  - [Not implemented yet](#not-implemented-yet)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
     - [Install with uv](#install-with-uv)
@@ -263,7 +268,8 @@ Provides precompiled wheels for the following platforms:
   
 ## Acknowledgements
 
-- [PRIMP](https://github.com/deedy5/primp): *A lot* of code is borrowed from PRIMP, that wraps rust library `rquest` for python in a similar way.
+- [uv](https://docs.astral.sh/uv/): The package manager used, and for leading the way in the "Rust for python tools"-sphere.
+- [primp](https://github.com/deedy5/primp): *A lot* of code is borrowed from primp, that wraps rust library `rquest` for python in a similar way. If primp supported mTLS, I would have used it instead.
 - [reqwests](https://github.com/seanmonstar/reqwest): The rust library that powers httpr.
 - [pyo3](https://github.com/PyO3/pyo3)
 - [maturin](https://github.com/PyO3/maturin)
