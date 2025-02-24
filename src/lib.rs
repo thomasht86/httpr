@@ -440,5 +440,6 @@ fn httpr(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
 
     m.add_class::<RClient>()?;
+    m.add_class::<Response>()?;
     Ok(())
 }
