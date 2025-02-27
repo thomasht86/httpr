@@ -47,10 +47,12 @@ jobs:
           # Display the updated version
           echo "Version bumped to $TAG_VERSION"
       - name: Commit version bump
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: EndBug/add-and-commit@v9
         with:
-          commit_message: "Bump version to ${{ steps.bump_version.outputs.new_version }}"
-          file_pattern: pyproject.toml
+          message: "Bump version to ${{ steps.bump_version.outputs.new_version }}"
+          add: pyproject.toml
+          default_author: github_actions
+          push: true
 
   linux:
     runs-on: ${{ matrix.platform.runner }}
