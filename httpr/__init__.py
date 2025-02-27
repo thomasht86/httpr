@@ -114,6 +114,10 @@ class AsyncClient(Client):
     async def __aexit__(self, *args):
         del self
 
+    async def aclose(self):
+        del self
+        return
+
     async def _run_sync_asyncio(self, fn, *args, **kwargs):
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(fn, *args, **kwargs))
