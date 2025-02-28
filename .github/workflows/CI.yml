@@ -19,43 +19,19 @@ permissions:
   contents: read
 
 jobs:
-  bump-version:
+  extract-version:
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
-    permissions:
-      contents: write
     outputs:
-      new_version: ${{ steps.bump_version.outputs.new_version }}
+      version: ${{ steps.get_version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
       - name: Extract version from tag
-        id: bump_version
+        id: get_version
         run: |
           # Extract version from tag (e.g., v0.1.0 -> 0.1.0)
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          echo "new_version=$TAG_VERSION" >> $GITHUB_OUTPUT
-
-          # Update version in pyproject.toml (adjust for your project structure)
-          sed -i "s/version = \".*\"/version = \"$TAG_VERSION\"/" pyproject.toml
-
-          # Display the updated version
-          echo "Version bumped to $TAG_VERSION"
-      - name: Checkout main branch
-        run: |
-          git checkout main
-      - name: Commit version bump
-        uses: EndBug/add-and-commit@v9
-        with:
-          message: "Bump version to ${{ steps.bump_version.outputs.new_version }}"
-          add: pyproject.toml
-          default_author: github_actions
-          push: true
+          echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "Version extracted: $TAG_VERSION"
 
   linux:
     runs-on: ${{ matrix.platform.runner }}
@@ -85,6 +61,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
+      # Only modify pyproject.toml temporarily for this job if running from a tag
+      - name: Update version in pyproject.toml
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          sed -i "s/version = \".*\"/version = \"$TAG_VERSION\"/" pyproject.toml
+          echo "Updated pyproject.toml version to $TAG_VERSION"
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -148,6 +131,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
+      # Only modify pyproject.toml temporarily for this job if running from a tag
+      - name: Update version in pyproject.toml
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          sed -i "s/version = \".*\"/version = \"$TAG_VERSION\"/" pyproject.toml
+          echo "Updated pyproject.toml version to $TAG_VERSION"
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -213,6 +203,13 @@ jobs:
         with:
           python-version: 3.x
           architecture: ${{ matrix.platform.target }}
+      # Only modify pyproject.toml temporarily for this job if running from a tag
+      - name: Update version in pyproject.toml
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          sed -i "s/version = \".*\"/version = \"$TAG_VERSION\"/" pyproject.toml
+          echo "Updated pyproject.toml version to $TAG_VERSION"
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -254,6 +251,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
+      # Only modify pyproject.toml temporarily for this job if running from a tag
+      - name: Update version in pyproject.toml
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          sed -i "s/version = \".*\"/version = \"$TAG_VERSION\"/" pyproject.toml
+          echo "Updated pyproject.toml version to $TAG_VERSION"
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -300,7 +304,7 @@ jobs:
     environment: pypi
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
-    needs: [bump-version, linux, musllinux, windows, macos, sdist]
+    needs: [linux, musllinux, windows, macos, sdist]
     permissions:
       # Use to sign the release artifacts
       id-token: write
@@ -331,7 +335,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
           fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -353,6 +356,10 @@ jobs:
         run: python benchmark/benchmark.py
       - name: Generate image
         run: python benchmark/generate_image.py
+      - name: Checkout main branch
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          git checkout main
       - name: Commit generated image if changed
         uses: EndBug/add-and-commit@v9
         with:
