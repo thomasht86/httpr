@@ -46,8 +46,13 @@ fn read_pem_certificates(path: &str) -> Result<Vec<Certificate>> {
 }
 
 /// Get encoding from the "Content-Type" header
-
-/// Get encoding from the "Content-Type" header
+/// 
+/// This function is deprecated; use get_encoding_from_case_insensitive_headers instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "use get_encoding_from_case_insensitive_headers instead"
+)]
+#[allow(dead_code)]
 pub fn get_encoding_from_headers(
     headers: &IndexMap<String, String, RandomState>,
 ) -> Option<String> {
@@ -70,6 +75,31 @@ pub fn get_encoding_from_headers(
                 None
             }
         })
+}
+
+/// Get encoding from the "Content-Type" header using CaseInsensitiveHeaderMap
+pub fn get_encoding_from_case_insensitive_headers(
+    headers: &crate::response::CaseInsensitiveHeaderMap
+) -> Option<String> {
+    if headers.contains_key("content-type") {
+        let content_type = headers.get_value("content-type")?;
+        
+        // Parse the Content-Type header to separate the media type and parameters
+        let mut parts = content_type.split(';');
+        let media_type = parts.next().unwrap_or("").trim();
+        let params = parts.next().unwrap_or("").trim();
+
+        // Check for specific conditions and return the appropriate encoding
+        if let Some(param) = params.to_ascii_lowercase().strip_prefix("charset=") {
+            Some(param.trim_matches('"').to_ascii_lowercase())
+        } else if media_type == "application/json" {
+            Some("utf-8".to_string())
+        } else {
+            None
+        }
+    } else {
+        None
+    }
 }
 
 /// Get encoding from the `<meta charset="...">` tag within the first 2048 bytes of HTML content.

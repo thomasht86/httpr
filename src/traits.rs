@@ -40,8 +40,10 @@ impl HeadersTraits for HeaderMap {
         let mut index_map =
             IndexMapSSR::with_capacity_and_hasher(self.len(), RandomState::default());
         for (key, value) in self {
+            // Store the original header name (preserving case)
+            let header_name = key.as_str().to_string();
             index_map.insert(
-                key.as_str().to_string(),
+                header_name,
                 value
                     .to_str()
                     .unwrap_or_else(|v| panic!("Invalid header value: {v:?}"))

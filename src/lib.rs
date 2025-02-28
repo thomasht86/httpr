@@ -26,7 +26,7 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 use tracing;
 
 mod response;
-use response::Response;
+use response::{CaseInsensitiveHeaderMap, Response};
 
 mod traits;
 use traits::{CookiesTraits, HeadersTraits};
@@ -428,7 +428,7 @@ impl RClient {
             content: PyBytes::new(py, &f_buf).unbind(),
             cookies: f_cookies,
             encoding: String::new(),
-            headers: f_headers,
+            headers: CaseInsensitiveHeaderMap::from_indexmap(f_headers),
             status_code: f_status_code,
             url: f_url,
         })

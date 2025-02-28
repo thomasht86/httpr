@@ -238,6 +238,42 @@ def test_client_post_json():
     assert json_data["args"] == {"x": "aaa", "y": "bbb", "z": "3"}
     assert json_data["json"] == data
 
+@retry()
+def test_client_number_params():
+    client = httpr.Client()
+    params = {
+        "int": 42,
+        "float": 3.14159,
+        "sci_notation": 1.23e-4,
+        "large_float": 1.7976931348623157e+308,
+        "small_float": 0.026305610314011577,
+    }
+    response = client.get("https://httpbin.org/anything", params=params)
+    assert response.status_code == 200
+    json_data = response.json()
+    
+    # Verify all numeric values are converted to strings
+    assert json_data["args"]["int"] == "42"
+    assert json_data["args"]["float"] == "3.14159"
+    assert json_data["args"]["sci_notation"] == "0.000123" or json_data["args"]["sci_notation"] == "1.23e-4"
+    # Large values might have different string representations
+    assert float(json_data["args"]["large_float"]) == 1.7976931348623157e+308
+    assert float(json_data["args"]["small_float"]) == 0.026305610314011577
+
+@retry()
+def test_header_case_preservation():
+    client = httpr.Client()
+    
+    # Send a request to a server that will return case-sensitive headers
+    response = client.get("https://httpbin.org/response-headers?X-Custom-Header=TestValue")
+    
+    # Verify the header case is preserved
+    assert "X-Custom-Header" in response.headers
+    assert response.headers["X-Custom-Header"] == "TestValue"
+    
+    # Also verify headers can be accessed with different cases
+    assert "x-custom-header" in response.headers
+    assert response.headers["x-custom-header"] == "TestValue"
 
 @pytest.fixture(scope="session")
 def test_files(tmp_path_factory):
