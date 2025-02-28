@@ -80,6 +80,10 @@ class Client(RClient):
         # Validate the HTTP method. Raise an exception if it's not supported.
         if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
             raise ValueError(f"Unsupported HTTP method: {method}")
+            # Convert all params values to strings if params is present
+        if "params" in kwargs and kwargs["params"] is not None:
+            kwargs["params"] = {k: str(v) for k, v in kwargs["params"].items()}
+
         return super().request(method=method, url=url, **kwargs)
 
     def get(self, url: str, **kwargs: Unpack[RequestParams]) -> Response:
@@ -123,6 +127,12 @@ class AsyncClient(Client):
         return await loop.run_in_executor(None, partial(fn, *args, **kwargs))
 
     async def request(self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]):  # type: ignore
+        if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
+            raise ValueError(f"Unsupported HTTP method: {method}")
+            # Convert all params values to strings if params is present
+        if "params" in kwargs and kwargs["params"] is not None:
+            kwargs["params"] = {k: str(v) for k, v in kwargs["params"].items()}
+
         return await self._run_sync_asyncio(super().request, method=method, url=url, **kwargs)
 
     async def get(self, url: str, **kwargs: Unpack[RequestParams]):  # type: ignore
