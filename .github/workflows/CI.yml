@@ -29,7 +29,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
           fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -47,6 +46,9 @@ jobs:
 
           # Display the updated version
           echo "Version bumped to $TAG_VERSION"
+      - name: Checkout main branch
+        run: |
+          git checkout main
       - name: Commit version bump
         uses: EndBug/add-and-commit@v9
         with:
