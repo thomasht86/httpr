@@ -4,7 +4,8 @@ import argparse
 import os
 import sys
 
-import tomllib
+# Replace tomllib with toml (needs to be installed with pip)
+import toml
 
 
 def update_version(version):
@@ -20,7 +21,7 @@ def update_version(version):
 
     try:
         # Load the pyproject.toml file
-        data = tomllib.load(pyproject_path)
+        data = toml.load(pyproject_path)
 
         # Show the current version
         current_version = data.get("project", {}).get("version", "unknown")
@@ -35,7 +36,7 @@ def update_version(version):
 
         # Write the updated content back to the file
         with open(pyproject_path, "w") as f:
-            tomllib.dump(data, f)
+            toml.dump(data, f)
 
         print(f"Version updated to: {version}")
 
