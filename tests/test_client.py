@@ -219,7 +219,7 @@ def test_client_post_json():
     auth_bearer = "bearerXXXXXXXXXXXXXXXXXXXX"
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
-    params = {"x": "aaa", "y": "bbb"}
+    params = {"x": "aaa", "y": "bbb", "z": 3}
     data = {"key1": "value1", "key2": "value2"}
     response = client.post(
         "https://httpbin.org/anything",
@@ -235,7 +235,7 @@ def test_client_post_json():
     assert json_data["headers"]["X-Test"] == "test"
     assert json_data["headers"]["Cookie"] == "ccc=ddd; cccc=dddd"
     assert json_data["headers"]["Authorization"] == "Bearer bearerXXXXXXXXXXXXXXXXXXXX"
-    assert json_data["args"] == {"x": "aaa", "y": "bbb"}
+    assert json_data["args"] == {"x": "aaa", "y": "bbb", "z": "3"}
     assert json_data["json"] == data
 
 
