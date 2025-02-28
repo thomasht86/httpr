@@ -72,7 +72,7 @@ select = [
 ]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "0.1.5"
 
 [tool.uv]
 # Rebuild package when any rust files change
