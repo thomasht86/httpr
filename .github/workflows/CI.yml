@@ -206,8 +206,9 @@ jobs:
       # Only modify pyproject.toml temporarily for this job if running from a tag
       - name: Update version in pyproject.toml
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        shell: pwsh
         run: |
-          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          $TAG_VERSION = $env:GITHUB_REF -replace 'refs/tags/v', ''
           pip install toml
           python .github/workflows/set_version.py $TAG_VERSION
       - name: Build wheels
