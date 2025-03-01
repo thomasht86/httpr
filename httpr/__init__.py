@@ -46,7 +46,7 @@ class Client(RClient):
         ca_cert_file: str | None = None,
         client_pem: str | None = None,
         https_only: bool | None = False,
-        # http2_only: bool | None = False,
+        http2_only: bool | None = False,
     ):
         """
         Args:
