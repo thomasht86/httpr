@@ -52,7 +52,7 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist -i python3.13t
           sccache: false
-          manylinux: auto
+          manylinux: ${{ matrix.platform.manylinux }}
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -268,7 +268,7 @@ jobs:
           python benchmark/generate_image.py
           git config --global user.name 'github-actions[bot]'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add *.jpg
+          git add benchmark.jpg
           if ! git diff --quiet --cached; then
             git commit -m "Update benchmark image for ${{ github.ref_name }}"
             git push
