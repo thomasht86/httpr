@@ -265,6 +265,40 @@ Provides precompiled wheels for the following platforms:
 - 🐧 musllinux: `amd64`, `aarch64`
 - 🪟 windows: `amd64`
 - 🍏 macos: `amd64`, `aarch64`.
+
+## CI/CD Workflows
+
+The project uses a multi-stage CI/CD pipeline to ensure quality and efficient releases:
+
+### Test Workflow (`test.yml`)
+- **Trigger**: Every push to `main` branch and all pull requests
+- **Purpose**: Fast feedback on code quality
+- **Jobs**:
+  - **test**: Runs pytest on Linux (x86_64), Windows (x64), and macOS (aarch64)
+  - **benchmark**: Runs performance benchmarks (informational, non-blocking)
+
+### Build Workflow (`build.yml`)
+- **Trigger**: Git tags (e.g., `v0.1.5`) and manual workflow dispatch
+- **Purpose**: Build release artifacts for all platforms
+- **Jobs**:
+  - **linux**: Builds wheels for x86_64, x86, aarch64, armv7
+  - **musllinux**: Builds wheels for x86_64, x86, aarch64
+  - **windows**: Builds wheels for x64, x86
+  - **macos**: Builds wheels for x86_64, aarch64
+  - **sdist**: Builds source distribution
+- All wheels are uploaded as artifacts for the release workflow
+
+### Release Workflow (`release.yml`)
+- **Trigger**: Successful completion of build workflow (for tagged releases)
+- **Purpose**: Publish to PyPI and update benchmark image
+- **Jobs**:
+  - **release**: Downloads all build artifacts, generates attestations, publishes to PyPI
+  - **update-benchmark**: Updates benchmark.jpg in the repository
+
+This separation ensures:
+- Quick feedback on every commit (test workflow)
+- Resource-efficient builds only on releases (build workflow)
+- Safe releases that only succeed if all platform builds pass (release workflow)
   
 ## Acknowledgements
 
