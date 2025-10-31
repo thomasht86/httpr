@@ -277,28 +277,23 @@ The project uses a multi-stage CI/CD pipeline to ensure quality and efficient re
   - **test**: Runs pytest on Linux (x86_64), Windows (x64), and macOS (aarch64)
   - **benchmark**: Runs performance benchmarks (informational, non-blocking)
 
-### Build Workflow (`build.yml`)
+### Build & Release Workflow (`build.yml`)
 - **Trigger**: Git tags (e.g., `v0.1.5`) and manual workflow dispatch
-- **Purpose**: Build release artifacts for all platforms
+- **Purpose**: Build release artifacts for all platforms and publish to PyPI
 - **Jobs**:
   - **linux**: Builds wheels for x86_64, x86, aarch64, armv7
   - **musllinux**: Builds wheels for x86_64, x86, aarch64
   - **windows**: Builds wheels for x64, x86
   - **macos**: Builds wheels for x86_64, aarch64
   - **sdist**: Builds source distribution
-- All wheels are uploaded as artifacts for the release workflow
-
-### Release Workflow (`release.yml`)
-- **Trigger**: Successful completion of build workflow (for tagged releases)
-- **Purpose**: Publish to PyPI and update benchmark image
-- **Jobs**:
-  - **release**: Downloads all build artifacts, generates attestations, publishes to PyPI
-  - **update-benchmark**: Updates benchmark.jpg in the repository
+  - **release**: Publishes to PyPI only after all builds succeed (tag releases only)
+  - **benchmark**: Updates benchmark.jpg in the repository after release
 
 This separation ensures:
-- Quick feedback on every commit (test workflow)
-- Resource-efficient builds only on releases (build workflow)
-- Safe releases that only succeed if all platform builds pass (release workflow)
+- Quick feedback on every commit via test workflow (~5-10 minutes)
+- Resource-efficient builds only on tagged releases via build workflow
+- Safe releases that only succeed if all platform builds pass
+- Automatic benchmark updates after successful releases
   
 ## Acknowledgements
 
