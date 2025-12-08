@@ -84,6 +84,8 @@ jobs:
       - name: pytest
         if: ${{ matrix.platform.target == 'x86_64' || matrix.platform.target == 'aarch64' }}
         shell: bash
+        env:
+          RUSTC_WRAPPER: ""
         run: |
           set -e
           uv sync --extra dev --find-links dist --reinstall
@@ -207,6 +209,8 @@ jobs:
           path: dist
       - name: pytest
         shell: bash
+        env:
+          RUSTC_WRAPPER: ""
         run: |
           set -e
           uv sync --extra dev --find-links dist --reinstall
@@ -251,6 +255,8 @@ jobs:
           name: wheels-macos-${{ matrix.platform.target }}
           path: dist
       - name: pytest
+        env:
+          RUSTC_WRAPPER: ""
         run: |
           set -e
           uv sync --extra dev --find-links dist --reinstall
