@@ -29,6 +29,7 @@
       - [Response object](#response-object)
       - [Examples](#examples)
     - [II. AsyncClient](#ii-asyncclient)
+  - [CI/CD Workflows](#cicd-workflows)
   - [Precompiled wheels](#precompiled-wheels)
   - [Acknowledgements](#acknowledgements)
 
@@ -256,6 +257,45 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
 ```
+
+## CI/CD Workflows
+
+The project uses three separate GitHub Actions workflows to manage continuous integration and deployment:
+
+### Test Workflow (`test.yml`)
+- **Trigger**: Runs on every push to `main`/`master` branches and on all pull requests
+- **Purpose**: Fast feedback for development
+- **Jobs**:
+  - Runs tests on Linux (ubuntu-22.04, x86_64)
+  - Runs tests on Windows (latest, x64)
+  - Runs tests on macOS (macos-14, aarch64)
+  - Runs benchmarks (after Linux tests pass)
+
+### Build Workflow (`build.yml`)
+- **Trigger**: Runs only on version tags (e.g., `v0.1.15`) or manual workflow dispatch
+- **Purpose**: Build release artifacts for all supported platforms
+- **Jobs**:
+  - Builds wheels for Linux (x86_64, x86, aarch64, armv7) with both glibc and musl
+  - Builds wheels for Windows (x64, x86)
+  - Builds wheels for macOS (x86_64, aarch64)
+  - Builds source distribution (sdist)
+  - Includes support for free-threaded Python 3.13t
+  - All build artifacts are uploaded for the release workflow
+
+### Release Workflow (`release.yml`)
+- **Trigger**: Runs automatically after a successful Build workflow for version tags
+- **Purpose**: Publish to PyPI and update benchmarks
+- **Jobs**:
+  - Downloads all build artifacts from the Build workflow
+  - Generates artifact attestations for security
+  - Publishes to PyPI using Maturin
+  - Updates benchmark images in the repository
+
+This separation ensures:
+- Fast CI feedback on every commit (tests run in ~5 minutes)
+- Expensive builds only run for releases
+- Release only happens if all platform builds succeed
+- Clear separation of concerns between testing, building, and releasing
 
 ## Precompiled wheels
 
