@@ -260,7 +260,7 @@ if __name__ == "__main__":
 
 ## CI/CD Workflows
 
-The project uses three separate GitHub Actions workflows to manage continuous integration and deployment:
+The project uses two separate GitHub Actions workflows to manage continuous integration and deployment:
 
 ### Test Workflow (`test.yml`)
 - **Trigger**: Runs on every push to `main`/`master` branches and on all pull requests
@@ -271,31 +271,25 @@ The project uses three separate GitHub Actions workflows to manage continuous in
   - Runs tests on macOS (macos-14, aarch64)
   - Runs benchmarks (after Linux tests pass)
 
-### Build Workflow (`build.yml`)
+### Build & Release Workflow (`build.yml`)
 - **Trigger**: Runs only on version tags (e.g., `v0.1.15`) or manual workflow dispatch
-- **Purpose**: Build release artifacts for all supported platforms
+- **Purpose**: Build release artifacts for all supported platforms and publish to PyPI
 - **Jobs**:
   - Builds wheels for Linux (x86_64, x86, aarch64, armv7) with both glibc and musl
   - Builds wheels for Windows (x64, x86)
   - Builds wheels for macOS (x86_64, aarch64)
   - Builds source distribution (sdist)
   - Includes support for free-threaded Python 3.13t
-  - All build artifacts are uploaded for the release workflow
-
-### Release Workflow (`release.yml`)
-- **Trigger**: Runs automatically after a successful Build workflow for version tags
-- **Purpose**: Publish to PyPI and update benchmarks
-- **Jobs**:
-  - Downloads all build artifacts from the Build workflow
-  - Generates artifact attestations for security
-  - Publishes to PyPI using Maturin
-  - Updates benchmark images in the repository
+  - After all builds complete successfully:
+    - Publishes to PyPI (only on tags)
+    - Generates artifact attestations for security
+    - Updates benchmark images in the repository
 
 This separation ensures:
 - Fast CI feedback on every commit (tests run in ~5 minutes)
-- Expensive builds only run for releases
+- Expensive builds only run for releases (triggered by tags)
 - Release only happens if all platform builds succeed
-- Clear separation of concerns between testing, building, and releasing
+- Clear separation of concerns between testing and releasing
 
 ## Precompiled wheels
 
