@@ -269,14 +269,17 @@ Provides precompiled wheels for the following platforms:
   
 ## CI
 
-| Job | PRs | Tags (Release) | Weekly (Sunday) | Manual |
-|-----|:---:|:--------------:|:---------------:|:------:|
-| `test` (Python 3.9-3.13) | ✓ | | | |
-| `linux`, `musllinux`, `windows`, `macos`, `sdist` | | ✓ | ✓ | ✓ |
-| `release` (PyPI publish) | | ✓ | | ✓ |
-| `benchmark` | | ✓ | ✓ | ✓ |
+| Job | PRs | Push to main | Tags (Release) | Weekly (Sunday) | Manual |
+|-----|:---:|:------------:|:--------------:|:---------------:|:------:|
+| `test` (Python 3.10-3.13) | ✓ | | | | |
+| `docs` (build) | ✓ | | | | |
+| `docs` (deploy) | | ✓ | | | |
+| `linux`, `musllinux`, `windows`, `macos`, `sdist` | | | ✓ | ✓ | ✓ |
+| `release` (PyPI publish) | | | ✓ | | ✓ |
+| `benchmark` | | | ✓ | ✓ | ✓ |
 
-- **PRs**: Run tests across Python 3.9-3.13 matrix on Linux
+- **PRs**: Run tests across Python 3.10-3.13 matrix and verify docs build
+- **Push to main**: Deploy docs to GitHub Pages
 - **Tags/Weekly/Manual**: Full multi-platform wheel builds with benchmarks
 
 ## Acknowledgements

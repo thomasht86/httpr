@@ -33,6 +33,21 @@ jobs:
           uv run maturin develop
           uv run pytest
 
+  # Docs build test - runs on PRs to catch broken docs early
+  docs:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: false
+      - name: Build docs
+        run: |
+          uv sync --extra docs
+          uv run mkdocs build --strict
+
   # Build jobs - run on tags, weekly schedule, or manual dispatch
   linux:
     runs-on: ${{ matrix.platform.runner }}
