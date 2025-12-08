@@ -57,7 +57,7 @@ AsyncPACKAGES = [
     ("httpx", httpx.AsyncClient),
     ("curl_cffi", curl_cffi.requests.AsyncSession),
     ("httpr", httpr.AsyncClient),
-    ("aiohttp", aiohttp.ClientSession),
+    ("aiohttp", partial(aiohttp.ClientSession, timeout=aiohttp.ClientTimeout(total=60))),
 ]
 
 
