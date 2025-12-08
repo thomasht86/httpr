@@ -53,11 +53,18 @@ PACKAGES = [
     ("pycurl", PycurlSession),
     ("httpr", httpr.Client),
 ]
+def aiohttp_session_factory():
+    return aiohttp.ClientSession(
+        timeout=aiohttp.ClientTimeout(total=60),
+        connector=aiohttp.TCPConnector(limit=0),
+    )
+
+
 AsyncPACKAGES = [
     ("httpx", httpx.AsyncClient),
     ("curl_cffi", curl_cffi.requests.AsyncSession),
     ("httpr", httpr.AsyncClient),
-    ("aiohttp", partial(aiohttp.ClientSession, timeout=aiohttp.ClientTimeout(total=60))),
+    ("aiohttp", aiohttp_session_factory),
 ]
 
 
