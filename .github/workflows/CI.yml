@@ -58,6 +58,7 @@ jobs:
           #   manylinux: auto
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -66,8 +67,7 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          pip install toml
-          python .github/workflows/set_version.py $TAG_VERSION
+          uvx --with toml python .github/workflows/set_version.py $TAG_VERSION
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -92,11 +92,8 @@ jobs:
         shell: bash
         run: |
           set -e
-          python3 -m venv .venv
-          source .venv/bin/activate
-          pip install httpr --find-links dist --force-reinstall
-          pip install httpr[dev]
-          pytest
+          uv sync --extra dev --find-links dist --reinstall
+          uv run pytest
       - name: pytest
         if: ${{ !startsWith(matrix.platform.target, 'x86') && matrix.platform.target != 'ppc64le' }}
         uses: uraimo/run-on-arch-action@v2
@@ -106,12 +103,13 @@ jobs:
           githubToken: ${{ github.token }}
           install: |
             apt-get update
-            apt-get install -y --no-install-recommends python3 python3-pip rustc cargo libffi-dev gcc python3-dev libssl-dev
+            apt-get install -y --no-install-recommends python3 python3-pip rustc cargo libffi-dev gcc python3-dev libssl-dev curl
+            curl -LsSf https://astral.sh/uv/install.sh | sh
           run: |
             set -e
-            pip3 install httpr --find-links dist --force-reinstall
-            pip3 install httpr[dev]
-            pytest
+            export PATH="$HOME/.local/bin:$PATH"
+            uv sync --extra dev --find-links dist --reinstall
+            uv run pytest
 
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
@@ -128,6 +126,7 @@ jobs:
           #   target: armv7
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -136,8 +135,7 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          pip install toml
-          python .github/workflows/set_version.py $TAG_VERSION
+          uvx --with toml python .github/workflows/set_version.py $TAG_VERSION
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -165,12 +163,11 @@ jobs:
           options: -v ${{ github.workspace }}:/io -w /io
           run: |
             set -e
-            apk add py3-pip py3-virtualenv rust cargo libffi-dev gcc python3-dev openssl-dev
-            python3 -m virtualenv .venv
-            source .venv/bin/activate
-            pip install httpr --no-index --find-links dist --force-reinstall
-            pip install httpr[dev]
-            pytest
+            apk add py3-pip rust cargo libffi-dev gcc python3-dev openssl-dev curl
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            export PATH="$HOME/.local/bin:$PATH"
+            uv sync --extra dev --no-index --find-links dist --reinstall
+            uv run pytest
       - name: pytest
         if: ${{ !startsWith(matrix.platform.target, 'x86') }}
         uses: uraimo/run-on-arch-action@v2
@@ -179,14 +176,13 @@ jobs:
           distro: alpine_latest
           githubToken: ${{ github.token }}
           install: |
-            apk add py3-virtualenv rust cargo libffi-dev gcc python3-dev openssl-dev
+            apk add rust cargo libffi-dev gcc python3-dev openssl-dev curl
+            curl -LsSf https://astral.sh/uv/install.sh | sh
           run: |
             set -e
-            python3 -m virtualenv .venv
-            source .venv/bin/activate
-            pip install httpr --find-links dist --force-reinstall
-            pip install httpr[dev]
-            pytest
+            export PATH="$HOME/.local/bin:$PATH"
+            uv sync --extra dev --find-links dist --reinstall
+            uv run pytest
 
   windows:
     runs-on: ${{ matrix.platform.runner }}
@@ -199,6 +195,7 @@ jobs:
             target: x86
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -209,8 +206,7 @@ jobs:
         shell: pwsh
         run: |
           $TAG_VERSION = $env:GITHUB_REF -replace 'refs/tags/v', ''
-          pip install toml
-          python .github/workflows/set_version.py $TAG_VERSION
+          uvx --with toml python .github/workflows/set_version.py $TAG_VERSION
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -232,11 +228,8 @@ jobs:
         shell: bash
         run: |
           set -e
-          python3 -m venv .venv
-          source .venv/Scripts/activate
-          pip install httpr --only-binary :all: --find-links dist --force-reinstall
-          pip install httpr[dev]
-          pytest
+          uv sync --extra dev --find-links dist --reinstall
+          uv run pytest
 
   macos:
     runs-on: ${{ matrix.platform.runner }}
@@ -249,6 +242,7 @@ jobs:
             target: aarch64
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -257,8 +251,7 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          pip install toml
-          python .github/workflows/set_version.py $TAG_VERSION
+          uvx --with toml python .github/workflows/set_version.py $TAG_VERSION
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -279,16 +272,14 @@ jobs:
       - name: pytest
         run: |
           set -e
-          python3 -m venv .venv
-          source .venv/bin/activate
-          pip install httpr --find-links dist --force-reinstall
-          pip install httpr[dev]
-          pytest
+          uv sync --extra dev --find-links dist --reinstall
+          uv run pytest
 
   sdist:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -297,8 +288,7 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          pip install toml
-          python .github/workflows/set_version.py $TAG_VERSION
+          uvx --with toml python .github/workflows/set_version.py $TAG_VERSION
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
@@ -347,28 +337,25 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v7
         with:
-          python-version: 3.12
+          python-version: "3.12"
       - name: Download wheels
         uses: actions/download-artifact@v4
         with:
           name: wheels-linux-x86_64
       - name: Install dependencies
-        run: |
-          pip install -r benchmark/requirements.txt
-          pip install httpr --no-index --find-links ./ --force-reinstall
+        run: uv sync --package benchmark --find-links ./ --reinstall
       - name: Start Uvicorn server
         run: |
-          uvicorn benchmark.server:app --host 0.0.0.0 --port 8000 &
+          uv run --package benchmark uvicorn benchmark.server:app --host 0.0.0.0 --port 8000 &
           sleep 10
       - name: Run benchmark
-        run: python benchmark/benchmark.py
+        run: uv run --package benchmark python benchmark/benchmark.py
       - name: Generate and commit benchmark image
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          python benchmark/generate_image.py
+          uv run --package benchmark python benchmark/generate_image.py
           git config --global user.name 'github-actions[bot]'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add *.jpg
