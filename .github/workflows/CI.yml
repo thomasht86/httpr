@@ -103,7 +103,8 @@ jobs:
             pip3 install -U pip
           run: |
             set -e
-            pip3 install "httpr[dev]" --find-links dist --force-reinstall
+            pip3 install httpr --find-links dist --no-index --force-reinstall
+            pip3 install certifi pytest pytest-asyncio pytest-httpbin mypy ruff maturin trustme
             pytest
 
   musllinux:
@@ -161,7 +162,8 @@ jobs:
             apk add py3-pip py3-virtualenv
             python3 -m virtualenv .venv
             source .venv/bin/activate
-            pip install "httpr[dev]" --find-links dist --force-reinstall
+            pip install httpr --find-links dist --no-index --force-reinstall
+            pip install certifi pytest pytest-asyncio pytest-httpbin mypy ruff maturin trustme
             pytest
 
   windows:
