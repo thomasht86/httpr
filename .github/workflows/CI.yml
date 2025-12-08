@@ -59,9 +59,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: "3.12"
       # Only modify pyproject.toml temporarily for this job if running from a tag
       - name: Update version in pyproject.toml
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
@@ -127,9 +126,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: "3.12"
       # Only modify pyproject.toml temporarily for this job if running from a tag
       - name: Update version in pyproject.toml
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
@@ -196,10 +194,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v5
         with:
-          python-version: 3.x
-          architecture: ${{ matrix.platform.target }}
+          python-version: "3.12"
       # Only modify pyproject.toml temporarily for this job if running from a tag
       - name: Update version in pyproject.toml
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
@@ -243,9 +239,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: "3.12"
       # Only modify pyproject.toml temporarily for this job if running from a tag
       - name: Update version in pyproject.toml
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
@@ -280,9 +275,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: "3.12"
       # Only modify pyproject.toml temporarily for this job if running from a tag
       - name: Update version in pyproject.toml
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
