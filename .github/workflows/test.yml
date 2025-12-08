@@ -97,8 +97,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: wheels-test-linux-x86_64
+          path: ./wheels
       - name: Install dependencies
-        run: uv sync --package benchmark --find-links ./ --reinstall
+        run: uv sync --package benchmark --find-links ./wheels --reinstall
       - name: Start Uvicorn server
         run: |
           uv run --package benchmark uvicorn benchmark.server:app --host 0.0.0.0 --port 8000 &
