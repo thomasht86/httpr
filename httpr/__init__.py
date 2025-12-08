@@ -1,9 +1,36 @@
+"""
+httpr - Blazing fast HTTP client for Python, built in Rust.
+
+httpr is a high-performance HTTP client that can be used as a drop-in replacement
+for `httpx` and `requests` in most cases.
+
+Example:
+    Simple GET request:
+
+    ```python
+    import httpr
+
+    response = httpr.get("https://httpbin.org/get")
+    print(response.json())
+    ```
+
+    Using a client for connection pooling:
+
+    ```python
+    import httpr
+
+    with httpr.Client() as client:
+        response = client.get("https://httpbin.org/get")
+        print(response.status_code)
+    ```
+"""
+
 from __future__ import annotations
 
 import asyncio
 import sys
 from functools import partial
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 if sys.version_info <= (3, 11):
     from typing_extensions import Unpack
@@ -27,7 +54,50 @@ else:
 
 
 class Client(RClient):
-    """Initializes an HTTP client"""
+    """
+    A synchronous HTTP client with connection pooling.
+
+    The Client class provides a high-level interface for making HTTP requests.
+    It supports connection pooling, automatic cookie handling, and various
+    authentication methods.
+
+    Example:
+        Basic usage:
+
+        ```python
+        import httpr
+
+        # Using context manager (recommended)
+        with httpr.Client() as client:
+            response = client.get("https://httpbin.org/get")
+            print(response.json())
+
+        # Or manually
+        client = httpr.Client()
+        response = client.get("https://httpbin.org/get")
+        client.close()
+        ```
+
+        With configuration:
+
+        ```python
+        import httpr
+
+        client = httpr.Client(
+            auth_bearer="your-api-token",
+            headers={"User-Agent": "my-app/1.0"},
+            timeout=30,
+        )
+        ```
+
+    Attributes:
+        headers: Default headers sent with all requests. Excludes Cookie header.
+        cookies: Default cookies sent with all requests.
+        auth: Basic auth credentials as (username, password) tuple.
+        params: Default query parameters added to all requests.
+        timeout: Default timeout in seconds.
+        proxy: Proxy URL for requests.
+    """
 
     def __init__(
         self,
@@ -49,111 +119,546 @@ class Client(RClient):
         http2_only: bool | None = False,
     ):
         """
+        Initialize an HTTP client.
+
         Args:
-            auth: a tuple containing the username and an optional password for basic authentication. Default is None.
-            auth_bearer: a string representing the bearer token for bearer token authentication. Default is None.
-            params: a map of query parameters to append to the URL. Default is None.
-            headers: an optional map of HTTP headers to send with requests.
-            cookies: an optional map of cookies to send with requests as the `Cookie` header.
-            cookie_store: enable a persistent cookie store. Received cookies will be preserved and included
-                 in additional requests. Default is True.
-            referer: automatic setting of the `Referer` header. Default is True.
-            proxy: proxy URL for HTTP requests, example: "socks5://127.0.0.1:9150". Default is None.
-            timeout: timeout for HTTP requests in seconds. Default is 30.
-            follow_redirects: a boolean to enable or disable following redirects. Default is True.
-            max_redirects: the maximum number of redirects if `follow_redirects` is True. Default is 20.
-            verify: an optional boolean indicating whether to verify SSL certificates. Default is True.
-            ca_cert_file: path to CA certificate store. Default is None.
-            client_pem: path to client certificate file. Default is None.
-            https_only: restrict the Client to be used with HTTPS only requests. Default is False.
-            http2_only: if true - use only HTTP/2, if false - use only HTTP/1. Default is False.
+            auth: Basic auth credentials as (username, password). Password can be None.
+            auth_bearer: Bearer token for Authorization header.
+            params: Default query parameters to include in all requests.
+            headers: Default headers to send with all requests.
+            cookies: Default cookies to send with all requests.
+            cookie_store: Enable persistent cookie store. Cookies from responses will be
+                preserved and included in subsequent requests. Default is True.
+            referer: Automatically set Referer header. Default is True.
+            proxy: Proxy URL (e.g., "http://proxy:8080" or "socks5://127.0.0.1:1080").
+                Falls back to HTTPR_PROXY environment variable.
+            timeout: Request timeout in seconds. Default is 30.
+            follow_redirects: Follow HTTP redirects. Default is True.
+            max_redirects: Maximum redirects to follow. Default is 20.
+            verify: Verify SSL certificates. Default is True.
+            ca_cert_file: Path to CA certificate bundle (PEM format).
+            client_pem: Path to client certificate for mTLS (PEM format).
+            https_only: Only allow HTTPS requests. Default is False.
+            http2_only: Use HTTP/2 only (False uses HTTP/1.1). Default is False.
+
+        Example:
+            ```python
+            import httpr
+
+            # Simple client
+            client = httpr.Client()
+
+            # Client with authentication
+            client = httpr.Client(
+                auth=("username", "password"),
+                timeout=60,
+            )
+
+            # Client with bearer token
+            client = httpr.Client(
+                auth_bearer="your-api-token",
+                headers={"Accept": "application/json"},
+            )
+
+            # Client with proxy
+            client = httpr.Client(proxy="http://proxy.example.com:8080")
+
+            # Client with mTLS
+            client = httpr.Client(
+                client_pem="/path/to/client.pem",
+                ca_cert_file="/path/to/ca.pem",
+            )
+            ```
         """
         super().__init__()
 
     def __enter__(self) -> Client:
+        """Enter context manager."""
         return self
 
     def __exit__(self, *args):
+        """Exit context manager and close client."""
         del self
 
-    def request(self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> Response:
-        # Validate the HTTP method. Raise an exception if it's not supported.
+    def close(self) -> None:
+        """
+        Close the client and release resources.
+
+        Example:
+            ```python
+            client = httpr.Client()
+            try:
+                response = client.get("https://example.com")
+            finally:
+                client.close()
+            ```
+        """
+        del self
+
+    def request(
+        self,
+        method: HttpMethod,
+        url: str,
+        **kwargs: Unpack[RequestParams],
+    ) -> Response:
+        """
+        Make an HTTP request.
+
+        Args:
+            method: HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS).
+            url: Request URL.
+            **kwargs: Request parameters (see below).
+
+        Keyword Args:
+            params: Query parameters to append to URL.
+            headers: Request headers (merged with client defaults).
+            cookies: Request cookies (merged with client defaults).
+            auth: Basic auth credentials (overrides client default).
+            auth_bearer: Bearer token (overrides client default).
+            timeout: Request timeout in seconds (overrides client default).
+            content: Raw bytes for request body.
+            data: Form data for request body (application/x-www-form-urlencoded).
+            json: JSON data for request body (application/json).
+            files: Files for multipart upload (dict mapping field names to file paths).
+
+        Returns:
+            Response object with status, headers, and body.
+
+        Raises:
+            ValueError: If method is not a valid HTTP method.
+            Exception: If request fails (timeout, connection error, etc.).
+
+        Example:
+            ```python
+            response = client.request("GET", "https://httpbin.org/get")
+            response = client.request("POST", "https://httpbin.org/post", json={"key": "value"})
+            ```
+
+        Note:
+            Only one of `content`, `data`, `json`, or `files` can be specified per request.
+        """
         if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
             raise ValueError(f"Unsupported HTTP method: {method}")
-            # Convert all params values to strings if params is present
         if "params" in kwargs and kwargs["params"] is not None:
             kwargs["params"] = {k: str(v) for k, v in kwargs["params"].items()}
 
         return super().request(method=method, url=url, **kwargs)
 
     def get(self, url: str, **kwargs: Unpack[RequestParams]) -> Response:
+        """
+        Make a GET request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters (params, headers, cookies, auth, auth_bearer, timeout).
+
+        Returns:
+            Response object.
+
+        Example:
+            ```python
+            response = client.get(
+                "https://httpbin.org/get",
+                params={"key": "value"},
+                headers={"Accept": "application/json"},
+            )
+            print(response.json())
+            ```
+        """
         return self.request(method="GET", url=url, **kwargs)
 
     def head(self, url: str, **kwargs: Unpack[RequestParams]) -> Response:
+        """
+        Make a HEAD request.
+
+        Returns only headers, no response body.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters (params, headers, cookies, auth, auth_bearer, timeout).
+
+        Returns:
+            Response object (body will be empty).
+
+        Example:
+            ```python
+            response = client.head("https://httpbin.org/get")
+            print(response.headers["content-length"])
+            ```
+        """
         return self.request(method="HEAD", url=url, **kwargs)
 
     def options(self, url: str, **kwargs: Unpack[RequestParams]) -> Response:
+        """
+        Make an OPTIONS request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters (params, headers, cookies, auth, auth_bearer, timeout).
+
+        Returns:
+            Response object.
+
+        Example:
+            ```python
+            response = client.options("https://httpbin.org/get")
+            print(response.headers.get("allow"))
+            ```
+        """
         return self.request(method="OPTIONS", url=url, **kwargs)
 
     def delete(self, url: str, **kwargs: Unpack[RequestParams]) -> Response:
+        """
+        Make a DELETE request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters (params, headers, cookies, auth, auth_bearer, timeout).
+
+        Returns:
+            Response object.
+
+        Example:
+            ```python
+            response = client.delete("https://httpbin.org/delete")
+            print(response.status_code)
+            ```
+        """
         return self.request(method="DELETE", url=url, **kwargs)
 
     def post(self, url: str, **kwargs: Unpack[RequestParams]) -> Response:
+        """
+        Make a POST request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters including body options.
+
+        Keyword Args:
+            params: Query parameters.
+            headers: Request headers.
+            cookies: Request cookies.
+            auth: Basic auth credentials.
+            auth_bearer: Bearer token.
+            timeout: Request timeout.
+            content: Raw bytes body.
+            data: Form-encoded body.
+            json: JSON body.
+            files: Multipart file uploads.
+
+        Returns:
+            Response object.
+
+        Example:
+            ```python
+            # JSON body
+            response = client.post(
+                "https://httpbin.org/post",
+                json={"name": "httpr", "fast": True},
+            )
+
+            # Form data
+            response = client.post(
+                "https://httpbin.org/post",
+                data={"username": "user", "password": "pass"},
+            )
+
+            # File upload
+            response = client.post(
+                "https://httpbin.org/post",
+                files={"document": "/path/to/file.pdf"},
+            )
+            ```
+        """
         return self.request(method="POST", url=url, **kwargs)
 
     def put(self, url: str, **kwargs: Unpack[RequestParams]) -> Response:
+        """
+        Make a PUT request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters including body options.
+
+        Returns:
+            Response object.
+
+        Example:
+            ```python
+            response = client.put(
+                "https://httpbin.org/put",
+                json={"key": "updated_value"},
+            )
+            ```
+        """
         return self.request(method="PUT", url=url, **kwargs)
 
     def patch(self, url: str, **kwargs: Unpack[RequestParams]) -> Response:
+        """
+        Make a PATCH request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters including body options.
+
+        Returns:
+            Response object.
+
+        Example:
+            ```python
+            response = client.patch(
+                "https://httpbin.org/patch",
+                json={"field": "new_value"},
+            )
+            ```
+        """
         return self.request(method="PATCH", url=url, **kwargs)
 
 
 class AsyncClient(Client):
+    """
+    An asynchronous HTTP client for use with asyncio.
+
+    AsyncClient wraps the synchronous Client using asyncio.run_in_executor(),
+    providing an async interface while leveraging the Rust implementation's
+    performance.
+
+    Example:
+        Basic usage:
+
+        ```python
+        import asyncio
+        import httpr
+
+        async def main():
+            async with httpr.AsyncClient() as client:
+                response = await client.get("https://httpbin.org/get")
+                print(response.json())
+
+        asyncio.run(main())
+        ```
+
+        Concurrent requests:
+
+        ```python
+        import asyncio
+        import httpr
+
+        async def main():
+            async with httpr.AsyncClient() as client:
+                tasks = [
+                    client.get("https://httpbin.org/get"),
+                    client.get("https://httpbin.org/ip"),
+                ]
+                responses = await asyncio.gather(*tasks)
+                for response in responses:
+                    print(response.json())
+
+        asyncio.run(main())
+        ```
+
+    Note:
+        AsyncClient runs synchronous Rust code in a thread executor.
+        It provides concurrency benefits for I/O-bound tasks but is not
+        native async I/O.
+    """
+
     def __init__(self, *args, **kwargs):
+        """
+        Initialize an async HTTP client.
+
+        Accepts the same parameters as Client.
+        """
         super().__init__(*args, **kwargs)
 
     async def __aenter__(self) -> AsyncClient:
+        """Enter async context manager."""
         return self
 
     async def __aexit__(self, *args):
+        """Exit async context manager and close client."""
         del self
 
     async def aclose(self):
+        """
+        Close the async client.
+
+        Example:
+            ```python
+            client = httpr.AsyncClient()
+            try:
+                response = await client.get("https://example.com")
+            finally:
+                await client.aclose()
+            ```
+        """
         del self
         return
 
     async def _run_sync_asyncio(self, fn, *args, **kwargs):
+        """Run a synchronous function in an executor."""
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(fn, *args, **kwargs))
 
-    async def request(self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]):  # type: ignore
+    async def request(  # type: ignore[override]
+        self,
+        method: HttpMethod,
+        url: str,
+        **kwargs: Unpack[RequestParams],
+    ) -> Response:
+        """
+        Make an async HTTP request.
+
+        Args:
+            method: HTTP method.
+            url: Request URL.
+            **kwargs: Request parameters.
+
+        Returns:
+            Response object.
+
+        Example:
+            ```python
+            response = await client.request("GET", "https://httpbin.org/get")
+            ```
+        """
         if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
             raise ValueError(f"Unsupported HTTP method: {method}")
-            # Convert all params values to strings if params is present
         if "params" in kwargs and kwargs["params"] is not None:
             kwargs["params"] = {k: str(v) for k, v in kwargs["params"].items()}
 
         return await self._run_sync_asyncio(super().request, method=method, url=url, **kwargs)
 
-    async def get(self, url: str, **kwargs: Unpack[RequestParams]):  # type: ignore
+    async def get(  # type: ignore[override]
+        self,
+        url: str,
+        **kwargs: Unpack[RequestParams],
+    ) -> Response:
+        """
+        Make an async GET request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters.
+
+        Returns:
+            Response object.
+
+        Example:
+            ```python
+            response = await client.get("https://httpbin.org/get")
+            ```
+        """
         return await self.request(method="GET", url=url, **kwargs)
 
-    async def head(self, url: str, **kwargs: Unpack[RequestParams]):  # type: ignore
+    async def head(  # type: ignore[override]
+        self,
+        url: str,
+        **kwargs: Unpack[RequestParams],
+    ) -> Response:
+        """
+        Make an async HEAD request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters.
+
+        Returns:
+            Response object.
+        """
         return await self.request(method="HEAD", url=url, **kwargs)
 
-    async def options(self, url: str, **kwargs: Unpack[RequestParams]):  # type: ignore
+    async def options(  # type: ignore[override]
+        self,
+        url: str,
+        **kwargs: Unpack[RequestParams],
+    ) -> Response:
+        """
+        Make an async OPTIONS request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters.
+
+        Returns:
+            Response object.
+        """
         return await self.request(method="OPTIONS", url=url, **kwargs)
 
-    async def delete(self, url: str, **kwargs: Unpack[RequestParams]):  # type: ignore
+    async def delete(  # type: ignore[override]
+        self,
+        url: str,
+        **kwargs: Unpack[RequestParams],
+    ) -> Response:
+        """
+        Make an async DELETE request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters.
+
+        Returns:
+            Response object.
+        """
         return await self.request(method="DELETE", url=url, **kwargs)
 
-    async def post(self, url: str, **kwargs: Unpack[RequestParams]):  # type: ignore
+    async def post(  # type: ignore[override]
+        self,
+        url: str,
+        **kwargs: Unpack[RequestParams],
+    ) -> Response:
+        """
+        Make an async POST request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters including body options.
+
+        Returns:
+            Response object.
+
+        Example:
+            ```python
+            response = await client.post(
+                "https://httpbin.org/post",
+                json={"key": "value"},
+            )
+            ```
+        """
         return await self.request(method="POST", url=url, **kwargs)
 
-    async def put(self, url: str, **kwargs: Unpack[RequestParams]):  # type: ignore
+    async def put(  # type: ignore[override]
+        self,
+        url: str,
+        **kwargs: Unpack[RequestParams],
+    ) -> Response:
+        """
+        Make an async PUT request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters including body options.
+
+        Returns:
+            Response object.
+        """
         return await self.request(method="PUT", url=url, **kwargs)
 
-    async def patch(self, url: str, **kwargs: Unpack[RequestParams]):  # type: ignore
+    async def patch(  # type: ignore[override]
+        self,
+        url: str,
+        **kwargs: Unpack[RequestParams],
+    ) -> Response:
+        """
+        Make an async PATCH request.
+
+        Args:
+            url: Request URL.
+            **kwargs: Request parameters including body options.
+
+        Returns:
+            Response object.
+        """
         return await self.request(method="PATCH", url=url, **kwargs)
 
 
@@ -164,24 +669,31 @@ def request(
     ca_cert_file: str | None = None,
     client_pem: str | None = None,
     **kwargs: Unpack[RequestParams],
-):
+) -> Response:
     """
+    Make an HTTP request using a temporary client.
+
+    This is a convenience function for one-off requests. For multiple requests,
+    use a Client instance for better performance (connection pooling).
+
     Args:
-        method: the HTTP method to use (e.g., "GET", "POST").
-        url: the URL to which the request will be made.
-        verify: an optional boolean indicating whether to verify SSL certificates. Default is True.
-        ca_cert_file: path to CA certificate store. Default is None.
-        client_pem: path to client certificate file. Default is None.
-        auth: a tuple containing the username and an optional password for basic authentication. Default is None.
-        auth_bearer: a string representing the bearer token for bearer token authentication. Default is None.
-        params: a map of query parameters to append to the URL. Default is None.
-        headers: an optional map of HTTP headers to send with requests. If `impersonate` is set, this will be ignored.
-        cookies: an optional map of cookies to send with requests as the `Cookie` header.
-        timeout: the timeout for the request in seconds. Default is 30.
-        content: the content to send in the request body as bytes. Default is None.
-        data: the form data to send in the request body. Default is None.
-        json: a JSON serializable object to send in the request body. Default is None.
-        files: a map of file fields to file paths to be sent as multipart/form-data. Default is None.
+        method: HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS).
+        url: Request URL.
+        verify: Verify SSL certificates. Default is True.
+        ca_cert_file: Path to CA certificate bundle.
+        client_pem: Path to client certificate for mTLS.
+        **kwargs: Additional request parameters.
+
+    Returns:
+        Response object.
+
+    Example:
+        ```python
+        import httpr
+
+        response = httpr.request("GET", "https://httpbin.org/get")
+        response = httpr.request("POST", "https://httpbin.org/post", json={"key": "value"})
+        ```
     """
     with Client(
         verify=verify,
@@ -191,29 +703,168 @@ def request(
         return client.request(method, url, **kwargs)
 
 
-def get(url: str, **kwargs: Unpack[ClientRequestParams]):
+def get(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response:
+    """
+    Make a GET request using a temporary client.
+
+    Args:
+        url: Request URL.
+        **kwargs: Request parameters (params, headers, cookies, auth, timeout, etc.).
+
+    Returns:
+        Response object.
+
+    Example:
+        ```python
+        import httpr
+
+        response = httpr.get("https://httpbin.org/get", params={"key": "value"})
+        print(response.json())
+        ```
+    """
     return request(method="GET", url=url, **kwargs)
 
 
-def head(url: str, **kwargs: Unpack[ClientRequestParams]):
+def head(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response:
+    """
+    Make a HEAD request using a temporary client.
+
+    Args:
+        url: Request URL.
+        **kwargs: Request parameters.
+
+    Returns:
+        Response object (body will be empty).
+
+    Example:
+        ```python
+        import httpr
+
+        response = httpr.head("https://httpbin.org/get")
+        print(response.headers)
+        ```
+    """
     return request(method="HEAD", url=url, **kwargs)
 
 
-def options(url: str, **kwargs: Unpack[ClientRequestParams]):
+def options(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response:
+    """
+    Make an OPTIONS request using a temporary client.
+
+    Args:
+        url: Request URL.
+        **kwargs: Request parameters.
+
+    Returns:
+        Response object.
+
+    Example:
+        ```python
+        import httpr
+
+        response = httpr.options("https://httpbin.org/get")
+        ```
+    """
     return request(method="OPTIONS", url=url, **kwargs)
 
 
-def delete(url: str, **kwargs: Unpack[ClientRequestParams]):
+def delete(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response:
+    """
+    Make a DELETE request using a temporary client.
+
+    Args:
+        url: Request URL.
+        **kwargs: Request parameters.
+
+    Returns:
+        Response object.
+
+    Example:
+        ```python
+        import httpr
+
+        response = httpr.delete("https://httpbin.org/delete")
+        ```
+    """
     return request(method="DELETE", url=url, **kwargs)
 
 
-def post(url: str, **kwargs: Unpack[ClientRequestParams]):
+def post(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response:
+    """
+    Make a POST request using a temporary client.
+
+    Args:
+        url: Request URL.
+        **kwargs: Request parameters (json, data, content, files, etc.).
+
+    Returns:
+        Response object.
+
+    Example:
+        ```python
+        import httpr
+
+        # JSON body
+        response = httpr.post("https://httpbin.org/post", json={"key": "value"})
+
+        # Form data
+        response = httpr.post("https://httpbin.org/post", data={"field": "value"})
+        ```
+    """
     return request(method="POST", url=url, **kwargs)
 
 
-def put(url: str, **kwargs: Unpack[ClientRequestParams]):
+def put(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response:
+    """
+    Make a PUT request using a temporary client.
+
+    Args:
+        url: Request URL.
+        **kwargs: Request parameters.
+
+    Returns:
+        Response object.
+
+    Example:
+        ```python
+        import httpr
+
+        response = httpr.put("https://httpbin.org/put", json={"key": "value"})
+        ```
+    """
     return request(method="PUT", url=url, **kwargs)
 
 
-def patch(url: str, **kwargs: Unpack[ClientRequestParams]):
+def patch(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response:
+    """
+    Make a PATCH request using a temporary client.
+
+    Args:
+        url: Request URL.
+        **kwargs: Request parameters.
+
+    Returns:
+        Response object.
+
+    Example:
+        ```python
+        import httpr
+
+        response = httpr.patch("https://httpbin.org/patch", json={"field": "new_value"})
+        ```
+    """
     return request(method="PATCH", url=url, **kwargs)
+
+
+__all__ = [
+    "Client",
+    "AsyncClient",
+    "request",
+    "get",
+    "head",
+    "options",
+    "delete",
+    "post",
+    "put",
+    "patch",
+]
