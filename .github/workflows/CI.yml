@@ -159,7 +159,7 @@ jobs:
           options: -v ${{ github.workspace }}:/io -w /io
           run: |
             set -e
-            apk add py3-pip py3-virtualenv
+            apk add py3-pip py3-virtualenv python3-dev build-base libffi-dev
             python3 -m virtualenv .venv
             source .venv/bin/activate
             pip install httpr --find-links dist --no-index --force-reinstall
