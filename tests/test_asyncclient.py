@@ -1,31 +1,9 @@
-import asyncio
 import pytest
-
-import certifi
 import httpr
 
 
-def async_retry(max_retries=3, delay=1):
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
-            for attempt in range(max_retries):
-                try:
-                    return await func(*args, **kwargs)
-                except Exception as e:
-                    if attempt < max_retries - 1:
-                        await asyncio.sleep(delay)
-                        continue
-                    else:
-                        raise e
-
-        return wrapper
-
-    return decorator
-
-
 @pytest.mark.asyncio
-@async_retry()
-async def test_asyncclient_init():
+async def test_asyncclient_init(base_url_ssl, ca_bundle):
     auth = ("user", "password")
     headers = {"X-Test": "test"}
     cookies = {"ccc": "ddd", "cccc": "dddd"}
@@ -35,9 +13,9 @@ async def test_asyncclient_init():
         params=params,
         headers=headers,
         cookies=cookies,
-        ca_cert_file=certifi.where(),
+        ca_cert_file=ca_bundle,
     )
-    response = await client.get("https://httpbin.org/anything")
+    response = await client.get(f"{base_url_ssl}/anything")
     assert response.status_code == 200
     json_data = response.json()
     assert json_data["headers"]["X-Test"] == "test"
