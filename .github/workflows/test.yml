@@ -25,12 +25,15 @@ jobs:
         with:
           target: x86_64
           args: --release --out dist
-          sccache: true
+          sccache: false
           manylinux: auto
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-test-linux-x86_64
+          path: dist
       - name: pytest
         shell: bash
-        env:
-          RUSTC_WRAPPER: ""
         run: |
           set -e
           uv sync --extra dev --find-links dist --reinstall
@@ -53,11 +56,9 @@ jobs:
         with:
           target: x64
           args: --release --out dist -i python3.12
-          sccache: true
+          sccache: false
       - name: pytest
         shell: bash
-        env:
-          RUSTC_WRAPPER: ""
         run: |
           set -e
           uv sync --extra dev --find-links dist --reinstall
@@ -76,10 +77,8 @@ jobs:
         with:
           target: aarch64
           args: --release --out dist
-          sccache: true
+          sccache: false
       - name: pytest
-        env:
-          RUSTC_WRAPPER: ""
         run: |
           set -e
           uv sync --extra dev --find-links dist --reinstall
@@ -94,15 +93,12 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: false
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
+      - name: Download wheels
+        uses: actions/download-artifact@v4
         with:
-          target: x86_64
-          args: --release --out dist
-          sccache: true
-          manylinux: auto
+          name: wheels-test-linux-x86_64
       - name: Install dependencies
-        run: uv sync --package benchmark --find-links dist --reinstall
+        run: uv sync --package benchmark --find-links ./ --reinstall
       - name: Start Uvicorn server
         run: |
           uv run --package benchmark uvicorn benchmark.server:app --host 0.0.0.0 --port 8000 &
