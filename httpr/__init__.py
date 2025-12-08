@@ -210,16 +210,16 @@ class Client(RClient):
             **kwargs: Request parameters (see below).
 
         Keyword Args:
-            params: Query parameters to append to URL.
-            headers: Request headers (merged with client defaults).
-            cookies: Request cookies (merged with client defaults).
-            auth: Basic auth credentials (overrides client default).
-            auth_bearer: Bearer token (overrides client default).
-            timeout: Request timeout in seconds (overrides client default).
-            content: Raw bytes for request body.
-            data: Form data for request body (application/x-www-form-urlencoded).
-            json: JSON data for request body (application/json).
-            files: Files for multipart upload (dict mapping field names to file paths).
+            params (dict[str, str] | None): Query parameters to append to URL.
+            headers (dict[str, str] | None): Request headers (merged with client defaults).
+            cookies (dict[str, str] | None): Request cookies (merged with client defaults).
+            auth (tuple[str, str | None] | None): Basic auth credentials (overrides client default).
+            auth_bearer (str | None): Bearer token (overrides client default).
+            timeout (float | None): Request timeout in seconds (overrides client default).
+            content (bytes | None): Raw bytes for request body.
+            data (dict[str, Any] | None): Form data for request body (application/x-www-form-urlencoded).
+            json (Any | None): JSON data for request body (application/json).
+            files (dict[str, str] | None): Files for multipart upload (dict mapping field names to file paths).
 
         Returns:
             Response object with status, headers, and body.
@@ -335,16 +335,16 @@ class Client(RClient):
             **kwargs: Request parameters including body options.
 
         Keyword Args:
-            params: Query parameters.
-            headers: Request headers.
-            cookies: Request cookies.
-            auth: Basic auth credentials.
-            auth_bearer: Bearer token.
-            timeout: Request timeout.
-            content: Raw bytes body.
-            data: Form-encoded body.
-            json: JSON body.
-            files: Multipart file uploads.
+            params (dict[str, str] | None): Query parameters.
+            headers (dict[str, str] | None): Request headers.
+            cookies (dict[str, str] | None): Request cookies.
+            auth (tuple[str, str | None] | None): Basic auth credentials.
+            auth_bearer (str | None): Bearer token.
+            timeout (float | None): Request timeout.
+            content (bytes | None): Raw bytes body.
+            data (dict[str, Any] | None): Form-encoded body.
+            json (Any | None): JSON body.
+            files (dict[str, str] | None): Multipart file uploads.
 
         Returns:
             Response object.
