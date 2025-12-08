@@ -277,6 +277,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
+          enable-cache: false
       # Only modify pyproject.toml temporarily for this job if running from a tag
       - name: Update version in pyproject.toml
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
