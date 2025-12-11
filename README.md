@@ -30,6 +30,7 @@
       - [Examples](#examples)
     - [II. AsyncClient](#ii-asyncclient)
   - [Precompiled wheels](#precompiled-wheels)
+  - [CI](#ci)
   - [Acknowledgements](#acknowledgements)
 
 ## Installation
@@ -266,6 +267,21 @@ Provides precompiled wheels for the following platforms:
 - 🪟 windows: `amd64`
 - 🍏 macos: `amd64`, `aarch64`.
   
+## CI
+
+| Job | PRs | Push to main | Tags (Release) | Weekly (Sunday) | Manual |
+|-----|:---:|:------------:|:--------------:|:---------------:|:------:|
+| `test` (Python 3.10-3.13) | ✓ | | | | |
+| `docs` (build) | ✓ | | | | |
+| `docs` (deploy) | | ✓ | | | |
+| `linux`, `musllinux`, `windows`, `macos`, `sdist` | | | ✓ | ✓ | ✓ |
+| `release` (PyPI publish) | | | ✓ | | ✓ |
+| `benchmark` | | | ✓ | ✓ | ✓ |
+
+- **PRs**: Run tests across Python 3.10-3.13 matrix and verify docs build
+- **Push to main**: Deploy docs to GitHub Pages
+- **Tags/Weekly/Manual**: Full multi-platform wheel builds with benchmarks
+
 ## Acknowledgements
 
 - [uv](https://docs.astral.sh/uv/): The package manager used, and for leading the way in the "Rust for python tools"-sphere.
