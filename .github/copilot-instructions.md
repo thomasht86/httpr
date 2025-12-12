@@ -4,6 +4,30 @@
 
 **httpr** is a high-performance HTTP client for Python built in Rust using PyO3 and reqwest. It's designed as a drop-in replacement for `httpx` and `requests` with significantly better performance through Rust's native speed.
 
+### Directory Structure
+
+```
+httpr/
+├── .github/           # GitHub workflows and configurations
+│   ├── workflows/     # CI/CD pipelines (testing, building, releasing)
+│   └── copilot-instructions.md  # This file
+├── src/              # Rust source code
+│   ├── lib.rs        # Main RClient class, PyO3 module definition
+│   ├── response.rs   # Response object with CaseInsensitiveHeaderMap
+│   ├── traits.rs     # Python↔Rust type conversion traits
+│   └── utils.rs      # CA certificates, encoding detection
+├── httpr/            # Python package
+│   ├── __init__.py   # Client and AsyncClient classes
+│   ├── httpr.pyi     # Type stubs for IDE support
+│   └── py.typed      # PEP 561 marker for type checking
+├── tests/            # Python tests using pytest
+├── benchmark/        # Performance benchmarking suite
+├── docs/             # MkDocs documentation
+├── Cargo.toml        # Rust dependencies and build config
+├── pyproject.toml    # Python project metadata and dependencies
+└── README.md         # User-facing documentation
+```
+
 ### Architecture
 
 - **Rust Core** (`src/`): PyO3-based HTTP client wrapping reqwest
@@ -23,6 +47,22 @@
 2. **Async is Sync**: `AsyncClient` runs sync Rust code in thread executor, NOT native async Rust
 3. **Case-Insensitive Headers**: Custom `CaseInsensitiveHeaderMap` struct maintains original casing while allowing case-insensitive lookups (required for HTTP/2)
 4. **Zero Python Dependencies**: All functionality in Rust; no runtime Python dependencies
+
+### Key Dependencies
+
+**Rust (Cargo.toml)**:
+- `pyo3` (0.23.4): Python bindings, enables calling Rust from Python
+- `reqwest` (0.12): HTTP client library, provides core networking functionality
+- `tokio` (1.43): Async runtime for Rust (single-threaded mode)
+- `anyhow`: Error handling with context
+- `indexmap` + `foldhash`: Fast hash maps for headers/params
+- `rustls-tls`: TLS implementation (no OpenSSL dependency)
+- Compression: `gzip`, `brotli`, `zstd`, `deflate` support
+
+**Python (pyproject.toml)**:
+- **Zero runtime dependencies** - all functionality in Rust
+- Dev dependencies: `pytest`, `pytest-asyncio`, `mypy`, `ruff`, `maturin`
+- Supports Python 3.9+
 
 ## Development Workflows
 
@@ -61,6 +101,41 @@ The benchmark compares httpr against requests, httpx, curl_cffi, pycurl, tls_cli
 2. Push tag: `git push origin v0.1.x`
 3. CI auto-builds wheels for Linux (x86_64, aarch64, armv7), macOS (Intel/ARM), Windows
 4. Maturin publishes to PyPI
+
+### CI/CD
+
+**Workflows** (`.github/workflows/`):
+- `CI.yml`: Main CI pipeline - runs tests, linting, type checking on pull requests
+- `mkdocs.yml`: Documentation deployment to GitHub Pages
+- Platform matrix testing: Linux (multiple architectures), macOS (Intel/ARM), Windows
+- Automated wheel building via `maturin` for all platforms
+- Test suite runs against live httpbin.org endpoints
+
+### Debugging
+
+**Rust Debugging**:
+```bash
+# Enable Rust logging
+RUST_LOG=debug uv run pytest tests/test_client.py -v
+
+# Build with debug symbols (slower but debuggable)
+uv run maturin develop --release=false
+```
+
+**Python Debugging**:
+```python
+# Standard Python debugging works
+import httpr
+client = httpr.Client()
+breakpoint()  # Python debugger
+response = client.get("https://httpbin.org/get")
+```
+
+**Common Issues**:
+- "Module not found" after Rust changes → Run `uv run maturin develop`
+- SSL errors → Check `HTTPR_CA_BUNDLE` environment variable
+- Test failures → httpbin.org may be down; tests use `@retry()` decorator
+- Import errors → Ensure virtual environment is activated
 
 ## Project-Specific Conventions
 
