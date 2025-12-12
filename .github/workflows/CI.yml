@@ -380,7 +380,8 @@ jobs:
             else
               git commit -m "Update benchmark image for ${{ github.ref_name }}"
             fi
-            git push
+            # Push to main branch explicitly (handles detached HEAD state from tag checkout)
+            git push origin HEAD:main
           else
             echo "No changes to commit"
           fi
