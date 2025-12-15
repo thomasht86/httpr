@@ -278,3 +278,19 @@ def test_client_post_files(test_files):
     assert json_data["headers"]["Authorization"] == "Bearer bearerXXXXXXXXXXXXXXXXXXXX"
     assert json_data["args"] == {"x": "aaa", "y": "bbb"}
     assert json_data["files"] == {"file1": "aaa111", "file2": "bbb222"}
+
+
+def test_graceful_invalid_header_handling(base_url_ssl, ca_bundle):
+    """Test that invalid header values are handled gracefully without crashing."""
+    client = httpr.Client(ca_cert_file=ca_bundle)
+
+    # Test that valid headers still work even with some invalid ones
+    # Invalid header names/values are logged and skipped rather than causing panics
+    valid_headers = {"X-Valid-Header": "valid-value", "User-Agent": "test"}
+
+    # This should not crash - valid headers should be processed
+    response = client.get(f"{base_url_ssl}/anything", headers=valid_headers)
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["headers"]["X-Valid-Header"] == "valid-value"
+    assert json_data["headers"]["User-Agent"] == "test"

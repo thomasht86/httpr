@@ -1,6 +1,7 @@
-use anyhow::{Error, Ok, Result};
+use anyhow::{Error, Result};
 use foldhash::fast::RandomState;
 use indexmap::IndexMap;
+use tracing;
 
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 
@@ -19,12 +20,18 @@ impl HeadersTraits for IndexMapSSR {
     fn to_headermap(&self) -> HeaderMap {
         let mut header_map = HeaderMap::with_capacity(self.len());
         for (k, v) in self {
-            header_map.insert(
-                HeaderName::from_bytes(k.as_bytes())
-                    .unwrap_or_else(|k| panic!("Invalid header name: {k:?}")),
-                HeaderValue::from_bytes(v.as_bytes())
-                    .unwrap_or_else(|v| panic!("Invalid header value: {v:?}")),
-            );
+            // Skip invalid headers with a warning instead of panicking
+            match (HeaderName::from_bytes(k.as_bytes()), HeaderValue::from_bytes(v.as_bytes())) {
+                (Ok(name), Ok(value)) => {
+                    header_map.insert(name, value);
+                }
+                (Err(e), _) => {
+                    tracing::warn!("Skipping invalid header name '{}': {}", k, e);
+                }
+                (_, Err(e)) => {
+                    tracing::warn!("Skipping invalid header value for '{}': {}", k, e);
+                }
+            }
         }
         header_map
     }
@@ -42,13 +49,15 @@ impl HeadersTraits for HeaderMap {
         for (key, value) in self {
             // Store the original header name (preserving case)
             let header_name = key.as_str().to_string();
-            index_map.insert(
-                header_name,
-                value
-                    .to_str()
-                    .unwrap_or_else(|v| panic!("Invalid header value: {v:?}"))
-                    .to_string(),
-            );
+            // Skip invalid header values with a warning instead of panicking
+            match value.to_str() {
+                Ok(v) => {
+                    index_map.insert(header_name, v.to_string());
+                }
+                Err(e) => {
+                    tracing::warn!("Skipping header '{}' with invalid value: {}", key, e);
+                }
+            }
         }
         index_map
     }
@@ -59,9 +68,9 @@ impl HeadersTraits for HeaderMap {
 
     fn insert_key_value(&mut self, key: String, value: String) -> Result<(), Error> {
         let header_name = HeaderName::from_bytes(key.as_bytes())
-            .unwrap_or_else(|k| panic!("Invalid header name: {k:?}"));
+            .map_err(|e| Error::msg(format!("Invalid header name '{}': {}", key, e)))?;
         let header_value = HeaderValue::from_bytes(value.as_bytes())
-            .unwrap_or_else(|k| panic!("Invalid header value: {k:?}"));
+            .map_err(|e| Error::msg(format!("Invalid header value for '{}': {}", key, e)))?;
         self.insert(header_name, header_value);
         Ok(())
     }

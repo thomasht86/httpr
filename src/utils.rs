@@ -1,7 +1,5 @@
 use std::cmp::min;
 
-use foldhash::fast::RandomState;
-use indexmap::IndexMap;
 use reqwest::Certificate;
 use tracing;
 
@@ -43,38 +41,6 @@ fn read_pem_certificates(path: &str) -> Result<Vec<Certificate>> {
         }
     }
     Ok(certificates)
-}
-
-/// Get encoding from the "Content-Type" header
-/// 
-/// This function is deprecated; use get_encoding_from_case_insensitive_headers instead.
-#[deprecated(
-    since = "0.1.0",
-    note = "use get_encoding_from_case_insensitive_headers instead"
-)]
-#[allow(dead_code)]
-pub fn get_encoding_from_headers(
-    headers: &IndexMap<String, String, RandomState>,
-) -> Option<String> {
-    headers
-        .iter()
-        .find(|(key, _)| key.eq_ignore_ascii_case("content-type"))
-        .map(|(_, value)| value)
-        .and_then(|content_type| {
-            // Parse the Content-Type header to separate the media type and parameters
-            let mut parts = content_type.split(';');
-            let media_type = parts.next().unwrap_or("").trim();
-            let params = parts.next().unwrap_or("").trim();
-
-            // Check for specific conditions and return the appropriate encoding
-            if let Some(param) = params.to_ascii_lowercase().strip_prefix("charset=") {
-                Some(param.trim_matches('"').to_ascii_lowercase())
-            } else if media_type == "application/json" {
-                Some("utf-8".to_string())
-            } else {
-                None
-            }
-        })
 }
 
 /// Get encoding from the "Content-Type" header using CaseInsensitiveHeaderMap
@@ -178,38 +144,38 @@ Q29uc3VsdGF0aW9uczEiMCAGCSqGSIb3DQEJARYTcGVyc29uYWwtZW1haWwuY29t
 #[cfg(test)]
 mod utils_tests {
     use super::*;
-    use indexmap::IndexMap;
+    use crate::response::CaseInsensitiveHeaderMap;
 
     #[test]
-    fn test_get_encoding_from_headers() {
+    fn test_get_encoding_from_case_insensitive_headers() {
         // Test case: Content-Type header with charset specified
-        let mut headers = IndexMap::default();
+        let mut headers = CaseInsensitiveHeaderMap::create();
         headers.insert(
             String::from("Content-Type"),
             String::from("text/html;charset=UTF-8"),
         );
         assert_eq!(
-            get_encoding_from_headers(&headers),
+            get_encoding_from_case_insensitive_headers(&headers),
             Some("utf-8".to_string())
         );
 
         // Test case: Content-Type header without charset specified
-        headers.clear();
+        headers = CaseInsensitiveHeaderMap::create();
         headers.insert(String::from("Content-Type"), String::from("text/plain"));
-        assert_eq!(get_encoding_from_headers(&headers), None);
+        assert_eq!(get_encoding_from_case_insensitive_headers(&headers), None);
 
         // Test case: Missing Content-Type header
-        headers.clear();
-        assert_eq!(get_encoding_from_headers(&headers), None);
+        let headers = CaseInsensitiveHeaderMap::create();
+        assert_eq!(get_encoding_from_case_insensitive_headers(&headers), None);
 
         // Test case: Content-Type header with application/json
-        headers.clear();
+        let mut headers = CaseInsensitiveHeaderMap::create();
         headers.insert(
             String::from("Content-Type"),
             String::from("application/json"),
         );
         assert_eq!(
-            get_encoding_from_headers(&headers),
+            get_encoding_from_case_insensitive_headers(&headers),
             Some("utf-8".to_string())
         );
     }
