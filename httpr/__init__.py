@@ -30,7 +30,7 @@ from __future__ import annotations
 import asyncio
 import sys
 from functools import partial
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 if sys.version_info <= (3, 11):
     from typing_extensions import Unpack

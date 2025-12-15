@@ -170,7 +170,9 @@ impl Response {
 
     fn json(&mut self, py: Python) -> Result<PyObject> {
         let json_value: serde_json::Value = from_slice(self.content.as_bytes(py))?;
-        let result = pythonize(py, &json_value).unwrap().unbind();
+        let result = pythonize(py, &json_value)
+            .map_err(|e| anyhow!("Failed to convert JSON to Python object: {}", e))?
+            .unbind();
         Ok(result)
     }
 

@@ -3,7 +3,7 @@ use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Duration;
 use std::{fs, str};
 
-use anyhow::{Error, Result};
+use anyhow::{anyhow, Error, Result};
 use bytes::Bytes;
 use foldhash::fast::RandomState;
 use indexmap::IndexMap;
@@ -41,7 +41,7 @@ static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
     runtime::Builder::new_current_thread()
         .enable_all()
         .build()
-        .unwrap()
+        .expect("Failed to initialize Tokio runtime")
 });
 
 #[pyclass(subclass)]
@@ -223,7 +223,8 @@ impl RClient {
 
     #[getter]
     pub fn get_headers(&self) -> Result<IndexMapSSR> {
-        let headers = self.headers.lock().unwrap();
+        let headers = self.headers.lock()
+            .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?;
         let mut headers_clone = headers.clone();
         headers_clone.remove(COOKIE);
         Ok(headers_clone.to_indexmap())
@@ -231,7 +232,8 @@ impl RClient {
 
     #[setter]
     pub fn set_headers(&self, new_headers: Option<IndexMapSSR>) -> Result<()> {
-        let mut headers = self.headers.lock().unwrap();
+        let mut headers = self.headers.lock()
+            .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?;
         headers.clear();
         if let Some(new_headers) = new_headers {
             for (k, v) in new_headers {
@@ -243,7 +245,8 @@ impl RClient {
 
     #[getter]
     pub fn get_cookies(&self) -> Result<IndexMapSSR> {
-        let headers = self.headers.lock().unwrap();
+        let headers = self.headers.lock()
+            .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?;
         let mut cookies: IndexMapSSR = IndexMap::with_hasher(RandomState::default());
         if let Some(cookie_header) = headers.get(COOKIE) {
             for part in cookie_header.to_str()?.split(';') {
@@ -257,7 +260,8 @@ impl RClient {
 
     #[setter]
     pub fn set_cookies(&self, cookies: Option<IndexMapSSR>) -> Result<()> {
-        let mut headers = self.headers.lock().unwrap();
+        let mut headers = self.headers.lock()
+            .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?;
         if let Some(cookies) = cookies {
             headers.insert(COOKIE, HeaderValue::from_str(&cookies.to_string())?);
         } else {
@@ -277,7 +281,8 @@ impl RClient {
         let new_client = reqwest::Client::builder()
             .proxy(rproxy)
             .build()?;
-        let mut client = self.client.lock().unwrap();
+        let mut client = self.client.lock()
+            .map_err(|e| anyhow!("Failed to acquire client lock: {}", e))?;
         *client = new_client;
         self.proxy = Some(proxy);
         Ok(())
@@ -338,7 +343,9 @@ impl RClient {
 
         let future = async {
             // Create request builder
-            let mut request_builder = client.lock().unwrap().request(method, url);
+            let mut request_builder = client.lock()
+                .map_err(|e| anyhow!("Failed to acquire client lock: {}", e))?
+                .request(method, url);
 
             // Params
             if let Some(params) = params {
@@ -346,7 +353,9 @@ impl RClient {
             }
 
             // Headers from client
-            let client_headers = self.headers.lock().unwrap().clone();
+            let client_headers = self.headers.lock()
+                .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
+                .clone();
             request_builder = request_builder.headers(client_headers);
 
 
