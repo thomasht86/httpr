@@ -81,6 +81,14 @@ impl CaseInsensitiveHeaderMap {
 }
 
 impl CaseInsensitiveHeaderMap {
+    // Public constructor for Rust code
+    pub fn create() -> Self {
+        CaseInsensitiveHeaderMap {
+            headers: IndexMap::with_hasher(RandomState::default()),
+            lowercase_map: IndexMap::with_hasher(RandomState::default()),
+        }
+    }
+
     // Helper method to insert a header
     pub fn insert(&mut self, key: String, value: String) {
         let lower_key = key.to_lowercase();
@@ -90,7 +98,7 @@ impl CaseInsensitiveHeaderMap {
 
     // Helper method to build from an IndexMap
     pub fn from_indexmap(map: IndexMap<String, String, RandomState>) -> Self {
-        let mut headers_map = CaseInsensitiveHeaderMap::new();
+        let mut headers_map = CaseInsensitiveHeaderMap::create();
         for (key, value) in map {
             headers_map.insert(key, value);
         }
