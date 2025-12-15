@@ -14,6 +14,7 @@ The asynchronous HTTP client for use with asyncio.
         - post
         - put
         - patch
+        - stream
         - aclose
       show_root_heading: true
       show_root_full_path: false

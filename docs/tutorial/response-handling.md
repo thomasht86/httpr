@@ -302,6 +302,240 @@ except Exception as e:
     print(f"Request failed: {e}")
 ```
 
+## Streaming Responses
+
+For large responses, you can stream the data instead of buffering it entirely in memory. This is useful for downloading large files, processing Server-Sent Events (SSE), or handling large API responses.
+
+### Basic Streaming
+
+Use the `stream()` context manager to get a streaming response:
+
+```python
+import httpr
+
+client = httpr.Client()
+
+# Stream response bytes
+with client.stream("GET", "https://httpbin.org/stream-bytes/10000") as response:
+    print(f"Status: {response.status_code}")
+
+    for chunk in response.iter_bytes():
+        print(f"Received {len(chunk)} bytes")
+        # Process chunk without loading entire response in memory
+```
+
+### Streaming Modes
+
+httpr provides three ways to iterate over streaming responses:
+
+#### 1. Byte Chunks (`iter_bytes()`)
+
+Iterate over raw bytes chunks:
+
+```python
+with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
+    for chunk in response.iter_bytes():
+        # chunk is bytes
+        process_binary_data(chunk)
+```
+
+Or use direct iteration (equivalent to `iter_bytes()`):
+
+```python
+with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
+    for chunk in response:  # Same as response.iter_bytes()
+        process_binary_data(chunk)
+```
+
+#### 2. Text Chunks (`iter_text()`)
+
+Iterate over decoded text chunks:
+
+```python
+with client.stream("GET", "https://httpbin.org/html") as response:
+    for text_chunk in response.iter_text():
+        # text_chunk is str, decoded using response encoding
+        print(text_chunk, end="")
+```
+
+The text is automatically decoded using the response's character encoding (from `Content-Type` header or detected from content).
+
+#### 3. Line by Line (`iter_lines()`)
+
+Iterate over the response line by line:
+
+```python
+with client.stream("GET", "https://httpbin.org/stream/10") as response:
+    for line in response.iter_lines():
+        # line is str
+        print(line.strip())
+```
+
+This is particularly useful for:
+
+- **Server-Sent Events (SSE)**: Process events as they arrive
+- **JSONL/NDJSON**: Parse newline-delimited JSON
+- **Log streaming**: Process log lines in real-time
+
+```python
+# Example: Processing Server-Sent Events
+with client.stream("GET", "https://example.com/events") as response:
+    for line in response.iter_lines():
+        if line.startswith("data:"):
+            data = line[5:].strip()  # Remove "data:" prefix
+            process_event(data)
+```
+
+### Conditional Reading
+
+You can check headers before deciding whether to read the body:
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    # Headers are available immediately
+    content_type = response.headers.get("content-type")
+    content_length = response.headers.get("content-length")
+
+    if response.status_code != 200:
+        print(f"Error: {response.status_code}")
+        return  # Don't read body
+
+    if content_length and int(content_length) > 1_000_000:
+        print("File too large!")
+        return  # Don't read body
+
+    # Only read if checks pass
+    for chunk in response.iter_bytes():
+        process(chunk)
+```
+
+### Reading All at Once
+
+If you need to read the entire response after starting a stream:
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    # Check headers first
+    if response.status_code == 200:
+        # Read entire remaining response
+        content = response.read()
+        print(f"Total size: {len(content)} bytes")
+```
+
+### Downloading Large Files
+
+Streaming is ideal for downloading large files:
+
+```python
+import httpr
+
+client = httpr.Client()
+
+with client.stream("GET", "https://example.com/large-file.zip") as response:
+    if response.status_code == 200:
+        with open("large-file.zip", "wb") as f:
+            for chunk in response.iter_bytes():
+                f.write(chunk)
+        print("Download complete!")
+```
+
+With progress tracking:
+
+```python
+with client.stream("GET", "https://example.com/large-file.zip") as response:
+    total_size = int(response.headers.get("content-length", 0))
+    downloaded = 0
+
+    with open("large-file.zip", "wb") as f:
+        for chunk in response.iter_bytes():
+            f.write(chunk)
+            downloaded += len(chunk)
+            if total_size:
+                percent = (downloaded / total_size) * 100
+                print(f"Downloaded: {percent:.1f}%", end="\r")
+```
+
+### Streaming with POST
+
+Streaming works with all HTTP methods:
+
+```python
+with client.stream(
+    "POST",
+    "https://api.example.com/process",
+    json={"input": "data"}
+) as response:
+    # Stream the API response
+    for line in response.iter_lines():
+        result = json.loads(line)
+        print(result)
+```
+
+### Stream State
+
+The streaming response tracks its state:
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    print(response.is_closed)    # False
+    print(response.is_consumed)  # False
+
+    content = response.read()
+
+    print(response.is_consumed)  # True (after reading)
+
+print(response.is_closed)  # True (after context manager exits)
+```
+
+### Exception Handling
+
+Streaming raises specific exceptions:
+
+```python
+import httpr
+
+try:
+    with client.stream("GET", "https://httpbin.org/get") as response:
+        content = response.read()
+
+        # This will raise StreamConsumed
+        more = response.read()
+
+except httpr.StreamConsumed:
+    print("Cannot read stream twice")
+
+except httpr.StreamClosed:
+    print("Stream was closed")
+```
+
+### Async Streaming
+
+The `AsyncClient` also supports streaming with the same API:
+
+```python
+import asyncio
+import httpr
+
+async def stream_data():
+    async with httpr.AsyncClient() as client:
+        async with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
+            # Note: iteration is sync, but context manager is async
+            for chunk in response.iter_bytes():
+                process(chunk)
+
+asyncio.run(stream_data())
+```
+
+!!! note
+    With `AsyncClient`, the context manager is async (`async with`), but the iteration over chunks remains synchronous (regular `for` loop, not `async for`).
+
+### Important Notes
+
+- **Always use context manager**: The `with` statement ensures proper cleanup
+- **Headers available immediately**: You can check status, headers, and cookies before reading the body
+- **Cannot re-read**: Once the stream is consumed, you cannot read it again
+- **Automatic cleanup**: The stream is automatically closed when the context manager exits
+
 ## Next Steps
 
 - [Authentication](authentication.md) - Add authentication to requests

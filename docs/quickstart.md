@@ -243,6 +243,33 @@ print(response.text_plain)
 print(response.text_rich)
 ```
 
+### Streaming Responses
+
+For large responses, stream the data to avoid loading everything into memory:
+
+```python
+import httpr
+
+with httpr.Client() as client:
+    # Stream bytes
+    with client.stream("GET", "https://httpbin.org/stream-bytes/10000") as response:
+        for chunk in response.iter_bytes():
+            process(chunk)  # Process each chunk as it arrives
+
+    # Stream text
+    with client.stream("GET", "https://httpbin.org/html") as response:
+        for text in response.iter_text():
+            print(text, end="")
+
+    # Stream lines (great for Server-Sent Events)
+    with client.stream("GET", "https://httpbin.org/stream/10") as response:
+        for line in response.iter_lines():
+            print(line.strip())
+```
+
+!!! tip
+    Headers, status code, and cookies are available immediately, before reading the body.
+
 ## Timeouts
 
 Set a timeout in seconds to limit how long to wait for a response:

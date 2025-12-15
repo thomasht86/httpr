@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Generator, Iterator
 from typing import Any, Literal, TypedDict
 
 if sys.version_info <= (3, 11):
@@ -50,6 +51,88 @@ class Response:
     @property
     def text_rich(self) -> str: ...
 
+class TextIterator:
+    """Iterator for text chunks from a streaming response."""
+    def __iter__(self) -> TextIterator: ...
+    def __next__(self) -> str: ...
+
+class LineIterator:
+    """Iterator for lines from a streaming response."""
+    def __iter__(self) -> LineIterator: ...
+    def __next__(self) -> str: ...
+
+class StreamingResponse:
+    """
+    A streaming HTTP response that allows iterating over chunks of data.
+
+    This class provides methods to iterate over the response body in chunks
+    without buffering the entire response in memory.
+    """
+
+    @property
+    def cookies(self) -> dict[str, str]:
+        """Response cookies."""
+        ...
+    @property
+    def headers(self) -> dict[str, str]:
+        """Response headers."""
+        ...
+    @property
+    def status_code(self) -> int:
+        """HTTP status code."""
+        ...
+    @property
+    def url(self) -> str:
+        """Final URL after any redirects."""
+        ...
+    @property
+    def is_closed(self) -> bool:
+        """Whether the stream has been closed."""
+        ...
+    @property
+    def is_consumed(self) -> bool:
+        """Whether the stream has been fully consumed."""
+        ...
+    def __iter__(self) -> Iterator[bytes]:
+        """Iterate over the response body as bytes chunks."""
+        ...
+    def __next__(self) -> bytes:
+        """Get the next chunk of bytes."""
+        ...
+    def iter_bytes(self) -> Iterator[bytes]:
+        """
+        Iterate over the response body as bytes chunks.
+
+        Yields chunks of bytes as they are received from the server.
+        """
+        ...
+    def iter_text(self) -> TextIterator:
+        """
+        Iterate over the response body as text chunks.
+
+        Decodes each chunk using the response's encoding.
+        """
+        ...
+    def iter_lines(self) -> LineIterator:
+        """
+        Iterate over the response body line by line.
+
+        Yields complete lines including newline characters.
+        """
+        ...
+    def read(self) -> bytes:
+        """
+        Read the entire remaining response body into memory.
+
+        This consumes the stream.
+        """
+        ...
+    def close(self) -> None:
+        """
+        Close the streaming response and release resources.
+        """
+        ...
+
 class RClient:
     def __init__(
         self,
@@ -83,6 +166,7 @@ class RClient:
     @proxy.setter
     def proxy(self, proxy: str) -> None: ...
     def request(self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> Response: ...
+    def _stream(self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> StreamingResponse: ...
     def get(self, url: str, **kwargs: Unpack[RequestParams]) -> Response: ...
     def head(self, url: str, **kwargs: Unpack[RequestParams]) -> Response: ...
     def options(self, url: str, **kwargs: Unpack[RequestParams]) -> Response: ...
@@ -90,6 +174,16 @@ class RClient:
     def post(self, url: str, **kwargs: Unpack[RequestParams]) -> Response: ...
     def put(self, url: str, **kwargs: Unpack[RequestParams]) -> Response: ...
     def patch(self, url: str, **kwargs: Unpack[RequestParams]) -> Response: ...
+    def stream(
+        self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]
+    ) -> Generator[StreamingResponse, None, None]:
+        """
+        Make a streaming HTTP request.
+
+        Returns a context manager that yields a StreamingResponse for iterating
+        over the response body in chunks.
+        """
+        ...
 
 def request(method: HttpMethod, url: str, **kwargs: Unpack[ClientRequestParams]) -> Response: ...
 def get(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response: ...

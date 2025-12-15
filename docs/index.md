@@ -130,9 +130,17 @@ print(response.cookies)      # Response cookies
 
 ---
 
+## Features
+
+-   :material-water:{ .lg .middle } **Streaming**
+
+    ---
+
+    Stream large responses efficiently without buffering entire
+    response in memory. Iterate bytes, text, or lines.
+
 ## Not Yet Implemented
 
-- **Streaming**: Request/response streaming is not yet supported
 - **Fine-grained error handling**: Detailed error types are in development
 
 ---

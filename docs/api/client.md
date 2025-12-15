@@ -14,6 +14,7 @@ The synchronous HTTP client with connection pooling.
         - post
         - put
         - patch
+        - stream
         - close
       show_root_heading: true
       show_root_full_path: false

@@ -29,6 +29,8 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections.abc import AsyncIterator, Generator, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from functools import partial
 from typing import TYPE_CHECKING, TypedDict
 
@@ -38,7 +40,7 @@ else:
     from typing import Unpack
 
 
-from .httpr import RClient
+from .httpr import RClient, StreamingResponse
 
 if TYPE_CHECKING:
     from .httpr import ClientRequestParams, HttpMethod, RequestParams, Response
@@ -414,6 +416,78 @@ class Client(RClient):
         """
         return self.request(method="PATCH", url=url, **kwargs)
 
+    @contextmanager
+    def stream(
+        self,
+        method: HttpMethod,
+        url: str,
+        **kwargs: Unpack[RequestParams],
+    ) -> Generator[StreamingResponse, None, None]:
+        """
+        Make a streaming HTTP request.
+
+        Returns a context manager that yields a StreamingResponse for iterating
+        over the response body in chunks without buffering the entire response
+        in memory.
+
+        Args:
+            method: HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS).
+            url: Request URL.
+            **kwargs: Request parameters (same as request()).
+
+        Yields:
+            StreamingResponse: A response object that can be iterated to receive chunks.
+
+        Example:
+            Basic streaming:
+
+            ```python
+            with client.stream("GET", "https://example.com/large-file") as response:
+                for chunk in response.iter_bytes():
+                    process(chunk)
+            ```
+
+            Streaming text:
+
+            ```python
+            with client.stream("GET", "https://example.com/text") as response:
+                for text in response.iter_text():
+                    print(text, end="")
+            ```
+
+            Streaming lines (e.g., Server-Sent Events):
+
+            ```python
+            with client.stream("GET", "https://example.com/events") as response:
+                for line in response.iter_lines():
+                    print(line.strip())
+            ```
+
+            Conditional reading:
+
+            ```python
+            with client.stream("GET", url) as response:
+                if response.status_code == 200:
+                    content = response.read()  # Read all remaining content
+                else:
+                    pass  # Don't read the body
+            ```
+
+        Note:
+            The response body is only read when you iterate over it or call read().
+            Always use this as a context manager to ensure proper cleanup.
+        """
+        if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
+            raise ValueError(f"Unsupported HTTP method: {method}")
+        if "params" in kwargs and kwargs["params"] is not None:
+            kwargs["params"] = {k: str(v) for k, v in kwargs["params"].items()}
+
+        response = super()._stream(method=method, url=url, **kwargs)
+        try:
+            yield response
+        finally:
+            response.close()
+
 
 class AsyncClient(Client):
     """
@@ -661,6 +735,51 @@ class AsyncClient(Client):
         """
         return await self.request(method="PATCH", url=url, **kwargs)
 
+    @asynccontextmanager
+    async def stream(  # type: ignore[override]
+        self,
+        method: HttpMethod,
+        url: str,
+        **kwargs: Unpack[RequestParams],
+    ) -> AsyncIterator[StreamingResponse]:
+        """
+        Make an async streaming HTTP request.
+
+        Returns an async context manager that yields a StreamingResponse for
+        iterating over the response body in chunks.
+
+        Args:
+            method: HTTP method.
+            url: Request URL.
+            **kwargs: Request parameters.
+
+        Yields:
+            StreamingResponse: A response object that can be iterated.
+
+        Example:
+            ```python
+            async with client.stream("GET", "https://example.com/large-file") as response:
+                for chunk in response.iter_bytes():
+                    process(chunk)
+            ```
+
+        Note:
+            Iteration over the response is synchronous (uses iter_bytes, iter_text,
+            iter_lines). The async part is initiating the request and entering
+            the context manager.
+        """
+        if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
+            raise ValueError(f"Unsupported HTTP method: {method}")
+        if "params" in kwargs and kwargs["params"] is not None:
+            kwargs["params"] = {k: str(v) for k, v in kwargs["params"].items()}
+
+        # Run the sync _stream in executor
+        response = await self._run_sync_asyncio(super(Client, self)._stream, method=method, url=url, **kwargs)
+        try:
+            yield response
+        finally:
+            response.close()
+
 
 def request(
     method: HttpMethod,
@@ -858,43 +977,42 @@ def patch(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response:
 
 # Import exceptions from the Rust module
 from .httpr import (
-    # Base exceptions
-    HTTPError,
-    RequestError,
-    TransportError,
-    NetworkError,
-    TimeoutException,
-    ProtocolError,
-    StreamError,
-    # Timeout exceptions
-    ConnectTimeout,
-    ReadTimeout,
-    WriteTimeout,
-    PoolTimeout,
+    CloseError,
     # Network exceptions
     ConnectError,
-    ReadError,
-    WriteError,
-    CloseError,
-    # Protocol exceptions
-    LocalProtocolError,
-    RemoteProtocolError,
-    # Other transport/request exceptions
-    UnsupportedProtocol,
-    ProxyError,
-    TooManyRedirects,
-    HTTPStatusError,
+    # Timeout exceptions
+    ConnectTimeout,
+    CookieConflict,
     DecodingError,
-    # Stream exceptions
-    StreamConsumed,
-    ResponseNotRead,
-    RequestNotRead,
-    StreamClosed,
+    # Base exceptions
+    HTTPError,
+    HTTPStatusError,
     # Other exceptions
     InvalidURL,
-    CookieConflict,
+    # Protocol exceptions
+    LocalProtocolError,
+    NetworkError,
+    PoolTimeout,
+    ProtocolError,
+    ProxyError,
+    ReadError,
+    ReadTimeout,
+    RemoteProtocolError,
+    RequestError,
+    RequestNotRead,
+    ResponseNotRead,
+    StreamClosed,
+    # Stream exceptions
+    StreamConsumed,
+    StreamError,
+    TimeoutException,
+    TooManyRedirects,
+    TransportError,
+    # Other transport/request exceptions
+    UnsupportedProtocol,
+    WriteError,
+    WriteTimeout,
 )
-
 
 __all__ = [
     # Client and request functions
@@ -942,4 +1060,3 @@ __all__ = [
     "InvalidURL",
     "CookieConflict",
 ]
-
