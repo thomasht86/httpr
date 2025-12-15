@@ -100,7 +100,9 @@ class TestClientSSL(unittest.TestCase):
 
     def test_invalid_client_cert_path(self):
         """Providing a non-existent client certificate file should raise an error."""
-        with self.assertRaises(RuntimeError):
+        # Import httpr to use the correct exception type
+        import httpr
+        with self.assertRaises(httpr.RequestError):
             # Assuming your Client loads the file on initialization.
             with Client(client_pem="nonexistent.pem", ca_cert_file=self.client_ca_path) as client:
                 client.get(f"https://localhost:{self.server_port}")

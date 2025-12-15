@@ -856,7 +856,48 @@ def patch(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response:
     return request(method="PATCH", url=url, **kwargs)
 
 
+# Import exceptions from the Rust module
+from .httpr import (
+    # Base exceptions
+    HTTPError,
+    RequestError,
+    TransportError,
+    NetworkError,
+    TimeoutException,
+    ProtocolError,
+    StreamError,
+    # Timeout exceptions
+    ConnectTimeout,
+    ReadTimeout,
+    WriteTimeout,
+    PoolTimeout,
+    # Network exceptions
+    ConnectError,
+    ReadError,
+    WriteError,
+    CloseError,
+    # Protocol exceptions
+    LocalProtocolError,
+    RemoteProtocolError,
+    # Other transport/request exceptions
+    UnsupportedProtocol,
+    ProxyError,
+    TooManyRedirects,
+    HTTPStatusError,
+    DecodingError,
+    # Stream exceptions
+    StreamConsumed,
+    ResponseNotRead,
+    RequestNotRead,
+    StreamClosed,
+    # Other exceptions
+    InvalidURL,
+    CookieConflict,
+)
+
+
 __all__ = [
+    # Client and request functions
     "Client",
     "AsyncClient",
     "request",
@@ -867,4 +908,38 @@ __all__ = [
     "post",
     "put",
     "patch",
+    # Base exceptions
+    "HTTPError",
+    "RequestError",
+    "TransportError",
+    "NetworkError",
+    "TimeoutException",
+    "ProtocolError",
+    "StreamError",
+    # Timeout exceptions
+    "ConnectTimeout",
+    "ReadTimeout",
+    "WriteTimeout",
+    "PoolTimeout",
+    # Network exceptions
+    "ConnectError",
+    "ReadError",
+    "WriteError",
+    "CloseError",
+    # Protocol exceptions
+    "LocalProtocolError",
+    "RemoteProtocolError",
+    # Other exceptions
+    "UnsupportedProtocol",
+    "ProxyError",
+    "TooManyRedirects",
+    "HTTPStatusError",
+    "DecodingError",
+    "StreamConsumed",
+    "ResponseNotRead",
+    "RequestNotRead",
+    "StreamClosed",
+    "InvalidURL",
+    "CookieConflict",
 ]
+
