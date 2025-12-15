@@ -26,7 +26,7 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 use tracing;
 
 mod response;
-use response::{CaseInsensitiveHeaderMap, Response};
+use response::{CaseInsensitiveHeaderMap, Response, StreamingResponse, TextIterator, LineIterator};
 
 mod traits;
 use traits::{CookiesTraits, HeadersTraits};
@@ -454,6 +454,152 @@ impl RClient {
             url: f_url,
         })
     }
+
+    /// Constructs an HTTP request and returns a StreamingResponse for iterating over chunks.
+    ///
+    /// Unlike `request()`, this method does not buffer the entire response body.
+    /// Instead, it returns a `StreamingResponse` that can be iterated to receive chunks
+    /// as they arrive from the server.
+    ///
+    /// # Arguments
+    ///
+    /// Same as `request()`.
+    ///
+    /// # Returns
+    ///
+    /// * `StreamingResponse` - A streaming response object that can be iterated.
+    ///
+    /// # Example
+    ///
+    /// ```python
+    /// with client.stream("GET", url) as response:
+    ///     for chunk in response.iter_bytes():
+    ///         process(chunk)
+    /// ```
+    #[pyo3(signature = (method, url, params=None, headers=None, cookies=None, content=None,
+        data=None, json=None, files=None, auth=None, auth_bearer=None, timeout=None))]
+    fn _stream(
+        &self,
+        py: Python,
+        method: &str,
+        url: &str,
+        params: Option<IndexMapSSR>,
+        headers: Option<IndexMapSSR>,
+        cookies: Option<IndexMapSSR>,
+        content: Option<Vec<u8>>,
+        data: Option<&Bound<'_, PyAny>>,
+        json: Option<&Bound<'_, PyAny>>,
+        files: Option<IndexMap<String, String>>,
+        auth: Option<(String, Option<String>)>,
+        auth_bearer: Option<String>,
+        timeout: Option<f64>,
+    ) -> PyResult<StreamingResponse> {
+        let client = Arc::clone(&self.client);
+        let method = Method::from_bytes(method.as_bytes()).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let is_post_put_patch = matches!(method, Method::POST | Method::PUT | Method::PATCH);
+        let params = params.or_else(|| self.params.clone());
+        let data_value: Option<Value> = data.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let json_value: Option<Value> = json.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let auth = auth.or(self.auth.clone());
+        let auth_bearer = auth_bearer.or(self.auth_bearer.clone());
+        let timeout: Option<f64> = timeout.or(self.timeout);
+
+        let future = async {
+            // Create request builder
+            let mut request_builder = client.lock()
+                .map_err(|e| anyhow!("Failed to acquire client lock: {}", e))?
+                .request(method, url);
+
+            // Params
+            if let Some(params) = params {
+                request_builder = request_builder.query(&params);
+            }
+
+            // Headers from client
+            let client_headers = self.headers.lock()
+                .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
+                .clone();
+            request_builder = request_builder.headers(client_headers);
+
+            // Headers
+            if let Some(headers) = headers {
+                request_builder = request_builder.headers(headers.to_headermap());
+            }
+
+            // Cookies
+            if let Some(cookies) = cookies {
+                request_builder =
+                    request_builder.header(COOKIE, HeaderValue::from_str(&cookies.to_string()).map_err(anyhow::Error::new)?);
+            }
+
+            // Only if method POST || PUT || PATCH
+            if is_post_put_patch {
+                // Content
+                if let Some(content) = content {
+                    request_builder = request_builder.body(content);
+                }
+                // Data
+                if let Some(form_data) = data_value {
+                    request_builder = request_builder.form(&form_data);
+                }
+                // Json
+                if let Some(json_data) = json_value {
+                    request_builder = request_builder.json(&json_data);
+                }
+                // Files
+                if let Some(files) = files {
+                    let mut form = multipart::Form::new();
+                    for (file_name, file_path) in files {
+                        let file = File::open(file_path).await.map_err(anyhow::Error::new)?;
+                        let stream = FramedRead::new(file, BytesCodec::new());
+                        let file_body = Body::wrap_stream(stream);
+                        let part = multipart::Part::stream(file_body).file_name(file_name.clone());
+                        form = form.part(file_name, part);
+                    }
+                    request_builder = request_builder.multipart(form);
+                }
+            }
+
+            // Auth
+            if let Some((username, password)) = auth {
+                request_builder = request_builder.basic_auth(username, password);
+            } else if let Some(token) = auth_bearer {
+                request_builder = request_builder.bearer_auth(token);
+            }
+
+            // Timeout
+            if let Some(seconds) = timeout {
+                request_builder = request_builder.timeout(Duration::from_secs_f64(seconds));
+            }
+
+            // Send the request and await the response (but don't read body)
+            let resp = request_builder.send().await.map_err(anyhow::Error::new)?;
+
+            // Response items (extract before we move resp)
+            let cookies: IndexMapSSR = resp
+                .cookies()
+                .map(|cookie| (cookie.name().to_string(), cookie.value().to_string()))
+                .collect();
+            let headers: IndexMapSSR = resp.headers().to_indexmap();
+            let status_code = resp.status().as_u16();
+            let url = resp.url().to_string();
+
+            tracing::info!("streaming response: {} {}", url, status_code);
+            Ok::<(reqwest::Response, IndexMapSSR, IndexMapSSR, u16, String), anyhow::Error>((resp, cookies, headers, status_code, url))
+        };
+
+        // Execute an async future, releasing the Python GIL for concurrency.
+        let result = py.allow_threads(|| RUNTIME.block_on(future));
+        let (f_resp, f_cookies, f_headers, f_status_code, f_url) = result.map_err(map_anyhow_error)?;
+
+        Ok(StreamingResponse::new(
+            f_resp,
+            f_cookies,
+            CaseInsensitiveHeaderMap::from_indexmap(f_headers),
+            f_status_code,
+            f_url,
+        ))
+    }
 }
 
 #[pymodule]
@@ -462,6 +608,9 @@ fn httpr(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     m.add_class::<RClient>()?;
     m.add_class::<Response>()?;
+    m.add_class::<StreamingResponse>()?;
+    m.add_class::<TextIterator>()?;
+    m.add_class::<LineIterator>()?;
     
     // Register all exception types
     exceptions::register_exceptions(m)?;

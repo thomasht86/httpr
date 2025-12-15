@@ -6,12 +6,12 @@
 - **Both async and sync**: `httpr` provides both a sync and async client.
 - **Lightweight**: `httpr` is a lightweight http client with zero python-dependencies.
 - **Async**: first-class async support.
+- **Streaming**: supports streaming responses for efficient memory usage with large payloads.
 - **http2**: `httpr` supports HTTP/2.
 - **mTLS**: `httpr` supports mTLS.
 
 ## Not implemented yet
 
-- **Streaming**: Streaming is not implemented yet.
 - **Fine-grained error handling**: Fine-grained error handling is not implemented yet.
 
 ## Table of Contents
@@ -27,6 +27,7 @@
     - [I. Client](#i-client)
       - [Client methods](#client-methods)
       - [Response object](#response-object)
+      - [Streaming responses](#streaming-responses)
       - [Examples](#examples)
     - [II. AsyncClient](#ii-asyncclient)
   - [Precompiled wheels](#precompiled-wheels)
@@ -164,6 +165,55 @@ resp.text_rich  # html is converted to rich text
 resp.url
 ```
 
+#### Streaming responses
+
+The `Client` class supports streaming responses for efficient memory usage when handling large payloads. Use the `stream()` context manager to iterate over response data without buffering the entire response in memory.
+
+```python
+# Stream bytes chunks
+with client.stream("GET", "https://example.com/large-file") as response:
+    print(f"Status: {response.status_code}")
+    for chunk in response.iter_bytes():
+        process(chunk)
+
+# Stream text chunks
+with client.stream("GET", "https://example.com/text") as response:
+    for text in response.iter_text():
+        print(text, end="")
+
+# Stream line by line (useful for Server-Sent Events)
+with client.stream("GET", "https://example.com/events") as response:
+    for line in response.iter_lines():
+        print(line.strip())
+
+# Read entire response (if needed after checking headers)
+with client.stream("GET", url) as response:
+    if response.status_code == 200:
+        content = response.read()
+```
+
+**StreamingResponse attributes:**
+- `status_code` - HTTP status code
+- `headers` - Response headers (case-insensitive)
+- `cookies` - Response cookies
+- `url` - Final URL after redirects
+- `is_closed` - Whether the stream has been closed
+- `is_consumed` - Whether the stream has been fully consumed
+
+**StreamingResponse methods:**
+- `iter_bytes()` - Iterate over response as bytes chunks
+- `iter_text()` - Iterate over response as text chunks (decoded using response encoding)
+- `iter_lines()` - Iterate over response line by line
+- `read()` - Read entire remaining response body into memory
+- `close()` - Close the stream and release resources
+
+**Important notes:**
+- Streaming must be used as a context manager (with statement)
+- Headers, cookies, and status code are available immediately before reading the body
+- The response body is only read when you iterate over it or call `read()`
+- Once consumed, the stream cannot be read again
+- Streaming is supported for all HTTP methods (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS)
+
 #### Examples
 
 ```python
@@ -257,6 +307,19 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
 ```
+
+**Streaming with AsyncClient:**
+
+The `AsyncClient` also supports streaming responses with the same API:
+
+```python
+async with httpr.AsyncClient() as client:
+    async with client.stream("GET", "https://example.com/large-file") as response:
+        for chunk in response.iter_bytes():
+            process(chunk)
+```
+
+Note: While the context manager is async, the iteration over chunks (`iter_bytes()`, `iter_text()`, `iter_lines()`) is synchronous.
 
 ## Precompiled wheels
 
