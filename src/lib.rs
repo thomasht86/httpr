@@ -11,7 +11,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pythonize::depythonize;
 use reqwest::{
-    header::{HeaderValue, COOKIE, CONTENT_TYPE},
+    header::{HeaderValue, COOKIE, CONTENT_TYPE, ACCEPT},
     multipart,
     redirect::Policy,
     Body, Method,
@@ -328,7 +328,7 @@ impl RClient {
     /// * `HTTPStatusError` - If HTTP status is 4xx or 5xx
     /// * `RequestError` - For other request failures
     #[pyo3(signature = (method, url, params=None, headers=None, cookies=None, content=None,
-        data=None, json=None, cbor=None, files=None, auth=None, auth_bearer=None, timeout=None))]
+        data=None, json=None, files=None, auth=None, auth_bearer=None, timeout=None))]
     fn request(
         &self,
         py: Python,
@@ -340,7 +340,6 @@ impl RClient {
         content: Option<Vec<u8>>,
         data: Option<&Bound<'_, PyAny>>,
         json: Option<&Bound<'_, PyAny>>,
-        cbor: Option<&Bound<'_, PyAny>>,
         files: Option<IndexMap<String, String>>,
         auth: Option<(String, Option<String>)>,
         auth_bearer: Option<String>,
@@ -352,7 +351,6 @@ impl RClient {
         let params = params.or_else(|| self.params.clone());
         let data_value: Option<Value> = data.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let json_value: Option<Value> = json.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let cbor_value: Option<Value> = cbor.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let auth = auth.or(self.auth.clone());
         let auth_bearer = auth_bearer.or(self.auth_bearer.clone());
         let timeout: Option<f64> = timeout.or(self.timeout);
@@ -372,11 +370,16 @@ impl RClient {
             let client_headers = self.headers.lock()
                 .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
                 .clone();
-            request_builder = request_builder.headers(client_headers);
+            request_builder = request_builder.headers(client_headers.clone());
 
 
             // Headers
-            if let Some(headers) = headers {
+            let mut combined_headers = client_headers;
+            if let Some(ref headers) = headers {
+                let header_map = headers.to_headermap();
+                for (key, value) in header_map.iter() {
+                    combined_headers.insert(key.clone(), value.clone());
+                }
                 request_builder = request_builder.headers(headers.to_headermap());
             }
 
@@ -396,17 +399,25 @@ impl RClient {
                 if let Some(form_data) = data_value {
                     request_builder = request_builder.form(&form_data);
                 }
-                // Json
+                // Json - check if we should use CBOR based on Accept header
                 if let Some(json_data) = json_value {
-                    request_builder = request_builder.json(&json_data);
-                }
-                // CBOR
-                if let Some(cbor_data) = cbor_value {
-                    let cbor_bytes = serde_cbor::to_vec(&cbor_data)
-                        .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
-                    request_builder = request_builder
-                        .header(CONTENT_TYPE, "application/cbor")
-                        .body(cbor_bytes);
+                    // Check if Accept header is set to application/cbor
+                    let use_cbor = combined_headers.get(&ACCEPT)
+                        .and_then(|v| v.to_str().ok())
+                        .map(|s| s.contains("application/cbor"))
+                        .unwrap_or(false);
+                    
+                    if use_cbor {
+                        // Serialize as CBOR
+                        let cbor_bytes = serde_cbor::to_vec(&json_data)
+                            .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
+                        request_builder = request_builder
+                            .header(CONTENT_TYPE, "application/cbor")
+                            .body(cbor_bytes);
+                    } else {
+                        // Serialize as JSON (default)
+                        request_builder = request_builder.json(&json_data);
+                    }
                 }
                 // Files
                 if let Some(files) = files {
@@ -488,7 +499,7 @@ impl RClient {
     ///         process(chunk)
     /// ```
     #[pyo3(signature = (method, url, params=None, headers=None, cookies=None, content=None,
-        data=None, json=None, cbor=None, files=None, auth=None, auth_bearer=None, timeout=None))]
+        data=None, json=None, files=None, auth=None, auth_bearer=None, timeout=None))]
     fn _stream(
         &self,
         py: Python,
@@ -500,7 +511,6 @@ impl RClient {
         content: Option<Vec<u8>>,
         data: Option<&Bound<'_, PyAny>>,
         json: Option<&Bound<'_, PyAny>>,
-        cbor: Option<&Bound<'_, PyAny>>,
         files: Option<IndexMap<String, String>>,
         auth: Option<(String, Option<String>)>,
         auth_bearer: Option<String>,
@@ -512,7 +522,6 @@ impl RClient {
         let params = params.or_else(|| self.params.clone());
         let data_value: Option<Value> = data.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let json_value: Option<Value> = json.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let cbor_value: Option<Value> = cbor.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let auth = auth.or(self.auth.clone());
         let auth_bearer = auth_bearer.or(self.auth_bearer.clone());
         let timeout: Option<f64> = timeout.or(self.timeout);
@@ -532,10 +541,15 @@ impl RClient {
             let client_headers = self.headers.lock()
                 .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
                 .clone();
-            request_builder = request_builder.headers(client_headers);
+            request_builder = request_builder.headers(client_headers.clone());
 
             // Headers
-            if let Some(headers) = headers {
+            let mut combined_headers = client_headers;
+            if let Some(ref headers) = headers {
+                let header_map = headers.to_headermap();
+                for (key, value) in header_map.iter() {
+                    combined_headers.insert(key.clone(), value.clone());
+                }
                 request_builder = request_builder.headers(headers.to_headermap());
             }
 
@@ -555,17 +569,25 @@ impl RClient {
                 if let Some(form_data) = data_value {
                     request_builder = request_builder.form(&form_data);
                 }
-                // Json
+                // Json - check if we should use CBOR based on Accept header
                 if let Some(json_data) = json_value {
-                    request_builder = request_builder.json(&json_data);
-                }
-                // CBOR
-                if let Some(cbor_data) = cbor_value {
-                    let cbor_bytes = serde_cbor::to_vec(&cbor_data)
-                        .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
-                    request_builder = request_builder
-                        .header(CONTENT_TYPE, "application/cbor")
-                        .body(cbor_bytes);
+                    // Check if Accept header is set to application/cbor
+                    let use_cbor = combined_headers.get(&ACCEPT)
+                        .and_then(|v| v.to_str().ok())
+                        .map(|s| s.contains("application/cbor"))
+                        .unwrap_or(false);
+                    
+                    if use_cbor {
+                        // Serialize as CBOR
+                        let cbor_bytes = serde_cbor::to_vec(&json_data)
+                            .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
+                        request_builder = request_builder
+                            .header(CONTENT_TYPE, "application/cbor")
+                            .body(cbor_bytes);
+                    } else {
+                        // Serialize as JSON (default)
+                        request_builder = request_builder.json(&json_data);
+                    }
                 }
                 // Files
                 if let Some(files) = files {

@@ -21,7 +21,6 @@ class RequestParams(TypedDict, total=False):
     content: bytes | None
     data: dict[str, Any] | None
     json: Any | None
-    cbor: Any | None
     files: dict[str, str] | None
 
 class ClientRequestParams(RequestParams):

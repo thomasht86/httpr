@@ -162,23 +162,26 @@ response = httpr.post(
 print(response.json()["json"])
 ```
 
-### CBOR Data
+### CBOR Data (Transparent)
 
-Send data as CBOR (Concise Binary Object Representation):
+CBOR (Concise Binary Object Representation) encoding is automatically used when you set the `Accept: application/cbor` header:
 
 ```python
 import httpr
 
+# Simply add Accept header - serialization happens transparently
 response = httpr.post(
     "https://api.example.com/data",
-    cbor={
+    json={  # Use json parameter as normal
         "name": "John Doe",
         "values": [1, 2, 3, 4, 5],
         "metadata": {"version": 1}
-    }
+    },
+    headers={"Accept": "application/cbor"}  # Triggers CBOR serialization
 )
 
 # Content-Type is automatically set to application/cbor
+# Server receives CBOR-encoded data
 ```
 
 CBOR offers several advantages over JSON:

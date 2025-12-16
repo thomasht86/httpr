@@ -1,12 +1,11 @@
-"""Tests for CBOR serialization/deserialization support."""
+"""Tests for transparent CBOR serialization/deserialization support."""
 import pytest
 import httpr
 import cbor2
-import base64
 
 
-def test_cbor_serialization(base_url_ssl, ca_bundle):
-    """Test sending CBOR data in POST request."""
+def test_cbor_serialization_transparent(base_url_ssl, ca_bundle):
+    """Test transparent CBOR serialization when Accept header is set."""
     client = httpr.Client(ca_cert_file=ca_bundle)
     
     # Create test data
@@ -20,10 +19,11 @@ def test_cbor_serialization(base_url_ssl, ca_bundle):
         }
     }
     
-    # Send CBOR data
+    # Send with Accept: application/cbor header - should use CBOR automatically
     response = client.post(
         f"{base_url_ssl}/anything",
-        cbor=test_data,
+        json=test_data,
+        headers={"Accept": "application/cbor"}
     )
     
     assert response.status_code == 200
@@ -36,21 +36,24 @@ def test_cbor_serialization(base_url_ssl, ca_bundle):
     assert "data" in json_data
 
 
-def test_cbor_round_trip():
-    """Test CBOR encoding/decoding round trip."""
-    # Test data
-    test_data = {
-        "message": "Hello, CBOR!",
-        "count": 100,
-        "items": ["a", "b", "c"],
-    }
+def test_json_serialization_default(base_url_ssl, ca_bundle):
+    """Test that JSON is used by default when Accept header is not set."""
+    client = httpr.Client(ca_cert_file=ca_bundle)
     
-    # Encode with cbor2
-    cbor_bytes = cbor2.dumps(test_data)
+    test_data = {"test": "data"}
     
-    # Verify round-trip
-    decoded = cbor2.loads(cbor_bytes)
-    assert decoded == test_data
+    # Send without Accept header - should use JSON (default)
+    response = client.post(
+        f"{base_url_ssl}/anything",
+        json=test_data,
+    )
+    
+    assert response.status_code == 200
+    json_data = response.json()
+    
+    # Should use JSON by default
+    assert json_data["headers"]["Content-Type"] == "application/json"
+    assert json_data["json"] == test_data
 
 
 def test_cbor_types():
@@ -80,14 +83,16 @@ def test_cbor_types():
 
 
 @pytest.mark.asyncio
-async def test_cbor_async(base_url_ssl, ca_bundle):
-    """Test CBOR with async client."""
+async def test_cbor_async_transparent(base_url_ssl, ca_bundle):
+    """Test transparent CBOR with async client."""
     async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
         test_data = {"async": True, "value": 999}
         
+        # Use Accept header to trigger CBOR serialization
         response = await client.post(
             f"{base_url_ssl}/anything",
-            cbor=test_data,
+            json=test_data,
+            headers={"Accept": "application/cbor"}
         )
         
         assert response.status_code == 200
