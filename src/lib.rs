@@ -11,7 +11,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pythonize::depythonize;
 use reqwest::{
-    header::{HeaderValue, COOKIE},
+    header::{HeaderValue, COOKIE, CONTENT_TYPE},
     multipart,
     redirect::Policy,
     Body, Method,
@@ -304,6 +304,7 @@ impl RClient {
     /// * `content` - The content to send in the request body as bytes. Default is None.
     /// * `data` - The form data to send in the request body. Default is None.
     /// * `json` -  A JSON serializable object to send in the request body. Default is None.
+    /// * `cbor` -  A CBOR serializable object to send in the request body. Default is None.
     /// * `files` - A map of file fields to file paths to be sent as multipart/form-data. Default is None.
     /// * `auth` - A tuple containing the username and an optional password for basic authentication. Default is None.
     /// * `auth_bearer` - A string representing the bearer token for bearer token authentication. Default is None.
@@ -327,7 +328,7 @@ impl RClient {
     /// * `HTTPStatusError` - If HTTP status is 4xx or 5xx
     /// * `RequestError` - For other request failures
     #[pyo3(signature = (method, url, params=None, headers=None, cookies=None, content=None,
-        data=None, json=None, files=None, auth=None, auth_bearer=None, timeout=None))]
+        data=None, json=None, cbor=None, files=None, auth=None, auth_bearer=None, timeout=None))]
     fn request(
         &self,
         py: Python,
@@ -339,6 +340,7 @@ impl RClient {
         content: Option<Vec<u8>>,
         data: Option<&Bound<'_, PyAny>>,
         json: Option<&Bound<'_, PyAny>>,
+        cbor: Option<&Bound<'_, PyAny>>,
         files: Option<IndexMap<String, String>>,
         auth: Option<(String, Option<String>)>,
         auth_bearer: Option<String>,
@@ -350,6 +352,7 @@ impl RClient {
         let params = params.or_else(|| self.params.clone());
         let data_value: Option<Value> = data.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let json_value: Option<Value> = json.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let cbor_value: Option<Value> = cbor.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let auth = auth.or(self.auth.clone());
         let auth_bearer = auth_bearer.or(self.auth_bearer.clone());
         let timeout: Option<f64> = timeout.or(self.timeout);
@@ -396,6 +399,14 @@ impl RClient {
                 // Json
                 if let Some(json_data) = json_value {
                     request_builder = request_builder.json(&json_data);
+                }
+                // CBOR
+                if let Some(cbor_data) = cbor_value {
+                    let cbor_bytes = serde_cbor::to_vec(&cbor_data)
+                        .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
+                    request_builder = request_builder
+                        .header(CONTENT_TYPE, "application/cbor")
+                        .body(cbor_bytes);
                 }
                 // Files
                 if let Some(files) = files {
@@ -477,7 +488,7 @@ impl RClient {
     ///         process(chunk)
     /// ```
     #[pyo3(signature = (method, url, params=None, headers=None, cookies=None, content=None,
-        data=None, json=None, files=None, auth=None, auth_bearer=None, timeout=None))]
+        data=None, json=None, cbor=None, files=None, auth=None, auth_bearer=None, timeout=None))]
     fn _stream(
         &self,
         py: Python,
@@ -489,6 +500,7 @@ impl RClient {
         content: Option<Vec<u8>>,
         data: Option<&Bound<'_, PyAny>>,
         json: Option<&Bound<'_, PyAny>>,
+        cbor: Option<&Bound<'_, PyAny>>,
         files: Option<IndexMap<String, String>>,
         auth: Option<(String, Option<String>)>,
         auth_bearer: Option<String>,
@@ -500,6 +512,7 @@ impl RClient {
         let params = params.or_else(|| self.params.clone());
         let data_value: Option<Value> = data.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let json_value: Option<Value> = json.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let cbor_value: Option<Value> = cbor.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let auth = auth.or(self.auth.clone());
         let auth_bearer = auth_bearer.or(self.auth_bearer.clone());
         let timeout: Option<f64> = timeout.or(self.timeout);
@@ -545,6 +558,14 @@ impl RClient {
                 // Json
                 if let Some(json_data) = json_value {
                     request_builder = request_builder.json(&json_data);
+                }
+                // CBOR
+                if let Some(cbor_data) = cbor_value {
+                    let cbor_bytes = serde_cbor::to_vec(&cbor_data)
+                        .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
+                    request_builder = request_builder
+                        .header(CONTENT_TYPE, "application/cbor")
+                        .body(cbor_bytes);
                 }
                 // Files
                 if let Some(files) = files {

@@ -21,6 +21,7 @@ class RequestParams(TypedDict, total=False):
     content: bytes | None
     data: dict[str, Any] | None
     json: Any | None
+    cbor: Any | None
     files: dict[str, str] | None
 
 class ClientRequestParams(RequestParams):
@@ -44,6 +45,7 @@ class Response:
     @property
     def text(self) -> str: ...
     def json(self) -> Any: ...
+    def cbor(self) -> Any: ...
     @property
     def text_markdown(self) -> str: ...
     @property

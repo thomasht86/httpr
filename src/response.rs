@@ -187,6 +187,15 @@ impl Response {
         Ok(result)
     }
 
+    fn cbor(&mut self, py: Python) -> Result<PyObject> {
+        let cbor_value: serde_json::Value = serde_cbor::from_slice(self.content.as_bytes(py))
+            .map_err(|e| anyhow!("Failed to deserialize CBOR: {}", e))?;
+        let result = pythonize(py, &cbor_value)
+            .map_err(|e| anyhow!("Failed to convert CBOR to Python object: {}", e))?
+            .unbind();
+        Ok(result)
+    }
+
     #[getter]
     fn text_markdown(&mut self, py: Python) -> Result<String> {
         let raw_bytes = self.content.bind(py).as_bytes();
