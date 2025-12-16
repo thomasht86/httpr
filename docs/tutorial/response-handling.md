@@ -105,6 +105,30 @@ print(data["slideshow"]["title"])
 !!! note
     `json()` is a method, not a property. Call it with parentheses.
 
+### CBOR Content
+
+Parse the response body as CBOR (Concise Binary Object Representation):
+
+```python
+import httpr
+
+# Assuming the server returns CBOR data
+response = httpr.get("https://api.example.com/data")
+data = response.cbor()
+
+print(type(data))  # <class 'dict'> or <class 'list'>
+print(data)
+```
+
+CBOR is a binary serialization format that's more compact than JSON, making it ideal for:
+
+- **Large datasets**: Smaller payload sizes compared to JSON
+- **IoT applications**: Efficient data transfer for resource-constrained devices
+- **High-performance APIs**: Faster serialization/deserialization
+
+!!! note
+    Like `json()`, `cbor()` is a method. The server must send CBOR-encoded data (typically with `Content-Type: application/cbor`).
+
 ### HTML Conversion
 
 httpr provides built-in HTML-to-text conversion using Rust's `html2text` crate:
