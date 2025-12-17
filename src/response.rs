@@ -180,9 +180,32 @@ impl Response {
     }
 
     fn json(&mut self, py: Python) -> Result<PyObject> {
-        let json_value: serde_json::Value = from_slice(self.content.as_bytes(py))?;
-        let result = pythonize(py, &json_value)
-            .map_err(|e| anyhow!("Failed to convert JSON to Python object: {}", e))?
+        // Check if Content-Type is application/cbor
+        let content_type = self.headers.get("content-type".to_string(), None);
+        
+        if content_type.to_lowercase().contains("application/cbor") {
+            // Deserialize as CBOR
+            let cbor_value: serde_json::Value = serde_cbor::from_slice(self.content.as_bytes(py))
+                .map_err(|e| anyhow!("Failed to deserialize CBOR: {}", e))?;
+            let result = pythonize(py, &cbor_value)
+                .map_err(|e| anyhow!("Failed to convert CBOR to Python object: {}", e))?
+                .unbind();
+            Ok(result)
+        } else {
+            // Deserialize as JSON (default)
+            let json_value: serde_json::Value = from_slice(self.content.as_bytes(py))?;
+            let result = pythonize(py, &json_value)
+                .map_err(|e| anyhow!("Failed to convert JSON to Python object: {}", e))?
+                .unbind();
+            Ok(result)
+        }
+    }
+
+    fn cbor(&mut self, py: Python) -> Result<PyObject> {
+        let cbor_value: serde_json::Value = serde_cbor::from_slice(self.content.as_bytes(py))
+            .map_err(|e| anyhow!("Failed to deserialize CBOR: {}", e))?;
+        let result = pythonize(py, &cbor_value)
+            .map_err(|e| anyhow!("Failed to convert CBOR to Python object: {}", e))?
             .unbind();
         Ok(result)
     }

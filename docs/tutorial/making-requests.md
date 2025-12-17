@@ -162,6 +162,45 @@ response = httpr.post(
 print(response.json()["json"])
 ```
 
+### CBOR Data (Transparent)
+
+CBOR (Concise Binary Object Representation) encoding is automatically used when you set the `Accept: application/cbor` header:
+
+```python
+import httpr
+
+# Simply add Accept header - serialization happens transparently
+response = httpr.post(
+    "https://api.example.com/data",
+    json={  # Use json parameter as normal
+        "name": "John Doe",
+        "values": [1, 2, 3, 4, 5],
+        "metadata": {"version": 1}
+    },
+    headers={"Accept": "application/cbor"}  # Triggers CBOR serialization
+)
+
+# Content-Type is automatically set to application/cbor
+# Server receives CBOR-encoded data
+```
+
+CBOR offers several advantages over JSON:
+
+- **Smaller size**: Binary encoding is more compact than text
+- **Faster processing**: No text parsing overhead
+- **Better for binary data**: Native support for byte arrays
+- **Type preservation**: Maintains exact numeric types
+
+Use CBOR when:
+
+- Working with large arrays or datasets
+- Building high-performance APIs
+- Developing IoT or embedded applications
+- Reducing bandwidth usage is critical
+
+!!! note
+    The server must support CBOR requests. Check the API documentation to confirm CBOR is accepted.
+
 ### Form Data
 
 Send URL-encoded form data:

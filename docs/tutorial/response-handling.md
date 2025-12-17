@@ -105,6 +105,44 @@ print(data["slideshow"]["title"])
 !!! note
     `json()` is a method, not a property. Call it with parentheses.
 
+### CBOR Content (Transparent Deserialization)
+
+When the server returns `Content-Type: application/cbor`, the `json()` method automatically deserializes CBOR data:
+
+```python
+import httpr
+
+# Request CBOR data by setting Accept header
+response = httpr.get(
+    "https://api.example.com/data",
+    headers={"Accept": "application/cbor"}
+)
+
+# json() automatically detects and deserializes CBOR based on Content-Type
+data = response.json()  # Works transparently with CBOR!
+
+print(type(data))  # <class 'dict'> or <class 'list'>
+print(data)
+```
+
+You can also explicitly use `cbor()` if you know the data is CBOR:
+
+```python
+import httpr
+
+response = httpr.get("https://api.example.com/cbor-data")
+data = response.cbor()  # Explicitly deserialize as CBOR
+```
+
+CBOR is a binary serialization format that's more compact than JSON, making it ideal for:
+
+- **Large datasets**: Smaller payload sizes compared to JSON
+- **IoT applications**: Efficient data transfer for resource-constrained devices
+- **High-performance APIs**: Faster serialization/deserialization
+
+!!! tip "Transparent Usage"
+    In most cases, you don't need to think about CBOR vs JSON. Just use `response.json()` and httpr will automatically handle the deserialization based on the Content-Type header.
+
 ### HTML Conversion
 
 httpr provides built-in HTML-to-text conversion using Rust's `html2text` crate:

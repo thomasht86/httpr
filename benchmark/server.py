@@ -4,6 +4,7 @@ import json
 import os
 import random  # used to generate random floats
 
+import cbor2
 from starlette.applications import Starlette
 from starlette.responses import Response
 from starlette.routing import Route
@@ -45,11 +46,27 @@ def make_precomputed_json(data):
     return resp_plain, resp_gzip
 
 
+def make_precomputed_cbor(data):
+    """Precompute CBOR responses (with and without gzip)."""
+    body = cbor2.dumps(data)
+    resp_plain = Response(body, headers={"Content-Type": "application/cbor"})
+    gzipped_body = gzip.compress(body)
+    headers = {
+        "Content-Encoding": "gzip",
+        "Content-Length": str(len(gzipped_body)),
+        "Content-Type": "application/cbor",
+    }
+    resp_gzip = Response(gzipped_body, headers=headers)
+    return resp_plain, resp_gzip
+
+
 # Precompute JSON payloads.
 json_precomputed = {}
+cbor_precomputed = {}
 for count in (1, 10, 100):
     data = [[random.random() for _ in range(1024)] for _ in range(count)]
     json_precomputed[count] = make_precomputed_json(data)
+    cbor_precomputed[count] = make_precomputed_cbor(data)
 
 
 def precomputed_json_route(count, request):
@@ -59,16 +76,26 @@ def precomputed_json_route(count, request):
     return json_precomputed[count][1] if use_gzip else json_precomputed[count][0]
 
 
-app = Starlette(
-    routes=[
-        Route("/5k", lambda r: gzip_response(random_5k)),
-        Route("/50k", lambda r: gzip_response(random_50k)),
-        Route("/200k", lambda r: gzip_response(random_200k)),
-        # JSON endpoints using precomputed responses:
-        Route("/json/1", lambda request: precomputed_json_route(1, request)),
-        Route("/json/10", lambda request: precomputed_json_route(10, request)),
-        Route("/json/100", lambda request: precomputed_json_route(100, request)),
-    ],
-)
+def precomputed_cbor_route(count, request):
+    """Return precomputed CBOR response."""
+    use_gzip = request.query_params.get("gzip", "false").lower() in ("true", "1", "yes")
+    return cbor_precomputed[count][1] if use_gzip else cbor_precomputed[count][0]
+
+
+routes = [
+    Route("/5k", lambda r: gzip_response(random_5k)),
+    Route("/50k", lambda r: gzip_response(random_50k)),
+    Route("/200k", lambda r: gzip_response(random_200k)),
+    # JSON endpoints using precomputed responses:
+    Route("/json/1", lambda request: precomputed_json_route(1, request)),
+    Route("/json/10", lambda request: precomputed_json_route(10, request)),
+    Route("/json/100", lambda request: precomputed_json_route(100, request)),
+    # CBOR endpoints using precomputed responses:
+    Route("/cbor/1", lambda request: precomputed_cbor_route(1, request)),
+    Route("/cbor/10", lambda request: precomputed_cbor_route(10, request)),
+    Route("/cbor/100", lambda request: precomputed_cbor_route(100, request)),
+]
+
+app = Starlette(routes=routes)
 
 # Run server: uvicorn server:app

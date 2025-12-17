@@ -11,7 +11,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pythonize::depythonize;
 use reqwest::{
-    header::{HeaderValue, COOKIE},
+    header::{HeaderValue, COOKIE, CONTENT_TYPE, ACCEPT},
     multipart,
     redirect::Policy,
     Body, Method,
@@ -304,6 +304,7 @@ impl RClient {
     /// * `content` - The content to send in the request body as bytes. Default is None.
     /// * `data` - The form data to send in the request body. Default is None.
     /// * `json` -  A JSON serializable object to send in the request body. Default is None.
+    /// * `cbor` -  A CBOR serializable object to send in the request body. Default is None.
     /// * `files` - A map of file fields to file paths to be sent as multipart/form-data. Default is None.
     /// * `auth` - A tuple containing the username and an optional password for basic authentication. Default is None.
     /// * `auth_bearer` - A string representing the bearer token for bearer token authentication. Default is None.
@@ -369,11 +370,16 @@ impl RClient {
             let client_headers = self.headers.lock()
                 .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
                 .clone();
-            request_builder = request_builder.headers(client_headers);
+            request_builder = request_builder.headers(client_headers.clone());
 
 
             // Headers
-            if let Some(headers) = headers {
+            let mut combined_headers = client_headers;
+            if let Some(ref headers) = headers {
+                let header_map = headers.to_headermap();
+                for (key, value) in header_map.iter() {
+                    combined_headers.insert(key.clone(), value.clone());
+                }
                 request_builder = request_builder.headers(headers.to_headermap());
             }
 
@@ -393,9 +399,25 @@ impl RClient {
                 if let Some(form_data) = data_value {
                     request_builder = request_builder.form(&form_data);
                 }
-                // Json
+                // Json - check if we should use CBOR based on Accept header
                 if let Some(json_data) = json_value {
-                    request_builder = request_builder.json(&json_data);
+                    // Check if Accept header is set to application/cbor
+                    let use_cbor = combined_headers.get(&ACCEPT)
+                        .and_then(|v| v.to_str().ok())
+                        .map(|s| s.contains("application/cbor"))
+                        .unwrap_or(false);
+                    
+                    if use_cbor {
+                        // Serialize as CBOR
+                        let cbor_bytes = serde_cbor::to_vec(&json_data)
+                            .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
+                        request_builder = request_builder
+                            .header(CONTENT_TYPE, "application/cbor")
+                            .body(cbor_bytes);
+                    } else {
+                        // Serialize as JSON (default)
+                        request_builder = request_builder.json(&json_data);
+                    }
                 }
                 // Files
                 if let Some(files) = files {
@@ -519,10 +541,15 @@ impl RClient {
             let client_headers = self.headers.lock()
                 .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
                 .clone();
-            request_builder = request_builder.headers(client_headers);
+            request_builder = request_builder.headers(client_headers.clone());
 
             // Headers
-            if let Some(headers) = headers {
+            let mut combined_headers = client_headers;
+            if let Some(ref headers) = headers {
+                let header_map = headers.to_headermap();
+                for (key, value) in header_map.iter() {
+                    combined_headers.insert(key.clone(), value.clone());
+                }
                 request_builder = request_builder.headers(headers.to_headermap());
             }
 
@@ -542,9 +569,25 @@ impl RClient {
                 if let Some(form_data) = data_value {
                     request_builder = request_builder.form(&form_data);
                 }
-                // Json
+                // Json - check if we should use CBOR based on Accept header
                 if let Some(json_data) = json_value {
-                    request_builder = request_builder.json(&json_data);
+                    // Check if Accept header is set to application/cbor
+                    let use_cbor = combined_headers.get(&ACCEPT)
+                        .and_then(|v| v.to_str().ok())
+                        .map(|s| s.contains("application/cbor"))
+                        .unwrap_or(false);
+                    
+                    if use_cbor {
+                        // Serialize as CBOR
+                        let cbor_bytes = serde_cbor::to_vec(&json_data)
+                            .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
+                        request_builder = request_builder
+                            .header(CONTENT_TYPE, "application/cbor")
+                            .body(cbor_bytes);
+                    } else {
+                        // Serialize as JSON (default)
+                        request_builder = request_builder.json(&json_data);
+                    }
                 }
                 // Files
                 if let Some(files) = files {
