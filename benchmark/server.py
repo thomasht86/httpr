@@ -4,16 +4,10 @@ import json
 import os
 import random  # used to generate random floats
 
+import cbor2
 from starlette.applications import Starlette
 from starlette.responses import Response
 from starlette.routing import Route
-
-# Try to import cbor2, if not available skip CBOR endpoints
-try:
-    import cbor2
-    CBOR_AVAILABLE = True
-except ImportError:
-    CBOR_AVAILABLE = False
 
 random_5k = base64.b64encode(os.urandom(5 * 1024)).decode("utf-8")
 random_5k = gzip.compress(random_5k.encode("utf-8"))
@@ -54,9 +48,6 @@ def make_precomputed_json(data):
 
 def make_precomputed_cbor(data):
     """Precompute CBOR responses (with and without gzip)."""
-    if not CBOR_AVAILABLE:
-        return None, None
-    
     body = cbor2.dumps(data)
     resp_plain = Response(body, headers={"Content-Type": "application/cbor"})
     gzipped_body = gzip.compress(body)
@@ -75,8 +66,7 @@ cbor_precomputed = {}
 for count in (1, 10, 100):
     data = [[random.random() for _ in range(1024)] for _ in range(count)]
     json_precomputed[count] = make_precomputed_json(data)
-    if CBOR_AVAILABLE:
-        cbor_precomputed[count] = make_precomputed_cbor(data)
+    cbor_precomputed[count] = make_precomputed_cbor(data)
 
 
 def precomputed_json_route(count, request):
@@ -88,9 +78,6 @@ def precomputed_json_route(count, request):
 
 def precomputed_cbor_route(count, request):
     """Return precomputed CBOR response."""
-    if not CBOR_AVAILABLE:
-        return Response("CBOR not available", status_code=501)
-    
     use_gzip = request.query_params.get("gzip", "false").lower() in ("true", "1", "yes")
     return cbor_precomputed[count][1] if use_gzip else cbor_precomputed[count][0]
 
@@ -103,15 +90,11 @@ routes = [
     Route("/json/1", lambda request: precomputed_json_route(1, request)),
     Route("/json/10", lambda request: precomputed_json_route(10, request)),
     Route("/json/100", lambda request: precomputed_json_route(100, request)),
+    # CBOR endpoints using precomputed responses:
+    Route("/cbor/1", lambda request: precomputed_cbor_route(1, request)),
+    Route("/cbor/10", lambda request: precomputed_cbor_route(10, request)),
+    Route("/cbor/100", lambda request: precomputed_cbor_route(100, request)),
 ]
-
-# Add CBOR routes if available
-if CBOR_AVAILABLE:
-    routes.extend([
-        Route("/cbor/1", lambda request: precomputed_cbor_route(1, request)),
-        Route("/cbor/10", lambda request: precomputed_cbor_route(10, request)),
-        Route("/cbor/100", lambda request: precomputed_cbor_route(100, request)),
-    ])
 
 app = Starlette(routes=routes)
 
