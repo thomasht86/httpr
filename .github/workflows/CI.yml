@@ -118,13 +118,13 @@ jobs:
           githubToken: ${{ github.token }}
           install: |
             apt-get update
-            apt-get install -y --no-install-recommends python3 python3-pip python3-dev build-essential libffi-dev
-            pip3 install -U pip
+            apt-get install -y --no-install-recommends python3 python3-pip python3-dev build-essential libffi-dev curl
+            curl -LsSf https://astral.sh/uv/install.sh | sh
           run: |
             set -e
-            pip3 install httpr --find-links dist --no-index --force-reinstall
-            pip3 install certifi pytest pytest-asyncio pytest-httpbin mypy ruff maturin trustme
-            pytest
+            export PATH="$HOME/.local/bin:$PATH"
+            uv sync --extra dev --find-links dist --reinstall
+            uv run pytest
 
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
@@ -181,12 +181,11 @@ jobs:
           options: -v ${{ github.workspace }}:/io -w /io
           run: |
             set -e
-            apk add py3-pip py3-virtualenv python3-dev build-base libffi-dev
-            python3 -m virtualenv .venv
-            source .venv/bin/activate
-            pip install httpr --find-links dist --no-index --force-reinstall
-            pip install certifi pytest pytest-asyncio pytest-httpbin mypy ruff maturin trustme
-            pytest
+            apk add python3 python3-dev build-base libffi-dev curl
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            export PATH="$HOME/.local/bin:$PATH"
+            uv sync --extra dev --find-links dist --reinstall
+            uv run pytest
 
   windows:
     runs-on: ${{ matrix.platform.runner }}
