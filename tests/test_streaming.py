@@ -185,7 +185,7 @@ class TestStreamingClient:
         client = httpr.Client(ca_cert_file=ca_bundle)
         
         with pytest.raises(ValueError, match="Unsupported HTTP method"):
-            with client.stream("INVALID", f"{base_url_ssl}/get") as response:
+            with client.stream("INVALID", f"{base_url_ssl}/get") as response:  # type: ignore[arg-type]
                 pass
 
 
@@ -260,5 +260,5 @@ class TestStreamingAsyncClient:
         """Test that invalid HTTP method raises ValueError in async."""
         async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
             with pytest.raises(ValueError, match="Unsupported HTTP method"):
-                async with client.stream("INVALID", f"{base_url_ssl}/get") as response:
+                async with client.stream("INVALID", f"{base_url_ssl}/get") as response:  # type: ignore[arg-type]
                     pass
