@@ -31,6 +31,10 @@ jobs:
         with:
           enable-cache: false
       - name: Build and test
+        # PYO3_USE_ABI3_FORWARD_COMPATIBILITY allows transitive dependencies (like rpds-py)
+        # that use older PyO3 versions to build from source on Python 3.14+
+        env:
+          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
         run: |
           uv sync --extra dev
           uv run maturin develop
