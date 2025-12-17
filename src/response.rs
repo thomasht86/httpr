@@ -51,7 +51,7 @@ impl CaseInsensitiveHeaderMap {
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<PyAny>> {
         let iter = slf.headers.keys().cloned().collect::<Vec<_>>();
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let iter_obj = iter.into_pyobject(py)?;
             let iter_method = iter_obj.getattr("__iter__")?;
             let py_iter = iter_method.call0()?;
@@ -165,7 +165,7 @@ impl Response {
         let raw_bytes = self.content.as_bytes(py);
 
         // Release the GIL here because decoding can be CPU-intensive
-        py.allow_threads(|| {
+        py.detach(|| {
             let encoding = Encoding::for_label(self.encoding.as_bytes())
                 .ok_or_else(|| anyhow!("Unsupported charset: {}", self.encoding))?;
             let (decoded_str, detected_encoding, _) = encoding.decode(raw_bytes);
@@ -179,7 +179,7 @@ impl Response {
         })
     }
 
-    fn json(&mut self, py: Python) -> Result<PyObject> {
+    fn json(&mut self, py: Python) -> Result<Py<PyAny>> {
         // Check if Content-Type is application/cbor
         let content_type = self.headers.get("content-type".to_string(), None);
         
@@ -201,7 +201,7 @@ impl Response {
         }
     }
 
-    fn cbor(&mut self, py: Python) -> Result<PyObject> {
+    fn cbor(&mut self, py: Python) -> Result<Py<PyAny>> {
         let cbor_value: serde_json::Value = serde_cbor::from_slice(self.content.as_bytes(py))
             .map_err(|e| anyhow!("Failed to deserialize CBOR: {}", e))?;
         let result = pythonize(py, &cbor_value)
@@ -213,7 +213,7 @@ impl Response {
     #[getter]
     fn text_markdown(&mut self, py: Python) -> Result<String> {
         let raw_bytes = self.content.bind(py).as_bytes();
-        let text = py.allow_threads(|| from_read(raw_bytes, 100))?;
+        let text = py.detach(|| from_read(raw_bytes, 100))?;
         Ok(text)
     }
 
@@ -221,7 +221,7 @@ impl Response {
     fn text_plain(&mut self, py: Python) -> Result<String> {
         let raw_bytes = self.content.bind(py).as_bytes();
         let text =
-            py.allow_threads(|| from_read_with_decorator(raw_bytes, 100, TrivialDecorator::new()))?;
+            py.detach(|| from_read_with_decorator(raw_bytes, 100, TrivialDecorator::new()))?;
         Ok(text)
     }
 
@@ -229,7 +229,7 @@ impl Response {
     fn text_rich(&mut self, py: Python) -> Result<String> {
         let raw_bytes = self.content.bind(py).as_bytes();
         let text =
-            py.allow_threads(|| from_read_with_decorator(raw_bytes, 100, RichDecorator::new()))?;
+            py.detach(|| from_read_with_decorator(raw_bytes, 100, RichDecorator::new()))?;
         Ok(text)
     }
 }
@@ -326,7 +326,7 @@ impl StreamingResponse {
         let consumed_arc = Arc::clone(&self.consumed);
 
         // Release GIL while fetching the next chunk
-        let result = py.allow_threads(|| {
+        let result = py.detach(|| {
             RUNTIME.block_on(async {
                 let mut response_guard = response_arc.lock().map_err(|e| {
                     anyhow::anyhow!("Failed to acquire response lock: {}", e)
@@ -435,7 +435,7 @@ impl StreamingResponse {
         let response_arc = Arc::clone(&self.response);
         let consumed_arc = Arc::clone(&self.consumed);
 
-        let result = py.allow_threads(|| {
+        let result = py.detach(|| {
             RUNTIME.block_on(async {
                 let mut response_guard = response_arc.lock().map_err(|e| {
                     anyhow::anyhow!("Failed to acquire response lock: {}", e)
@@ -532,7 +532,7 @@ impl TextIterator {
         let consumed_arc = Arc::clone(&self.consumed);
         let encoding_name = self.encoding.clone();
 
-        let result = py.allow_threads(|| {
+        let result = py.detach(|| {
             RUNTIME.block_on(async {
                 let mut response_guard = response_arc.lock().map_err(|e| {
                     anyhow::anyhow!("Failed to acquire response lock: {}", e)
@@ -610,7 +610,7 @@ impl LineIterator {
         let encoding_name = self.encoding.clone();
 
         loop {
-            let result = py.allow_threads(|| {
+            let result = py.detach(|| {
                 RUNTIME.block_on(async {
                     let mut response_guard = response_arc.lock().map_err(|e| {
                         anyhow::anyhow!("Failed to acquire response lock: {}", e)

@@ -464,7 +464,7 @@ impl RClient {
 
         // Execute an async future, releasing the Python GIL for concurrency.
         // Use Tokio global runtime to block on the future.
-        let result = py.allow_threads(|| RUNTIME.block_on(future));
+        let result = py.detach(|| RUNTIME.block_on(future));
         let (f_buf, f_cookies, f_headers, f_status_code, f_url) = result.map_err(map_anyhow_error)?;
 
         Ok(Response {
@@ -632,7 +632,7 @@ impl RClient {
         };
 
         // Execute an async future, releasing the Python GIL for concurrency.
-        let result = py.allow_threads(|| RUNTIME.block_on(future));
+        let result = py.detach(|| RUNTIME.block_on(future));
         let (f_resp, f_cookies, f_headers, f_status_code, f_url) = result.map_err(map_anyhow_error)?;
 
         Ok(StreamingResponse::new(
