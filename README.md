@@ -334,16 +334,17 @@ Provides precompiled wheels for the following platforms:
 
 | Job | PRs | Push to main | Tags (Release) | Weekly (Sunday) | Manual |
 |-----|:---:|:------------:|:--------------:|:---------------:|:------:|
-| `test` (Python 3.10-3.13) | ✓ | | | | |
+| `test` (Python 3.10-3.14) | ✓ | ✓ | | | |
 | `docs` (build) | ✓ | | | | |
 | `docs` (deploy) | | ✓ | | | |
-| `linux`, `musllinux`, `windows`, `macos`, `sdist` | | | ✓ | ✓ | ✓ |
-| `release` (PyPI publish) | | | ✓ | | ✓ |
-| `benchmark` | | | ✓ | ✓ | ✓ |
+| `linux`, `musllinux`, `windows`, `macos`, `sdist` | | ✓ | ✓ | ✓ | ✓ |
+| `release` (PyPI publish) | | ✓ (dev) | ✓ (stable) | | ✓ |
+| `benchmark` | | ✓ | ✓ | ✓ | ✓ |
 
-- **PRs**: Run tests across Python 3.10-3.13 matrix and verify docs build
-- **Push to main**: Deploy docs to GitHub Pages
-- **Tags/Weekly/Manual**: Full multi-platform wheel builds with benchmarks
+- **PRs**: Run tests across Python 3.10-3.14 matrix and verify docs build
+- **Push to main**: Run tests, build wheels, publish dev release to PyPI (e.g., `0.1.0.dev42`)
+- **Tags**: Build wheels, publish stable release to PyPI (e.g., `0.2.0`)
+- **Weekly/Manual**: Full multi-platform wheel builds with benchmarks
 
 ## Acknowledgements
 
