@@ -76,8 +76,10 @@ def update_version(version):
 
         print(f"pyproject.toml version updated to: {version}")
 
-        # Also update Cargo.toml
-        if not update_cargo_version(project_root, version):
+        # Also update Cargo.toml with base version (Cargo doesn't support .dev suffixes)
+        # Extract base version by stripping any .devN suffix
+        cargo_version = re.sub(r'\.dev\d+$', '', version)
+        if not update_cargo_version(project_root, cargo_version):
             print("Error: failed to update Cargo.toml")
             sys.exit(1)
 
