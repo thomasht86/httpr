@@ -16,11 +16,11 @@ runs:
           VERSION=${GITHUB_REF#refs/tags/v}
         else
           # Dev release: use base version + run number (e.g., 0.1.0.dev42)
-          BASE_VERSION=$(uvx --with toml python .github/workflows/set_version.py --get-base)
+          BASE_VERSION=$(uvx --with tomlkit python .github/workflows/set_version.py --get-base)
           VERSION="${BASE_VERSION}.dev${{ inputs.run-number }}"
         fi
         echo "Setting version to: $VERSION"
-        uvx --with toml python .github/workflows/set_version.py $VERSION
+        uvx --with tomlkit python .github/workflows/set_version.py $VERSION
     - name: Compute and set version (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
@@ -30,8 +30,8 @@ runs:
           $VERSION = $env:GITHUB_REF -replace 'refs/tags/v', ''
         } else {
           # Dev release: use base version + run number (e.g., 0.1.0.dev42)
-          $BASE_VERSION = $(uvx --with toml python .github/workflows/set_version.py --get-base)
+          $BASE_VERSION = $(uvx --with tomlkit python .github/workflows/set_version.py --get-base)
           $VERSION = "${BASE_VERSION}.dev${{ inputs.run-number }}"
         }
         Write-Host "Setting version to: $VERSION"
-        uvx --with toml python .github/workflows/set_version.py $VERSION
+        uvx --with tomlkit python .github/workflows/set_version.py $VERSION

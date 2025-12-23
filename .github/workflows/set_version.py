@@ -5,8 +5,8 @@ import os
 import re
 import sys
 
-# Replace tomllib with toml (needs to be installed with pip)
-import toml
+# tomlkit preserves formatting/comments unlike standard toml library
+import tomlkit
 
 
 def update_cargo_version(project_root, version):
@@ -18,21 +18,22 @@ def update_cargo_version(project_root, version):
         return False
 
     try:
-        # Load Cargo.toml as structured TOML
-        data = toml.load(cargo_path)
+        # Load Cargo.toml preserving formatting
+        with open(cargo_path) as f:
+            data = tomlkit.load(f)
 
         # Ensure the [package] section exists
         package_section = data.get("package")
-        if not isinstance(package_section, dict):
+        if not isinstance(package_section, (dict, tomlkit.items.Table)):
             print(f"Error: '[package]' section not found or invalid in {cargo_path}")
             return False
 
         # Update only the package version field
         package_section["version"] = version
 
-        # Write the updated content back to Cargo.toml
+        # Write back preserving formatting
         with open(cargo_path, "w") as f:
-            toml.dump(data, f)
+            f.write(tomlkit.dumps(data))
 
         print(f"Cargo.toml version updated to: {version}")
         return True
@@ -54,8 +55,9 @@ def update_version(version):
         sys.exit(1)
 
     try:
-        # Load the pyproject.toml file
-        data = toml.load(pyproject_path)
+        # Load the pyproject.toml file preserving formatting
+        with open(pyproject_path) as f:
+            data = tomlkit.load(f)
 
         # Show the current version
         current_version = data.get("project", {}).get("version", "unknown")
@@ -68,9 +70,9 @@ def update_version(version):
 
         data["project"]["version"] = version
 
-        # Write the updated content back to the file
+        # Write back preserving formatting
         with open(pyproject_path, "w") as f:
-            toml.dump(data, f)
+            f.write(tomlkit.dumps(data))
 
         print(f"pyproject.toml version updated to: {version}")
 
@@ -94,7 +96,8 @@ def get_base_version():
         sys.exit(1)
 
     try:
-        data = toml.load(pyproject_path)
+        with open(pyproject_path) as f:
+            data = tomlkit.load(f)
         version = data.get("project", {}).get("version", "0.0.0")
         # Strip any existing dev suffix to get clean base version
         base_version = re.sub(r'\.dev\d+$', '', version)
