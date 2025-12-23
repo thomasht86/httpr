@@ -645,7 +645,7 @@ impl RClient {
     }
 }
 
-#[pymodule]
+#[pymodule(gil_used = false)]
 fn httpr(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyo3_log::init();
 
