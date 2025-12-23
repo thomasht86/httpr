@@ -13,21 +13,21 @@ def test_invalid_method_exception(base_url_ssl, ca_bundle):
     client = httpr.Client(ca_cert_file=ca_bundle)
     # Passing an unsupported HTTP method should trigger an exception.
     with pytest.raises(Exception):
-        client.request("INVALID", f"{base_url_ssl}/anything")
+        client.request("INVALID", f"{base_url_ssl}/anything")  # type: ignore[arg-type]
 
 
 def test_invalid_headers_setter_exception():
     client = httpr.Client()
     # Attempting to set headers with a non-dict type should raise an exception.
     with pytest.raises(Exception):
-        client.headers = "not a dict"
+        client.headers = "not a dict"  # type: ignore[assignment]
 
 
 def test_invalid_cookies_setter_exception():
     client = httpr.Client()
     # Attempting to set cookies with a non-dict type should raise an exception.
     with pytest.raises(Exception):
-        client.cookies = "not a dict"
+        client.cookies = "not a dict"  # type: ignore[assignment]
 
 
 def test_invalid_file_path_exception(base_url_ssl, ca_bundle):
