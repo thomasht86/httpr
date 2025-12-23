@@ -14,25 +14,25 @@ def update_cargo_version(project_root, version):
     cargo_path = os.path.join(project_root, "Cargo.toml")
 
     if not os.path.isfile(cargo_path):
-        print(f"Warning: Cargo.toml not found at {cargo_path}")
+        print(f"Error: Cargo.toml not found at {cargo_path}")
         return False
 
     try:
-        with open(cargo_path) as f:
-            content = f.read()
+        # Load Cargo.toml as structured TOML
+        data = toml.load(cargo_path)
 
-        # Use regex to replace version in [package] section
-        # Match: version = "X.Y.Z" in the package section
-        new_content = re.sub(
-            r'^(version\s*=\s*")[^"]+(")',
-            rf'\g<1>{version}\g<2>',
-            content,
-            count=1,
-            flags=re.MULTILINE
-        )
+        # Ensure the [package] section exists
+        package_section = data.get("package")
+        if not isinstance(package_section, dict):
+            print(f"Error: '[package]' section not found or invalid in {cargo_path}")
+            return False
 
+        # Update only the package version field
+        package_section["version"] = version
+
+        # Write the updated content back to Cargo.toml
         with open(cargo_path, "w") as f:
-            f.write(new_content)
+            toml.dump(data, f)
 
         print(f"Cargo.toml version updated to: {version}")
         return True
@@ -75,7 +75,9 @@ def update_version(version):
         print(f"pyproject.toml version updated to: {version}")
 
         # Also update Cargo.toml
-        update_cargo_version(project_root, version)
+        if not update_cargo_version(project_root, version):
+            print("Error: failed to update Cargo.toml")
+            sys.exit(1)
 
     except Exception as e:
         print(f"Error updating version: {e}")
