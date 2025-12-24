@@ -380,11 +380,13 @@ jobs:
           uv run python benchmark/generate_image.py
           git config --global user.name 'github-actions[bot]'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # Checkout main branch to avoid detached HEAD issues
+          git fetch origin main
+          git checkout main
           git add *.jpg
           if ! git diff --quiet --cached; then
             git commit -m "Update benchmark image for ${{ github.ref_name }}"
-            # Push to main branch explicitly (handles detached HEAD state from tag checkout)
-            git push origin HEAD:main
+            git push origin main
           else
             echo "No changes to commit"
           fi
