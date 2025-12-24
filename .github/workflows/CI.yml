@@ -16,6 +16,29 @@ permissions:
   contents: read
 
 jobs:
+  # Lint and format check - runs early on PRs to catch issues fast
+  lint:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: false
+      - name: Install dependencies
+        run: uv sync --extra dev
+      - name: Ruff lint
+        run: uv run ruff check .
+      - name: Ruff format check
+        run: uv run ruff format --check .
+      - name: Mypy type check
+        run: uv run mypy httpr/
+      - name: Rust fmt check
+        run: cargo fmt --check
+      - name: Rust clippy
+        run: cargo clippy -- -D warnings
+
   # Fast test job - runs on PRs and main branch pushes with Python version matrix
   test:
     runs-on: ubuntu-22.04

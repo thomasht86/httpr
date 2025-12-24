@@ -1,8 +1,6 @@
 use anyhow::{Error, Result};
 use foldhash::fast::RandomState;
 use indexmap::IndexMap;
-use tracing;
-
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 
 type IndexMapSSR = IndexMap<String, String, RandomState>;
@@ -21,7 +19,10 @@ impl HeadersTraits for IndexMapSSR {
         let mut header_map = HeaderMap::with_capacity(self.len());
         for (k, v) in self {
             // Skip invalid headers with a warning instead of panicking
-            match (HeaderName::from_bytes(k.as_bytes()), HeaderValue::from_bytes(v.as_bytes())) {
+            match (
+                HeaderName::from_bytes(k.as_bytes()),
+                HeaderValue::from_bytes(v.as_bytes()),
+            ) {
                 (Ok(name), Ok(value)) => {
                     header_map.insert(name, value);
                 }

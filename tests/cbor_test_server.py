@@ -1,4 +1,5 @@
 """Simple test server that handles CBOR requests and responses."""
+
 import cbor2
 from starlette.applications import Starlette
 from starlette.responses import Response
@@ -14,7 +15,7 @@ def cbor_echo(request):
         "items": [1, 2, 3, 4, 5],
     }
     cbor_bytes = cbor2.dumps(data)
-    
+
     return Response(
         cbor_bytes,
         media_type="application/cbor",
@@ -27,7 +28,7 @@ def cbor_large(request):
     # Create large vector data similar to what the benchmark will use
     data = [[i + j * 0.1 for j in range(1024)] for i in range(10)]
     cbor_bytes = cbor2.dumps(data)
-    
+
     return Response(
         cbor_bytes,
         media_type="application/cbor",

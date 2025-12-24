@@ -25,6 +25,28 @@ uv run mypy httpr/
 uv run ruff check httpr/
 ```
 
+### Pre-commit Hooks
+
+Set up pre-commit hooks to automatically lint and format code before commits:
+
+```bash
+# Install pre-commit
+uv pip install pre-commit
+
+# Install git hooks
+pre-commit install
+pre-commit install --hook-type commit-msg
+
+# Run all hooks manually (optional)
+pre-commit run --all-files
+```
+
+Configured hooks (see `.pre-commit-config.yaml`):
+- **ruff**: Python linting and formatting
+- **mypy**: Python type checking (httpr/ only)
+- **cargo fmt/clippy**: Rust formatting and linting
+- **commitizen/commitlint**: Conventional commit messages
+
 ### Benchmarking
 
 ```bash

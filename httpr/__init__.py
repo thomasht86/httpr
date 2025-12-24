@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from collections.abc import AsyncIterator, Generator, Iterator
+from collections.abc import AsyncIterator, Generator
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial
 from typing import TYPE_CHECKING, TypedDict
@@ -40,10 +40,10 @@ else:
     from typing import Unpack
 
 
-from .httpr import RClient, StreamingResponse
+from .httpr import CaseInsensitiveHeaderMap, RClient, Response, StreamingResponse
 
 if TYPE_CHECKING:
-    from .httpr import ClientRequestParams, HttpMethod, RequestParams, Response
+    from .httpr import ClientRequestParams, HttpMethod, RequestParams
 else:
 
     class _Unpack:
@@ -976,7 +976,7 @@ def patch(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response:
 
 
 # Import exceptions from the Rust module
-from .httpr import (
+from .httpr import (  # noqa: E402
     CloseError,
     # Network exceptions
     ConnectError,
@@ -1026,6 +1026,10 @@ __all__ = [
     "post",
     "put",
     "patch",
+    # Response classes
+    "Response",
+    "StreamingResponse",
+    "CaseInsensitiveHeaderMap",
     # Base exceptions
     "HTTPError",
     "RequestError",

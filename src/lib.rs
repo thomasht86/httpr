@@ -11,11 +11,10 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pythonize::depythonize;
 use reqwest::{
-    header::{HeaderValue, COOKIE, CONTENT_TYPE, ACCEPT},
+    header::{HeaderValue, ACCEPT, CONTENT_TYPE, COOKIE},
     multipart,
     redirect::Policy,
-    Body, Method,
-    Identity,
+    Body, Identity, Method,
 };
 use serde_json::Value;
 use tokio::{
@@ -23,10 +22,9 @@ use tokio::{
     runtime::{self, Runtime},
 };
 use tokio_util::codec::{BytesCodec, FramedRead};
-use tracing;
 
 mod response;
-use response::{CaseInsensitiveHeaderMap, Response, StreamingResponse, TextIterator, LineIterator};
+use response::{CaseInsensitiveHeaderMap, LineIterator, Response, StreamingResponse, TextIterator};
 
 mod traits;
 use traits::{CookiesTraits, HeadersTraits};
@@ -77,7 +75,7 @@ impl RClient {
     /// * `auth` - A tuple containing the username and an optional password for basic authentication. Default is None.
     /// * `auth_bearer` - A string representing the bearer token for bearer token authentication. Default is None.
     /// * `params` - A map of query parameters to append to the URL. Default is None.
-    /// * `headers` - An optional map of HTTP headers to send with requests. 
+    /// * `headers` - An optional map of HTTP headers to send with requests.
     /// * `cookies` - An optional map of cookies to send with requests as the `Cookie` header.
     /// * `cookie_store` - Enable a persistent cookie store. Received cookies will be preserved and included
     ///         in additional requests. Default is `true`.
@@ -145,7 +143,11 @@ impl RClient {
             let mut headers_headermap = headers.to_headermap();
             if let Some(cookies) = cookies {
                 let cookies_str = cookies.to_string();
-                headers_headermap.insert(COOKIE, HeaderValue::from_str(&cookies_str).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?);
+                headers_headermap.insert(
+                    COOKIE,
+                    HeaderValue::from_str(&cookies_str)
+                        .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?,
+                );
             }
             client_builder = client_builder.default_headers(headers_headermap);
         };
@@ -163,7 +165,8 @@ impl RClient {
         // Proxy
         let proxy = proxy.or_else(|| std::env::var("HTTPR_PROXY").ok());
         if let Some(proxy) = &proxy {
-            client_builder = client_builder.proxy(reqwest::Proxy::all(proxy).map_err(map_reqwest_error)?);
+            client_builder =
+                client_builder.proxy(reqwest::Proxy::all(proxy).map_err(map_reqwest_error)?);
         }
 
         // Timeout
@@ -178,8 +181,8 @@ impl RClient {
             client_builder = client_builder.redirect(Policy::none());
         }
 
-         // Ca_cert_file. BEFORE!!! verify (fn load_ca_certs() reads env var HTTPR_CA_BUNDLE)
-         if let Some(ca_bundle_path) = &ca_cert_file {
+        // Ca_cert_file. BEFORE!!! verify (fn load_ca_certs() reads env var HTTPR_CA_BUNDLE)
+        if let Some(ca_bundle_path) = &ca_cert_file {
             std::env::set_var("HTTPR_CA_BUNDLE", ca_bundle_path);
         }
 
@@ -193,8 +196,10 @@ impl RClient {
             }
             // Load client pem identity if provided
             if let Some(client_pem) = &client_pem {
-                let client_identity_pem = fs::read(client_pem).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-                let identity = Identity::from_pem(&client_identity_pem).map_err(map_reqwest_error)?;
+                let client_identity_pem =
+                    fs::read(client_pem).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+                let identity =
+                    Identity::from_pem(&client_identity_pem).map_err(map_reqwest_error)?;
                 client_builder = client_builder.identity(identity);
             }
         } else {
@@ -210,7 +215,9 @@ impl RClient {
         if let Some(true) = http2_only {
             client_builder = client_builder.http2_prior_knowledge();
         }
-        let client = Arc::new(Mutex::new(client_builder.build().map_err(map_reqwest_error)?));
+        let client = Arc::new(Mutex::new(
+            client_builder.build().map_err(map_reqwest_error)?,
+        ));
         let headers = Arc::new(Mutex::new(reqwest::header::HeaderMap::new()));
 
         Ok(RClient {
@@ -226,7 +233,9 @@ impl RClient {
 
     #[getter]
     pub fn get_headers(&self) -> PyResult<IndexMapSSR> {
-        let headers = self.headers.lock()
+        let headers = self
+            .headers
+            .lock()
             .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire headers lock: {}", e)))?;
         let mut headers_clone = headers.clone();
         headers_clone.remove(COOKIE);
@@ -235,7 +244,9 @@ impl RClient {
 
     #[setter]
     pub fn set_headers(&self, new_headers: Option<IndexMapSSR>) -> PyResult<()> {
-        let mut headers = self.headers.lock()
+        let mut headers = self
+            .headers
+            .lock()
             .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire headers lock: {}", e)))?;
         headers.clear();
         if let Some(new_headers) = new_headers {
@@ -248,11 +259,17 @@ impl RClient {
 
     #[getter]
     pub fn get_cookies(&self) -> PyResult<IndexMapSSR> {
-        let headers = self.headers.lock()
+        let headers = self
+            .headers
+            .lock()
             .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire headers lock: {}", e)))?;
         let mut cookies: IndexMapSSR = IndexMap::with_hasher(RandomState::default());
         if let Some(cookie_header) = headers.get(COOKIE) {
-            for part in cookie_header.to_str().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?.split(';') {
+            for part in cookie_header
+                .to_str()
+                .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?
+                .split(';')
+            {
                 if let Some((key, value)) = part.trim().split_once('=') {
                     cookies.insert(key.to_string(), value.to_string());
                 }
@@ -263,10 +280,16 @@ impl RClient {
 
     #[setter]
     pub fn set_cookies(&self, cookies: Option<IndexMapSSR>) -> PyResult<()> {
-        let mut headers = self.headers.lock()
+        let mut headers = self
+            .headers
+            .lock()
             .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire headers lock: {}", e)))?;
         if let Some(cookies) = cookies {
-            headers.insert(COOKIE, HeaderValue::from_str(&cookies.to_string()).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?);
+            headers.insert(
+                COOKIE,
+                HeaderValue::from_str(&cookies.to_string())
+                    .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?,
+            );
         } else {
             headers.remove(COOKIE);
         }
@@ -283,8 +306,11 @@ impl RClient {
         let rproxy = reqwest::Proxy::all(proxy.clone()).map_err(map_reqwest_error)?;
         let new_client = reqwest::Client::builder()
             .proxy(rproxy)
-            .build().map_err(map_reqwest_error)?;
-        let mut client = self.client.lock()
+            .build()
+            .map_err(map_reqwest_error)?;
+        let mut client = self
+            .client
+            .lock()
             .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire client lock: {}", e)))?;
         *client = new_client;
         self.proxy = Some(proxy);
@@ -346,18 +372,26 @@ impl RClient {
         timeout: Option<f64>,
     ) -> PyResult<Response> {
         let client = Arc::clone(&self.client);
-        let method = Method::from_bytes(method.as_bytes()).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let method = Method::from_bytes(method.as_bytes())
+            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let is_post_put_patch = matches!(method, Method::POST | Method::PUT | Method::PATCH);
         let params = params.or_else(|| self.params.clone());
-        let data_value: Option<Value> = data.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let json_value: Option<Value> = json.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let data_value: Option<Value> = data
+            .map(depythonize)
+            .transpose()
+            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let json_value: Option<Value> = json
+            .map(depythonize)
+            .transpose()
+            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let auth = auth.or(self.auth.clone());
         let auth_bearer = auth_bearer.or(self.auth_bearer.clone());
         let timeout: Option<f64> = timeout.or(self.timeout);
 
         let future = async {
             // Create request builder
-            let mut request_builder = client.lock()
+            let mut request_builder = client
+                .lock()
                 .map_err(|e| anyhow!("Failed to acquire client lock: {}", e))?
                 .request(method, url);
 
@@ -367,11 +401,12 @@ impl RClient {
             }
 
             // Headers from client
-            let client_headers = self.headers.lock()
+            let client_headers = self
+                .headers
+                .lock()
                 .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
                 .clone();
             request_builder = request_builder.headers(client_headers.clone());
-
 
             // Headers
             let mut combined_headers = client_headers;
@@ -385,8 +420,10 @@ impl RClient {
 
             // Cookies
             if let Some(cookies) = cookies {
-                request_builder =
-                    request_builder.header(COOKIE, HeaderValue::from_str(&cookies.to_string()).map_err(anyhow::Error::new)?);
+                request_builder = request_builder.header(
+                    COOKIE,
+                    HeaderValue::from_str(&cookies.to_string()).map_err(anyhow::Error::new)?,
+                );
             }
 
             // Only if method POST || PUT || PATCH
@@ -402,11 +439,12 @@ impl RClient {
                 // Json - check if we should use CBOR based on Accept header
                 if let Some(json_data) = json_value {
                     // Check if Accept header is set to application/cbor
-                    let use_cbor = combined_headers.get(&ACCEPT)
+                    let use_cbor = combined_headers
+                        .get(&ACCEPT)
                         .and_then(|v| v.to_str().ok())
                         .map(|s| s.contains("application/cbor"))
                         .unwrap_or(false);
-                    
+
                     if use_cbor {
                         // Serialize as CBOR
                         let cbor_bytes = serde_cbor::to_vec(&json_data)
@@ -459,13 +497,20 @@ impl RClient {
             let buf = resp.bytes().await.map_err(anyhow::Error::new)?;
 
             tracing::info!("response: {} {} {}", url, status_code, buf.len());
-            Ok::<(Bytes, IndexMapSSR, IndexMapSSR, u16, String), anyhow::Error>((buf, cookies, headers, status_code, url))
+            Ok::<(Bytes, IndexMapSSR, IndexMapSSR, u16, String), anyhow::Error>((
+                buf,
+                cookies,
+                headers,
+                status_code,
+                url,
+            ))
         };
 
         // Execute an async future, releasing the Python GIL for concurrency.
         // Use Tokio global runtime to block on the future.
         let result = py.detach(|| RUNTIME.block_on(future));
-        let (f_buf, f_cookies, f_headers, f_status_code, f_url) = result.map_err(map_anyhow_error)?;
+        let (f_buf, f_cookies, f_headers, f_status_code, f_url) =
+            result.map_err(map_anyhow_error)?;
 
         Ok(Response {
             content: PyBytes::new(py, &f_buf).unbind(),
@@ -517,18 +562,26 @@ impl RClient {
         timeout: Option<f64>,
     ) -> PyResult<StreamingResponse> {
         let client = Arc::clone(&self.client);
-        let method = Method::from_bytes(method.as_bytes()).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let method = Method::from_bytes(method.as_bytes())
+            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let is_post_put_patch = matches!(method, Method::POST | Method::PUT | Method::PATCH);
         let params = params.or_else(|| self.params.clone());
-        let data_value: Option<Value> = data.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let json_value: Option<Value> = json.map(depythonize).transpose().map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let data_value: Option<Value> = data
+            .map(depythonize)
+            .transpose()
+            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let json_value: Option<Value> = json
+            .map(depythonize)
+            .transpose()
+            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let auth = auth.or(self.auth.clone());
         let auth_bearer = auth_bearer.or(self.auth_bearer.clone());
         let timeout: Option<f64> = timeout.or(self.timeout);
 
         let future = async {
             // Create request builder
-            let mut request_builder = client.lock()
+            let mut request_builder = client
+                .lock()
                 .map_err(|e| anyhow!("Failed to acquire client lock: {}", e))?
                 .request(method, url);
 
@@ -538,7 +591,9 @@ impl RClient {
             }
 
             // Headers from client
-            let client_headers = self.headers.lock()
+            let client_headers = self
+                .headers
+                .lock()
                 .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
                 .clone();
             request_builder = request_builder.headers(client_headers.clone());
@@ -555,8 +610,10 @@ impl RClient {
 
             // Cookies
             if let Some(cookies) = cookies {
-                request_builder =
-                    request_builder.header(COOKIE, HeaderValue::from_str(&cookies.to_string()).map_err(anyhow::Error::new)?);
+                request_builder = request_builder.header(
+                    COOKIE,
+                    HeaderValue::from_str(&cookies.to_string()).map_err(anyhow::Error::new)?,
+                );
             }
 
             // Only if method POST || PUT || PATCH
@@ -572,11 +629,12 @@ impl RClient {
                 // Json - check if we should use CBOR based on Accept header
                 if let Some(json_data) = json_value {
                     // Check if Accept header is set to application/cbor
-                    let use_cbor = combined_headers.get(&ACCEPT)
+                    let use_cbor = combined_headers
+                        .get(&ACCEPT)
                         .and_then(|v| v.to_str().ok())
                         .map(|s| s.contains("application/cbor"))
                         .unwrap_or(false);
-                    
+
                     if use_cbor {
                         // Serialize as CBOR
                         let cbor_bytes = serde_cbor::to_vec(&json_data)
@@ -628,12 +686,19 @@ impl RClient {
             let url = resp.url().to_string();
 
             tracing::info!("streaming response: {} {}", url, status_code);
-            Ok::<(reqwest::Response, IndexMapSSR, IndexMapSSR, u16, String), anyhow::Error>((resp, cookies, headers, status_code, url))
+            Ok::<(reqwest::Response, IndexMapSSR, IndexMapSSR, u16, String), anyhow::Error>((
+                resp,
+                cookies,
+                headers,
+                status_code,
+                url,
+            ))
         };
 
         // Execute an async future, releasing the Python GIL for concurrency.
         let result = py.detach(|| RUNTIME.block_on(future));
-        let (f_resp, f_cookies, f_headers, f_status_code, f_url) = result.map_err(map_anyhow_error)?;
+        let (f_resp, f_cookies, f_headers, f_status_code, f_url) =
+            result.map_err(map_anyhow_error)?;
 
         Ok(StreamingResponse::new(
             f_resp,
@@ -652,11 +717,12 @@ fn httpr(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<RClient>()?;
     m.add_class::<Response>()?;
     m.add_class::<StreamingResponse>()?;
+    m.add_class::<CaseInsensitiveHeaderMap>()?;
     m.add_class::<TextIterator>()?;
     m.add_class::<LineIterator>()?;
-    
+
     // Register all exception types
     exceptions::register_exceptions(m)?;
-    
+
     Ok(())
 }

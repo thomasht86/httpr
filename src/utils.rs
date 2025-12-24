@@ -1,8 +1,6 @@
 use std::cmp::min;
 
 use reqwest::Certificate;
-use tracing;
-
 use std::{env, fs};
 
 use anyhow::{Context, Result};
@@ -19,7 +17,9 @@ pub fn load_ca_certs() -> Result<Vec<Certificate>> {
             Ok(ca_certs)
         }
         None => {
-            tracing::info!("HTTPR_CA_BUNDLE environment variable not set. Skipping loading CA certificates.");
+            tracing::info!(
+                "HTTPR_CA_BUNDLE environment variable not set. Skipping loading CA certificates."
+            );
             Ok(Vec::new())
         }
     }
@@ -45,11 +45,11 @@ fn read_pem_certificates(path: &str) -> Result<Vec<Certificate>> {
 
 /// Get encoding from the "Content-Type" header using CaseInsensitiveHeaderMap
 pub fn get_encoding_from_case_insensitive_headers(
-    headers: &crate::response::CaseInsensitiveHeaderMap
+    headers: &crate::response::CaseInsensitiveHeaderMap,
 ) -> Option<String> {
     if headers.contains_key("content-type") {
         let content_type = headers.get_value("content-type")?;
-        
+
         // Parse the Content-Type header to separate the media type and parameters
         let mut parts = content_type.split(';');
         let media_type = parts.next().unwrap_or("").trim();

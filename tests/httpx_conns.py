@@ -1,7 +1,7 @@
 import asyncio
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer  # <-- import ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer  # <-- import ThreadingHTTPServer
 
 import httpx
 import pytest
