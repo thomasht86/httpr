@@ -26,7 +26,7 @@ features = [ "pyo3/extension-module",]
 
 [tool.ruff]
 line-length = 120
-exclude = [ "tests",]
+exclude = [ "tests", "benchmark", ".github",]
 
 [tool.mypy]
 python_version = "3.10"
