@@ -14,10 +14,17 @@
 
 - **Fine-grained error handling**: Fine-grained error handling is not implemented yet.
 
+## Documentation
+
+📖 **Full documentation**: [thomasht86.github.io/httpr](https://thomasht86.github.io/httpr)
+
+🤖 **LLM-friendly docs**: [llms.txt](https://thomasht86.github.io/httpr/llms.txt) | [llms-full.txt](https://thomasht86.github.io/httpr/llms-full.txt)
+
 ## Table of Contents
 
 - [httpr](#httpr)
   - [Not implemented yet](#not-implemented-yet)
+  - [Documentation](#documentation)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
     - [Install with uv](#install-with-uv)
