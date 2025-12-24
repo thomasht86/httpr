@@ -26,10 +26,36 @@ features = [ "pyo3/extension-module",]
 
 [tool.ruff]
 line-length = 120
-exclude = [ "tests", "benchmark", ".github",]
+exclude = [ ".github",]
+
+[tool.ruff.lint]
+select = [ "E", "F", "UP", "B", "SIM", "I",]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: allow assert statements, broad exception catching, multiple with statements
+"tests/**" = [
+    "B011",   # assert-false
+    "B017",   # assert-raises-exception  
+    "SIM117", # multiple-with-statements (common in test fixtures)
+]
+# Benchmarks: more relaxed rules for scripts
+"benchmark/**" = [
+    "B018",   # useless-expression (intentional for benchmarking .text/.json())
+    "SIM108", # if-else-block-instead-of-if-exp (readability preference)
+    "SIM117", # multiple-with-statements
+]
 
 [tool.mypy]
 python_version = "3.10"
+exclude = [ "benchmark/",]
+
+[[tool.mypy.overrides]]
+module = [
+    "pytest_httpbin.*",
+    "starlette.*",
+    "httpx.*",
+]
+ignore_missing_imports = true
 
 [tool.uv]
 [[tool.uv.cache-keys]]
@@ -40,6 +66,3 @@ file = "rust/Cargo.toml"
 
 [[tool.uv.cache-keys]]
 file = "**/*.rs"
-
-[tool.ruff.lint]
-select = [ "E", "F", "UP", "B", "SIM", "I",]
