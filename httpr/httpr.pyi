@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import AsyncIterator, Generator, Iterator
+from collections.abc import Iterator
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from typing import Any, Literal, TypedDict
 
@@ -32,20 +32,20 @@ class ClientRequestParams(RequestParams):
 class CaseInsensitiveHeaderMap:
     """
     A case-insensitive dictionary-like class for HTTP headers.
-    
+
     HTTP headers are case-insensitive per the HTTP specification.
     This class allows accessing headers using any case while preserving
     the original case for iteration.
-    
+
     Example:
         ```python
         headers = response.headers
         content_type = headers["Content-Type"]  # Works
         content_type = headers["content-type"]  # Also works
-        
+
         if "Content-Type" in headers:
             print("Has content type")
-        
+
         for key, value in headers.items():
             print(f"{key}: {value}")
         ```
@@ -71,11 +71,11 @@ class CaseInsensitiveHeaderMap:
     def get(self, key: str, default: str | None = None) -> str:
         """
         Get a header value by name (case-insensitive).
-        
+
         Args:
             key: Header name to look up.
             default: Value to return if header is not found. Defaults to None.
-        
+
         Returns:
             The header value, or the default if not found.
         """
@@ -84,21 +84,21 @@ class CaseInsensitiveHeaderMap:
 class Response:
     """
     An HTTP response object.
-    
+
     This class provides access to the response status, headers, cookies,
     and body content. The body can be accessed as bytes, text, JSON, or CBOR.
-    
+
     Example:
         ```python
         response = client.get("https://httpbin.org/get")
-        
+
         # Status
         print(response.status_code)  # 200
         print(response.url)  # Final URL after redirects
-        
+
         # Headers (case-insensitive access)
         print(response.headers["content-type"])
-        
+
         # Body
         print(response.text)  # Decoded text
         print(response.json())  # Parsed JSON
@@ -117,7 +117,7 @@ class Response:
     def headers(self) -> CaseInsensitiveHeaderMap:
         """
         Response headers as a case-insensitive dictionary-like object.
-        
+
         Headers can be accessed using any case (e.g., "Content-Type" or "content-type").
         """
         ...
@@ -133,7 +133,7 @@ class Response:
     def encoding(self) -> str:
         """
         Character encoding of the response.
-        
+
         Detected from Content-Type header or response body.
         Can be set to override auto-detection.
         """
@@ -147,9 +147,9 @@ class Response:
     def json(self) -> Any:
         """
         Parse response body as JSON.
-        
+
         If Content-Type is application/cbor, automatically deserializes as CBOR.
-        
+
         Returns:
             Parsed JSON/CBOR data as Python objects.
         """
@@ -157,7 +157,7 @@ class Response:
     def cbor(self) -> Any:
         """
         Parse response body as CBOR (Concise Binary Object Representation).
-        
+
         Returns:
             Parsed CBOR data as Python objects.
         """
@@ -166,7 +166,7 @@ class Response:
     def text_markdown(self) -> str:
         """
         Response body converted from HTML to Markdown format.
-        
+
         Useful for reading HTML content as plain text.
         """
         ...
@@ -174,7 +174,7 @@ class Response:
     def text_plain(self) -> str:
         """
         Response body converted from HTML to plain text.
-        
+
         Strips all formatting and returns only the text content.
         """
         ...
@@ -182,7 +182,7 @@ class Response:
     def text_rich(self) -> str:
         """
         Response body converted from HTML to rich text format.
-        
+
         Preserves some formatting using Unicode characters.
         """
         ...
@@ -330,26 +330,26 @@ class RClient:
 class Client(RClient):
     """
     A synchronous HTTP client with connection pooling.
-    
+
     The Client class provides a high-level interface for making HTTP requests.
     It supports connection pooling, automatic cookie handling, and various
     authentication methods.
-    
+
     Example:
         ```python
         import httpr
-        
+
         # Using context manager (recommended)
         with httpr.Client() as client:
             response = client.get("https://httpbin.org/get")
             print(response.json())
-        
+
         # Or manually
         client = httpr.Client()
         response = client.get("https://httpbin.org/get")
         client.close()
         ```
-    
+
     Attributes:
         headers: Default headers sent with all requests. Excludes Cookie header.
         cookies: Default cookies sent with all requests.
@@ -379,7 +379,7 @@ class Client(RClient):
     ) -> None:
         """
         Initialize an HTTP client.
-        
+
         Args:
             auth: Basic auth credentials as (username, password). Password can be None.
             auth_bearer: Bearer token for Authorization header.
@@ -409,18 +409,18 @@ class Client(RClient):
     ) -> AbstractContextManager[StreamingResponse]:
         """
         Make a streaming HTTP request.
-        
+
         Returns a context manager that yields a StreamingResponse for iterating
         over the response body in chunks.
-        
+
         Args:
             method: HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS).
             url: Request URL.
             **kwargs: Request parameters.
-        
+
         Yields:
             StreamingResponse: A response object that can be iterated.
-        
+
         Example:
             ```python
             with client.stream("GET", "https://example.com/large-file") as response:
@@ -433,24 +433,24 @@ class Client(RClient):
 class AsyncClient(Client):
     """
     An asynchronous HTTP client for use with asyncio.
-    
+
     AsyncClient wraps the synchronous Client using asyncio.run_in_executor(),
     providing an async interface while leveraging the Rust implementation's
     performance.
-    
+
     Example:
         ```python
         import asyncio
         import httpr
-        
+
         async def main():
             async with httpr.AsyncClient() as client:
                 response = await client.get("https://httpbin.org/get")
                 print(response.json())
-        
+
         asyncio.run(main())
         ```
-    
+
     Note:
         AsyncClient runs synchronous Rust code in a thread executor.
         It provides concurrency benefits for I/O-bound tasks but is not
@@ -527,9 +527,9 @@ class AsyncClient(Client):
     ) -> AbstractAsyncContextManager[StreamingResponse]:
         """
         Make an async streaming HTTP request.
-        
+
         Returns an async context manager that yields a StreamingResponse.
-        
+
         Example:
             ```python
             async with client.stream("GET", "https://example.com/large-file") as response:
