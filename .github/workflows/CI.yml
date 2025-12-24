@@ -7,9 +7,6 @@ on:
     tags:
       - "*"
   pull_request:
-  schedule:
-    # Run weekly on Sundays at midnight UTC
-    - cron: "0 0 * * 0"
   workflow_dispatch:
 
 permissions:
@@ -80,13 +77,11 @@ jobs:
           uv sync --extra docs
           uv run mkdocs build --strict
 
-  # Build jobs - run on tags, main branch pushes, weekly schedule, or manual dispatch
+  # Build jobs - run only on tags or manual dispatch
   linux:
     runs-on: ${{ matrix.platform.runner }}
-    # Wait for test job if it runs, but don't fail if it was skipped (schedule/tag/dispatch)
     needs: [test]
-    # Always run unless test job explicitly failed
-    if: ${{ always() && github.event_name != 'pull_request' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     strategy:
       matrix:
         platform:
@@ -160,7 +155,7 @@ jobs:
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
     needs: [test]
-    if: ${{ always() && github.event_name != 'pull_request' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     strategy:
       matrix:
         platform:
@@ -218,7 +213,7 @@ jobs:
   windows:
     runs-on: ${{ matrix.platform.runner }}
     needs: [test]
-    if: ${{ always() && github.event_name != 'pull_request' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     strategy:
       matrix:
         platform:
@@ -269,7 +264,7 @@ jobs:
   macos:
     runs-on: ${{ matrix.platform.runner }}
     needs: [test]
-    if: ${{ always() && github.event_name != 'pull_request' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     strategy:
       matrix:
         platform:
@@ -315,7 +310,7 @@ jobs:
   sdist:
     runs-on: ubuntu-latest
     needs: [test]
-    if: ${{ always() && github.event_name != 'pull_request' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v7
@@ -341,8 +336,8 @@ jobs:
     name: Release
     environment: pypi
     runs-on: ubuntu-latest
-    # Release on tag pushes, main branch pushes, or manual dispatch
-    if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch' }}
+    # Release only on tag pushes or manual dispatch
+    if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
     needs: [linux, musllinux, windows, macos, sdist]
     permissions:
       # Use to sign the release artifacts
@@ -358,8 +353,8 @@ jobs:
         with:
           subject-path: "wheels-*/*"
       - name: Publish to PyPI
-        # Publish on tag pushes (stable releases), main branch pushes (dev releases), and manual dispatch
-        if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch' }}
+        # Publish on tag pushes or manual dispatch
+        if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
         uses: PyO3/maturin-action@v1
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
@@ -372,6 +367,7 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     needs: [linux]
+    if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -393,18 +389,14 @@ jobs:
       - name: Run benchmark
         run: uv run python benchmark/benchmark.py
       - name: Generate and commit benchmark image
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'schedule'
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           uv run python benchmark/generate_image.py
           git config --global user.name 'github-actions[bot]'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add *.jpg
           if ! git diff --quiet --cached; then
-            if [ "${{ github.event_name }}" = "schedule" ]; then
-              git commit -m "Update benchmark image (weekly)"
-            else
-              git commit -m "Update benchmark image for ${{ github.ref_name }}"
-            fi
+            git commit -m "Update benchmark image for ${{ github.ref_name }}"
             # Push to main branch explicitly (handles detached HEAD state from tag checkout)
             git push origin HEAD:main
           else
