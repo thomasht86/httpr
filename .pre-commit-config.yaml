@@ -11,6 +11,13 @@ repos:
     - id: ruff-format
       types_or: [python, pyi]
 
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.14.1
+  hooks:
+    - id: mypy
+      files: ^httpr/
+      additional_dependencies: [typing_extensions]
+
 - repo: https://github.com/commitizen-tools/commitizen
   rev: v2.24.0
   hooks:
