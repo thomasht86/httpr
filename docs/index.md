@@ -149,8 +149,8 @@ print(response.cookies)      # Response cookies
 
 This documentation is available in LLM-optimized formats:
 
-- **[llms.txt](/llms.txt)** - Documentation index for LLMs
-- **[llms-full.txt](/llms-full.txt)** - Complete documentation in a single file
+- **[llms.txt](llms.txt)** - Documentation index for LLMs
+- **[llms-full.txt](llms-full.txt)** - Complete documentation in a single file
 
 ---
 
