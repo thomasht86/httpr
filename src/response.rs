@@ -1,5 +1,9 @@
+// Allow await_holding_lock because we use a single-threaded Tokio runtime
+// and the MutexGuards are intentionally held across block_on calls
+#![allow(clippy::await_holding_lock)]
+
 use crate::exceptions::{StreamClosed, StreamConsumed};
-use crate::utils::{get_encoding_from_content, get_encoding_from_case_insensitive_headers};
+use crate::utils::{get_encoding_from_case_insensitive_headers, get_encoding_from_content};
 use crate::RUNTIME;
 use anyhow::{anyhow, Result};
 use encoding_rs::Encoding;
@@ -42,7 +46,10 @@ impl CaseInsensitiveHeaderMap {
                 return Ok(value.clone());
             }
         }
-        Err(pyo3::exceptions::PyKeyError::new_err(format!("Header key '{}' not found", key)))
+        Err(pyo3::exceptions::PyKeyError::new_err(format!(
+            "Header key '{}' not found",
+            key
+        )))
     }
 
     fn __contains__(&self, key: String) -> bool {
@@ -107,12 +114,12 @@ impl CaseInsensitiveHeaderMap {
         }
         headers_map
     }
-    
+
     // Public method to check if a header exists
     pub fn contains_key(&self, key: &str) -> bool {
         self.lowercase_map.contains_key(&key.to_lowercase())
     }
-    
+
     // Public method to get a header value
     pub fn get_value(&self, key: &str) -> Option<String> {
         let lower_key = key.to_lowercase();
@@ -182,11 +189,12 @@ impl Response {
     fn json(&mut self, py: Python) -> Result<Py<PyAny>> {
         // Check if Content-Type is application/cbor
         let content_type = self.headers.get("content-type".to_string(), None);
-        
+
         if content_type.to_lowercase().contains("application/cbor") {
             // Deserialize as CBOR
-            let cbor_value: serde_json::Value = serde_cbor::from_slice(self.content.as_bytes(py))
-                .map_err(|e| anyhow!("Failed to deserialize CBOR: {}", e))?;
+            let cbor_value: serde_json::Value =
+                serde_cbor::from_slice(self.content.as_bytes(py))
+                    .map_err(|e| anyhow!("Failed to deserialize CBOR: {}", e))?;
             let result = pythonize(py, &cbor_value)
                 .map_err(|e| anyhow!("Failed to convert CBOR to Python object: {}", e))?
                 .unbind();
@@ -228,8 +236,7 @@ impl Response {
     #[getter]
     fn text_rich(&mut self, py: Python) -> Result<String> {
         let raw_bytes = self.content.bind(py).as_bytes();
-        let text =
-            py.detach(|| from_read_with_decorator(raw_bytes, 100, RichDecorator::new()))?;
+        let text = py.detach(|| from_read_with_decorator(raw_bytes, 100, RichDecorator::new()))?;
         Ok(text)
     }
 }
@@ -282,12 +289,14 @@ impl StreamingResponse {
         if *closed {
             return Err(StreamClosed::new_err("Response stream has been closed"));
         }
-        
+
         let consumed = self.consumed.lock().map_err(|e| {
             pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to acquire lock: {}", e))
         })?;
         if *consumed {
-            return Err(StreamConsumed::new_err("Response stream has already been consumed"));
+            return Err(StreamConsumed::new_err(
+                "Response stream has already been consumed",
+            ));
         }
         Ok(())
     }
@@ -299,16 +308,16 @@ impl StreamingResponse {
                 return enc.clone();
             }
         }
-        
+
         // Try to detect encoding from headers
         let encoding = get_encoding_from_case_insensitive_headers(&self.headers)
             .unwrap_or_else(|| "utf-8".to_string());
-        
+
         // Cache the encoding
         if let Ok(mut encoding_guard) = self.encoding.lock() {
             *encoding_guard = Some(encoding.clone());
         }
-        
+
         encoding
     }
 }
@@ -328,9 +337,9 @@ impl StreamingResponse {
         // Release GIL while fetching the next chunk
         let result = py.detach(|| {
             RUNTIME.block_on(async {
-                let mut response_guard = response_arc.lock().map_err(|e| {
-                    anyhow::anyhow!("Failed to acquire response lock: {}", e)
-                })?;
+                let mut response_guard = response_arc
+                    .lock()
+                    .map_err(|e| anyhow::anyhow!("Failed to acquire response lock: {}", e))?;
 
                 if let Some(ref mut resp) = *response_guard {
                     match resp.chunk().await {
@@ -437,20 +446,21 @@ impl StreamingResponse {
 
         let result = py.detach(|| {
             RUNTIME.block_on(async {
-                let mut response_guard = response_arc.lock().map_err(|e| {
-                    anyhow::anyhow!("Failed to acquire response lock: {}", e)
-                })?;
+                let mut response_guard = response_arc
+                    .lock()
+                    .map_err(|e| anyhow::anyhow!("Failed to acquire response lock: {}", e))?;
 
                 if let Some(resp) = response_guard.take() {
-                    let bytes = resp.bytes().await.map_err(|e| {
-                        anyhow::anyhow!("Error reading response body: {}", e)
-                    })?;
-                    
+                    let bytes = resp
+                        .bytes()
+                        .await
+                        .map_err(|e| anyhow::anyhow!("Error reading response body: {}", e))?;
+
                     // Mark as consumed
                     if let Ok(mut consumed) = consumed_arc.lock() {
                         *consumed = true;
                     }
-                    
+
                     Ok(bytes)
                 } else {
                     Err(anyhow::anyhow!("Response already consumed"))
@@ -473,13 +483,13 @@ impl StreamingResponse {
             pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to acquire lock: {}", e))
         })?;
         *closed = true;
-        
+
         // Drop the response to release resources
         let mut response = self.response.lock().map_err(|e| {
             pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to acquire lock: {}", e))
         })?;
         *response = None;
-        
+
         Ok(())
     }
 
@@ -534,9 +544,9 @@ impl TextIterator {
 
         let result = py.detach(|| {
             RUNTIME.block_on(async {
-                let mut response_guard = response_arc.lock().map_err(|e| {
-                    anyhow::anyhow!("Failed to acquire response lock: {}", e)
-                })?;
+                let mut response_guard = response_arc
+                    .lock()
+                    .map_err(|e| anyhow::anyhow!("Failed to acquire response lock: {}", e))?;
 
                 if let Some(ref mut resp) = *response_guard {
                     match resp.chunk().await {
@@ -612,9 +622,9 @@ impl LineIterator {
         loop {
             let result = py.detach(|| {
                 RUNTIME.block_on(async {
-                    let mut response_guard = response_arc.lock().map_err(|e| {
-                        anyhow::anyhow!("Failed to acquire response lock: {}", e)
-                    })?;
+                    let mut response_guard = response_arc
+                        .lock()
+                        .map_err(|e| anyhow::anyhow!("Failed to acquire response lock: {}", e))?;
 
                     if let Some(ref mut resp) = *response_guard {
                         match resp.chunk().await {
@@ -644,7 +654,7 @@ impl LineIterator {
             match result {
                 Ok(Some(text)) => {
                     self.buffer.push_str(&text);
-                    
+
                     // Check if we now have a complete line
                     if let Some(newline_pos) = self.buffer.find('\n') {
                         let line = self.buffer[..=newline_pos].to_string();
