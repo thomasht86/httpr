@@ -1,4 +1,5 @@
 import pytest
+
 import httpr  # type: ignore
 
 
@@ -34,10 +35,7 @@ def test_invalid_file_path_exception(base_url_ssl, ca_bundle):
     client = httpr.Client(ca_cert_file=ca_bundle)
     # Passing a non-existent file path in files should raise an exception.
     with pytest.raises(Exception):
-        client.post(
-            f"{base_url_ssl}/anything",
-            files={"file": "/non/existent/path.file"}
-        )
+        client.post(f"{base_url_ssl}/anything", files={"file": "/non/existent/path.file"})
 
 
 def test_request_exception_timeout(base_url_ssl, ca_bundle):
@@ -221,7 +219,7 @@ def test_client_number_params(base_url_ssl, ca_bundle):
         "int": 42,
         "float": 3.14159,
         "sci_notation": 1.23e-4,
-        "large_float": 1.7976931348623157e+308,
+        "large_float": 1.7976931348623157e308,
         "small_float": 0.026305610314011577,
     }
     response = client.get(f"{base_url_ssl}/anything", params=params)
@@ -233,7 +231,7 @@ def test_client_number_params(base_url_ssl, ca_bundle):
     assert json_data["args"]["float"] == "3.14159"
     assert json_data["args"]["sci_notation"] == "0.000123" or json_data["args"]["sci_notation"] == "1.23e-4"
     # Large values might have different string representations
-    assert float(json_data["args"]["large_float"]) == 1.7976931348623157e+308
+    assert float(json_data["args"]["large_float"]) == 1.7976931348623157e308
     assert float(json_data["args"]["small_float"]) == 0.026305610314011577
 
 

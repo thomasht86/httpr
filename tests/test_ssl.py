@@ -1,9 +1,10 @@
+import http.server
 import os
+import ssl
 import tempfile
 import threading
 import unittest
-import http.server
-import ssl
+
 import trustme
 
 # Import your Client class
@@ -12,6 +13,7 @@ from httpr import Client
 
 class SSLTestHandler(http.server.BaseHTTPRequestHandler):
     """A minimal HTTPS handler that returns a simple 'OK' response."""
+
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
@@ -19,14 +21,14 @@ class SSLTestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(b"OK")
 
     def finish(self):
+        import contextlib
+
         try:
             self.wfile.flush()
             self.request.settimeout(1.0)
-            try:
-                # Unwrap the TLS layer to send a proper close_notify alert.
+            # Unwrap the TLS layer to send a proper close_notify alert.
+            with contextlib.suppress(Exception):
                 self.request.unwrap()
-            except Exception:
-                pass
         except Exception:
             pass
         finally:
@@ -102,6 +104,7 @@ class TestClientSSL(unittest.TestCase):
         """Providing a non-existent client certificate file should raise an error."""
         # Import httpr to use the correct exception type
         import httpr
+
         with self.assertRaises(httpr.RequestError):
             # Assuming your Client loads the file on initialization.
             with Client(client_pem="nonexistent.pem", ca_cert_file=self.client_ca_path) as client:
@@ -124,5 +127,5 @@ class TestClientSSL(unittest.TestCase):
                 client.get(f"https://localhost:{self.server_port}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

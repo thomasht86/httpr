@@ -6,6 +6,7 @@ They use pytest-httpbin for a local test server.
 """
 
 import pytest
+
 import httpr
 
 
