@@ -145,6 +145,15 @@ print(response.cookies)      # Response cookies
 
 ---
 
+## LLM-Friendly Documentation
+
+This documentation is available in LLM-optimized formats:
+
+- **[llms.txt](/llms.txt)** - Documentation index for LLMs
+- **[llms-full.txt](/llms-full.txt)** - Complete documentation in a single file
+
+---
+
 <div class="grid cards" markdown>
 
 -   :material-book-open-variant:{ .lg .middle } **Learn**
