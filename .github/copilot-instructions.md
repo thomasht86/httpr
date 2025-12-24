@@ -24,8 +24,16 @@ tests/         → pytest tests using pytest-httpbin fixtures
 uv sync --extra dev              # Install dependencies
 uv run maturin develop           # Build Rust extension (REQUIRED after any .rs changes)
 uv run pytest tests/             # Run tests (uses pytest-httpbin fixtures)
-uv run mypy httpr/ && uv run ruff check httpr/  # Type check + lint
+uv run mypy httpr/ && uv run ruff check .  # Type check + lint
 ```
+
+### Pre-commit Setup
+
+```bash
+uv pip install pre-commit && pre-commit install && pre-commit install --hook-type commit-msg
+```
+
+Hooks: ruff (lint/format), mypy, cargo fmt/clippy, commitizen/commitlint
 
 ## Adding Features
 
