@@ -1,0 +1,167 @@
+# https://taskfile.dev
+version: "3"
+
+vars:
+  CERTS_DIR: "{{.ROOT_DIR}}/.certs"
+  HTTPBUN_HOST: httpbun.local
+  HTTPBUN_PORT: "443"
+  HTTPBUN_URL: "https://{{.HTTPBUN_HOST}}:{{.HTTPBUN_PORT}}"
+
+tasks:
+  # Certificate generation using trustme
+  certs:
+    desc: Generate SSL certificates for e2e testing
+    cmds:
+      - uv run python scripts/generate_certs.py
+    sources:
+      - scripts/generate_certs.py
+    generates:
+      - .certs/ca.pem
+      - .certs/server.pem
+      - .certs/server.key
+
+  # Docker container management
+  httpbun:start:
+    desc: Start httpbun container with SSL
+    deps: [certs]
+    cmds:
+      - |
+        # Check if hosts entry exists
+        if ! grep -q "{{.HTTPBUN_HOST}}" /etc/hosts; then
+          echo "ERROR: Add '127.0.0.1 {{.HTTPBUN_HOST}}' to /etc/hosts"
+          echo "Run: echo '127.0.0.1 {{.HTTPBUN_HOST}}' | sudo tee -a /etc/hosts"
+          exit 1
+        fi
+      - |
+        # Stop existing container if running
+        docker rm -f httpbun 2>/dev/null || true
+      - |
+        docker run \
+          --name httpbun \
+          --detach \
+          --publish {{.HTTPBUN_PORT}}:443 \
+          --volume {{.CERTS_DIR}}:/certs:ro \
+          --env HTTPBUN_TLS_CERT=/certs/server.pem \
+          --env HTTPBUN_TLS_KEY=/certs/server.key \
+          --pull always \
+          sharat87/httpbun
+      - |
+        # Wait for container to be ready
+        echo "Waiting for httpbun to start..."
+        sleep 2
+        for i in $(seq 1 10); do
+          if curl -sf --cacert {{.CERTS_DIR}}/ca.pem {{.HTTPBUN_URL}}/get > /dev/null 2>&1; then
+            echo "httpbun is ready!"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "ERROR: httpbun failed to start"
+        docker logs httpbun
+        exit 1
+
+  httpbun:stop:
+    desc: Stop and remove httpbun container
+    cmds:
+      - docker rm -f httpbun 2>/dev/null || true
+
+  httpbun:logs:
+    desc: Show httpbun container logs
+    cmds:
+      - docker logs httpbun
+
+  # Test tasks
+  test:unit:
+    desc: Run unit tests only
+    cmds:
+      - uv run pytest tests/unit/ {{.CLI_ARGS}}
+
+  test:e2e:
+    desc: Run e2e tests (requires httpbun running)
+    env:
+      HTTPR_E2E_URL: "{{.HTTPBUN_URL}}"
+      HTTPR_E2E_CA: "{{.CERTS_DIR}}/ca.pem"
+    cmds:
+      - uv run pytest tests/e2e/ -v {{.CLI_ARGS}}
+
+  test:
+    desc: Run all tests (unit + e2e)
+    cmds:
+      - task: test:unit
+      - task: e2e
+
+  # Composite e2e workflow
+  e2e:
+    desc: Run full e2e test workflow (start httpbun, test, stop)
+    cmds:
+      - task: httpbun:start
+      - defer: { task: httpbun:stop }
+      - task: test:e2e
+
+  e2e:local:
+    desc: Start httpbun and run e2e tests (keep container running)
+    cmds:
+      - task: httpbun:start
+      - task: test:e2e
+
+  # Setup helpers
+  setup:hosts:
+    desc: Show command to add hosts entry (requires sudo)
+    cmds:
+      - |
+        if grep -q "{{.HTTPBUN_HOST}}" /etc/hosts; then
+          echo "✓ hosts entry already exists"
+        else
+          echo "Run the following command to add hosts entry:"
+          echo ""
+          echo "  echo '127.0.0.1 {{.HTTPBUN_HOST}}' | sudo tee -a /etc/hosts"
+          echo ""
+        fi
+
+  # Development helpers
+  dev:
+    desc: Build Rust extension for development
+    cmds:
+      - uv run maturin develop
+
+  lint:
+    desc: Run Python linters (ruff + mypy)
+    cmds:
+      - uv run ruff check .
+      - uv run mypy httpr/
+
+  lint:rust:
+    desc: Run Rust linters (fmt + clippy)
+    cmds:
+      - cargo fmt --check
+      - cargo clippy -- -D warnings
+
+  lint:all:
+    desc: Run all linters (Python + Rust)
+    cmds:
+      - task: lint
+      - task: lint:rust
+
+  fmt:
+    desc: Format Python code (ruff)
+    cmds:
+      - uv run ruff format .
+      - uv run ruff check --fix .
+
+  fmt:rust:
+    desc: Format Rust code
+    cmds:
+      - cargo fmt
+
+  fmt:all:
+    desc: Format all code (Python + Rust)
+    cmds:
+      - task: fmt
+      - task: fmt:rust
+
+  check:
+    desc: Run all checks (lint + test) - use before committing
+    cmds:
+      - task: lint:all
+      - task: dev
+      - task: test:unit

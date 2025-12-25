@@ -22,24 +22,19 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Install dependencies
         run: uv sync --extra dev
-      - name: Ruff lint
-        run: uv run ruff check .
-      - name: Ruff format check
-        run: uv run ruff format --check .
-      - name: Mypy type check
-        run: uv run mypy httpr/
-      - name: Rust fmt check
-        run: cargo fmt --check
-      - name: Rust clippy
-        run: cargo clippy -- -D warnings
+      - name: Lint (Python + Rust)
+        run: uv run task lint:all
 
-  # Fast test job - runs on PRs, main branch pushes, and tag pushes with Python version matrix
+  # Unit tests - runs on PRs, main branch pushes, and tag pushes with Python version matrix
   test:
     runs-on: ubuntu-22.04
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')))
+    # PYO3_USE_ABI3_FORWARD_COMPATIBILITY allows transitive dependencies (like rpds-py)
+    # that use older PyO3 versions to build from source on Python 3.14+
+    env:
+      PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
@@ -50,17 +45,80 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
       - uses: astral-sh/setup-uv@v7
+      - name: Cache Rust build
+        uses: actions/cache@v4
         with:
-          enable-cache: false
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-py${{ matrix.python-version }}-
+      - name: Install dependencies
+        run: uv sync --extra dev
       - name: Build and test
-        # PYO3_USE_ABI3_FORWARD_COMPATIBILITY allows transitive dependencies (like rpds-py)
-        # that use older PyO3 versions to build from source on Python 3.14+
-        env:
-          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
         run: |
-          uv sync --extra dev
-          uv run maturin develop
-          uv run pytest
+          uv run task dev
+          uv run task test:unit
+
+  # E2E tests with httpbun Docker container - runs on PRs and main branch
+  e2e:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-${{ runner.os }}-py3.12-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-py3.12-
+      - name: Install dependencies
+        run: uv sync --extra dev
+      - name: Build Rust extension
+        run: uv run task dev
+      - name: Add hosts entry
+        run: echo '127.0.0.1 httpbun.local' | sudo tee -a /etc/hosts
+      - name: Generate SSL certificates
+        run: uv run task certs
+      - name: Start httpbun container
+        run: |
+          docker run \
+            --name httpbun \
+            --detach \
+            --publish 443:443 \
+            --volume ${{ github.workspace }}/.certs:/certs:ro \
+            --env HTTPBUN_TLS_CERT=/certs/server.pem \
+            --env HTTPBUN_TLS_KEY=/certs/server.key \
+            --pull always \
+            sharat87/httpbun
+          
+          # Wait for container to be ready
+          echo "Waiting for httpbun to start..."
+          sleep 2
+          for i in $(seq 1 10); do
+            if curl -sf --cacert .certs/ca.pem https://httpbun.local/get > /dev/null 2>&1; then
+              echo "httpbun is ready!"
+              break
+            fi
+            sleep 1
+          done
+      - name: Run e2e tests
+        run: uv run task test:e2e
+      - name: Show httpbun logs
+        if: always()
+        run: docker logs httpbun || true
+      - name: Stop httpbun container
+        if: always()
+        run: docker rm -f httpbun || true
 
   # Docs build test - runs on PRs to catch broken docs early
   docs:
@@ -71,7 +129,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Build docs
         run: |
           uv sync --extra docs
@@ -80,8 +137,8 @@ jobs:
   # Build jobs - run only on tags or manual dispatch
   linux:
     runs-on: ${{ matrix.platform.runner }}
-    needs: [test]
-    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    needs: [test, e2e]
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
     strategy:
       matrix:
         platform:
@@ -102,7 +159,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Set version
         uses: ./.github/actions/set-version
         with:
@@ -112,14 +168,14 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
           manylinux: auto
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist -i python3.13t -i python3.14t
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
           manylinux: auto
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -140,8 +196,8 @@ jobs:
 
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
-    needs: [test]
-    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    needs: [test, e2e]
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
     strategy:
       matrix:
         platform:
@@ -158,7 +214,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Set version
         uses: ./.github/actions/set-version
         with:
@@ -168,7 +223,7 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
           manylinux: musllinux_1_2
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
@@ -198,8 +253,8 @@ jobs:
 
   windows:
     runs-on: ${{ matrix.platform.runner }}
-    needs: [test]
-    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    needs: [test, e2e]
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
     strategy:
       matrix:
         platform:
@@ -216,7 +271,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Set version
         uses: ./.github/actions/set-version
         with:
@@ -226,13 +280,13 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist -i python3.13t -i python3.14t
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -249,8 +303,8 @@ jobs:
 
   macos:
     runs-on: ${{ matrix.platform.runner }}
-    needs: [test]
-    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    needs: [test, e2e]
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
     strategy:
       matrix:
         platform:
@@ -263,7 +317,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Set version
         uses: ./.github/actions/set-version
         with:
@@ -273,13 +326,13 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist -i python3.13t -i python3.14t
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -295,14 +348,13 @@ jobs:
 
   sdist:
     runs-on: ubuntu-latest
-    needs: [test]
-    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    needs: [test, e2e]
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Set version
         uses: ./.github/actions/set-version
         with:
@@ -361,7 +413,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Download wheels
         uses: actions/download-artifact@v4
         with:

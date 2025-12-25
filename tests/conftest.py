@@ -1,5 +1,11 @@
+import os
+
 import pytest
 from pytest_httpbin import certs
+
+# =============================================================================
+# Unit test fixtures (pytest-httpbin)
+# =============================================================================
 
 
 @pytest.fixture
@@ -31,3 +37,36 @@ def test_files(tmp_path_factory):
     with open(temp_file2, "w") as f:
         f.write("bbb222")
     return str(temp_file1), str(temp_file2)
+
+
+# =============================================================================
+# E2E test fixtures (httpbun container)
+# =============================================================================
+
+
+@pytest.fixture
+def e2e_base_url() -> str:
+    """Base URL for e2e tests against httpbun container.
+
+    Set HTTPR_E2E_URL environment variable to the httpbun URL.
+    Skips test if not set (e.g., when running unit tests only).
+    """
+    url = os.environ.get("HTTPR_E2E_URL")
+    if not url:
+        pytest.skip("HTTPR_E2E_URL not set - run 'task e2e' for e2e tests")
+    return url
+
+
+@pytest.fixture
+def e2e_ca_cert() -> str:
+    """CA certificate path for e2e tests against httpbun container.
+
+    Set HTTPR_E2E_CA environment variable to the CA certificate path.
+    Skips test if not set (e.g., when running unit tests only).
+    """
+    ca_path = os.environ.get("HTTPR_E2E_CA")
+    if not ca_path:
+        pytest.skip("HTTPR_E2E_CA not set - run 'task e2e' for e2e tests")
+    if not os.path.exists(ca_path):
+        pytest.skip(f"CA cert not found at {ca_path} - run 'task certs' first")
+    return ca_path

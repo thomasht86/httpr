@@ -336,7 +336,66 @@ Provides precompiled wheels for the following platforms:
 - 🐧 musllinux: `amd64`, `aarch64`
 - 🪟 windows: `amd64`
 - 🍏 macos: `amd64`, `aarch64`.
-  
+
+## Development
+
+This project uses [Taskfile](https://taskfile.dev) for development workflows.
+
+### Setup
+
+```bash
+# Install dependencies
+uv sync --extra dev
+
+# Build Rust extension (required after any .rs changes)
+uv run maturin develop
+
+# Add hosts entry for e2e tests (one-time setup)
+echo '127.0.0.1 httpbun.local' | sudo tee -a /etc/hosts
+```
+
+### Running Tests
+
+```bash
+# List all available tasks
+task --list
+
+# Run unit tests only
+task test:unit
+
+# Run e2e tests (full workflow: start httpbun → test → stop)
+task e2e
+
+# Run e2e tests iteratively (keep httpbun running)
+task e2e:local
+task test:e2e  # run tests against running container
+
+# Run all tests
+task test
+```
+
+### Other Tasks
+
+```bash
+task dev           # Build Rust extension
+task check         # Run all checks (lint + test) - use before committing
+task lint          # Run Python linters (ruff + mypy)
+task lint:rust     # Run Rust linters (fmt + clippy)
+task lint:all      # Run all linters (Python + Rust)
+task fmt           # Format Python code with ruff
+task fmt:rust      # Format Rust code
+task fmt:all       # Format all code (Python + Rust)
+task certs         # Generate SSL certificates for e2e tests
+task httpbun:start # Start httpbun container
+task httpbun:stop  # Stop httpbun container
+task httpbun:logs  # Show container logs
+```
+
+### Test Structure
+
+- `tests/unit/` - Unit tests using pytest-httpbin (fast, no Docker required)
+- `tests/e2e/` - E2E tests using httpbun Docker container with SSL
+
 ## CI
 
 | Job | PRs | Push to main | Tags (Release) | Manual |
