@@ -15,7 +15,7 @@ permissions:
 jobs:
   # Lint and format check - runs early on PRs to catch issues fast
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -52,9 +52,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: rust-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/Cargo.lock') }}
+          key: rust-v2-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            rust-${{ runner.os }}-py${{ matrix.python-version }}-
+            rust-v2-${{ runner.os }}-py${{ matrix.python-version }}-
       - name: Install dependencies
         run: uv sync --extra dev
       - name: Build and test
@@ -64,7 +64,7 @@ jobs:
 
   # E2E tests with httpbun Docker container - runs on PRs and main branch
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     steps:
       - uses: actions/checkout@v4
@@ -78,9 +78,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: rust-${{ runner.os }}-py3.12-${{ hashFiles('**/Cargo.lock') }}
+          key: rust-v2-${{ runner.os }}-py3.12-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            rust-${{ runner.os }}-py3.12-
+            rust-v2-${{ runner.os }}-py3.12-
       - name: Install dependencies
         run: uv sync --extra dev
       - name: Build Rust extension
