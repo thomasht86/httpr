@@ -1,6 +1,5 @@
 """E2E file upload tests using httpbun container."""
 
-import tempfile
 from pathlib import Path
 
 import pytest
