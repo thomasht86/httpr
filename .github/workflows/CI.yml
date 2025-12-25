@@ -22,7 +22,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Install dependencies
         run: uv sync --extra dev
       - name: Lint (Python + Rust)
@@ -46,8 +45,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
       - uses: astral-sh/setup-uv@v7
+      - name: Cache Rust build
+        uses: actions/cache@v4
         with:
-          enable-cache: false
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-py${{ matrix.python-version }}-
       - name: Install dependencies
         run: uv sync --extra dev
       - name: Build and test
@@ -64,7 +71,16 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-${{ runner.os }}-py3.12-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-py3.12-
       - name: Install dependencies
         run: uv sync --extra dev
       - name: Build Rust extension
@@ -113,7 +129,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Build docs
         run: |
           uv sync --extra docs
@@ -144,7 +159,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Set version
         uses: ./.github/actions/set-version
         with:
@@ -154,14 +168,14 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
           manylinux: auto
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist -i python3.13t -i python3.14t
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
           manylinux: auto
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -200,7 +214,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Set version
         uses: ./.github/actions/set-version
         with:
@@ -210,7 +223,7 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
           manylinux: musllinux_1_2
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
@@ -258,7 +271,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Set version
         uses: ./.github/actions/set-version
         with:
@@ -268,13 +280,13 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist -i python3.13t -i python3.14t
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -305,7 +317,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Set version
         uses: ./.github/actions/set-version
         with:
@@ -315,13 +326,13 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist -i python3.13t -i python3.14t
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: true
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -344,7 +355,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Set version
         uses: ./.github/actions/set-version
         with:
@@ -403,7 +413,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-          enable-cache: false
       - name: Download wheels
         uses: actions/download-artifact@v4
         with:
