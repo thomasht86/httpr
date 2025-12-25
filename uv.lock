@@ -996,6 +996,24 @@ wheels = [
 ]
 
 [[package]]
+name = "go-task-bin"
+version = "3.46.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/77/2c15628edcd6c44645a671847f6042d8a7927c211248bcf91e3b21ccc609/go_task_bin-3.46.4.tar.gz", hash = "sha256:b3975c749c131fa08f0bde11d63356ee1950f13f4b9747f42a072c818e972f12", size = 515947, upload-time = "2025-12-25T08:19:40.436Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/87/4d/dc6418f6219e8cbe986ab493c0be296cd214ee513fe929e3112c88dade13/go_task_bin-3.46.4-py3-none-android_33_arm64_v8a.whl", hash = "sha256:3d02b4f89ec0419905a790bf1fd23630ca1a0863bd2b8bde1babbd3ae5a34703", size = 9966124, upload-time = "2025-12-25T08:19:18.544Z" },
+    { url = "https://files.pythonhosted.org/packages/62/7d/5d9ff8006d3464236140296a8d035e9da7984f6e0cb4aac269a4ccf861d3/go_task_bin-3.46.4-py3-none-macosx_12_0_arm64.whl", hash = "sha256:9e1ff81f573a49b7482f8f88fb92f7f1623ed2b8af8009a747f2bb5be8ca0ff0", size = 9826254, upload-time = "2025-12-25T08:19:20.687Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/dc/1ef0e6ffd5b0f13683c5d560c2880e5f922c6cb404866ef92553bece0188/go_task_bin-3.46.4-py3-none-macosx_12_0_x86_64.whl", hash = "sha256:5ba12caee171f9652a2c70fc8fb7ff22f343eff62c1d3d4a0f018588942a836e", size = 10621386, upload-time = "2025-12-25T08:19:22.523Z" },
+    { url = "https://files.pythonhosted.org/packages/be/5a/070240b853fd0a1b6638999f568704c78a0db1e174c537473d41ab9f4014/go_task_bin-3.46.4-py3-none-manylinux_2_28_aarch64.musllinux_1_2_aarch64.whl", hash = "sha256:c903d5376006d9c0ba2938dc0697953c30484842cd97b5b89ca95197017b8205", size = 9375064, upload-time = "2025-12-25T08:19:24.618Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/71/0928f980888bae1fee98287291fa1b13b23dbf779004d673a858fc6dede1/go_task_bin-3.46.4-py3-none-manylinux_2_28_ppc64le.musllinux_1_2_ppc64le.whl", hash = "sha256:5722d1fdbc23ae8921636afb89df3cca08540353796e3241f8b858869e4d0686", size = 9338247, upload-time = "2025-12-25T08:19:26.358Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/3b/fea8dd94f6badbe4d28b2e072bcefe177163bf4d72203ecec412d9d6283e/go_task_bin-3.46.4-py3-none-manylinux_2_28_riscv64.musllinux_1_2_riscv64.whl", hash = "sha256:0dd99c49a2d997b4d00ccd92fcc5cf4ef3d9b2edc9c7fcc85c15acdb39af576c", size = 9887441, upload-time = "2025-12-25T08:19:29.383Z" },
+    { url = "https://files.pythonhosted.org/packages/77/03/2d0b65af569502498e26ce69f1ebe2a0dae4e259f8f61c25e86c4a9bd664/go_task_bin-3.46.4-py3-none-manylinux_2_28_s390x.musllinux_1_2_s390x.whl", hash = "sha256:8c0491e728193da74c3bca62aacf74148223a55b352efb6c2e6ac9ec43031fcf", size = 10188580, upload-time = "2025-12-25T08:19:31.24Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/0f/1c92f1242dd6eac2ef48157dac591f3015a9bfade577986b15477ef48ca4/go_task_bin-3.46.4-py3-none-manylinux_2_28_x86_64.musllinux_1_2_x86_64.whl", hash = "sha256:300f8432e0f9f3b195f2142379030715e8f7c571ee96ba14943d1df270ff00e4", size = 10401659, upload-time = "2025-12-25T08:19:33.75Z" },
+    { url = "https://files.pythonhosted.org/packages/47/8f/b3ebfe72d3df40df8c4e307c6200a1809dd38e69bd660625e4a2ace9747f/go_task_bin-3.46.4-py3-none-win_amd64.whl", hash = "sha256:92bc6218d192ad3e446357f7ec111ea80df356103bb3b9fc0a18d6733d2d22c8", size = 10646860, upload-time = "2025-12-25T08:19:35.978Z" },
+    { url = "https://files.pythonhosted.org/packages/22/f7/9915a19d69f977f0cf305db8fc81960f724940b143a66a649a2a41386bbe/go_task_bin-3.46.4-py3-none-win_arm64.whl", hash = "sha256:d2a245d80f857387ae3ff8f02be60d465dfc1f9777fa48540f7dc062f7db8f24", size = 9484893, upload-time = "2025-12-25T08:19:38.438Z" },
+]
+
+[[package]]
 name = "greenlet"
 version = "2.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1174,6 +1192,7 @@ benchmark = [
 dev = [
     { name = "cbor2" },
     { name = "certifi" },
+    { name = "go-task-bin" },
     { name = "maturin" },
     { name = "mypy" },
     { name = "pytest" },
@@ -1199,6 +1218,7 @@ requires-dist = [
     { name = "certifi", marker = "extra == 'dev'" },
     { name = "curl-cffi", marker = "extra == 'benchmark'" },
     { name = "fastapi", marker = "extra == 'benchmark'" },
+    { name = "go-task-bin", marker = "extra == 'dev'" },
     { name = "gunicorn", marker = "extra == 'benchmark'" },
     { name = "httpx", marker = "extra == 'benchmark'" },
     { name = "ipykernel", marker = "extra == 'benchmark'" },
