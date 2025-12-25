@@ -125,13 +125,43 @@ tasks:
       - uv run maturin develop
 
   lint:
-    desc: Run linters (ruff + mypy)
+    desc: Run Python linters (ruff + mypy)
     cmds:
       - uv run ruff check .
       - uv run mypy httpr/
 
+  lint:rust:
+    desc: Run Rust linters (fmt + clippy)
+    cmds:
+      - cargo fmt --check
+      - cargo clippy -- -D warnings
+
+  lint:all:
+    desc: Run all linters (Python + Rust)
+    cmds:
+      - task: lint
+      - task: lint:rust
+
   fmt:
-    desc: Format code (ruff)
+    desc: Format Python code (ruff)
     cmds:
       - uv run ruff format .
       - uv run ruff check --fix .
+
+  fmt:rust:
+    desc: Format Rust code
+    cmds:
+      - cargo fmt
+
+  fmt:all:
+    desc: Format all code (Python + Rust)
+    cmds:
+      - task: fmt
+      - task: fmt:rust
+
+  check:
+    desc: Run all checks (lint + test) - use before committing
+    cmds:
+      - task: lint:all
+      - task: dev
+      - task: test:unit

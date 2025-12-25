@@ -3,7 +3,6 @@ import os
 import pytest
 from pytest_httpbin import certs
 
-
 # =============================================================================
 # Unit test fixtures (pytest-httpbin)
 # =============================================================================

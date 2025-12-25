@@ -9,7 +9,9 @@
 ```
 src/           → Rust core (lib.rs: RClient, response.rs: Response/StreamingResponse, exceptions.rs)
 httpr/         → Python wrapper (__init__.py: Client/AsyncClient, httpr.pyi: type stubs)
-tests/         → pytest tests using pytest-httpbin fixtures
+tests/unit/    → Unit tests using pytest-httpbin fixtures
+tests/e2e/     → E2E tests using httpbun Docker container with SSL
+scripts/       → Development scripts (generate_certs.py)
 ```
 
 **Key decisions:**
@@ -23,8 +25,22 @@ tests/         → pytest tests using pytest-httpbin fixtures
 ```bash
 uv sync --extra dev              # Install dependencies
 uv run maturin develop           # Build Rust extension (REQUIRED after any .rs changes)
-uv run pytest tests/             # Run tests (uses pytest-httpbin fixtures)
-uv run mypy httpr/ && uv run ruff check .  # Type check + lint
+task test:unit                   # Run unit tests (uses pytest-httpbin)
+task e2e                         # Run e2e tests (httpbun Docker with SSL)
+task lint                        # Run ruff + mypy
+```
+
+### Taskfile Commands
+
+```bash
+task --list        # List all available tasks
+task test:unit     # Run unit tests only
+task e2e           # Full e2e workflow: certs → start httpbun → test → stop
+task e2e:local     # Start httpbun and run tests (keep container running)
+task dev           # Build Rust extension
+task check         # Run all checks (lint + test) - use before committing
+task lint:all      # Run all linters (Python + Rust)
+task fmt:all       # Format all code (Python + Rust)
 ```
 
 ### Pre-commit Setup
@@ -46,10 +62,17 @@ Hooks: ruff (lint/format), mypy, cargo fmt/clippy, commitizen/commitlint
 ## Patterns
 
 ```python
-# Tests use pytest-httpbin fixtures (base_url, base_url_ssl, ca_bundle)
+# Unit tests use pytest-httpbin fixtures (base_url, base_url_ssl, ca_bundle)
 def test_feature(base_url_ssl, ca_bundle):
     client = httpr.Client(ca_cert_file=ca_bundle)
     response = client.get(f"{base_url_ssl}/anything")
+    assert response.status_code == 200
+
+# E2E tests use httpbun fixtures (e2e_base_url, e2e_ca_cert)
+@pytest.mark.e2e
+def test_e2e_feature(e2e_base_url, e2e_ca_cert):
+    client = httpr.Client(ca_cert_file=e2e_ca_cert)
+    response = client.get(f"{e2e_base_url}/any")
     assert response.status_code == 200
 
 # Streaming with context manager

@@ -87,3 +87,6 @@ site/
 
 # Generated e2e test certificates
 .certs/
+
+# Taskfile cache
+.task/
