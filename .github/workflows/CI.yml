@@ -25,16 +25,8 @@ jobs:
           enable-cache: false
       - name: Install dependencies
         run: uv sync --extra dev
-      - name: Ruff lint
-        run: uv run ruff check .
-      - name: Ruff format check
-        run: uv run ruff format --check .
-      - name: Mypy type check
-        run: uv run mypy httpr/
-      - name: Rust fmt check
-        run: cargo fmt --check
-      - name: Rust clippy
-        run: cargo clippy -- -D warnings
+      - name: Lint (Python + Rust)
+        run: uv run task lint:all
 
   # Unit tests - runs on PRs, main branch pushes, and tag pushes with Python version matrix
   test:
@@ -52,15 +44,16 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: false
+      - name: Install dependencies
+        run: uv sync --extra dev
       - name: Build and test
         # PYO3_USE_ABI3_FORWARD_COMPATIBILITY allows transitive dependencies (like rpds-py)
         # that use older PyO3 versions to build from source on Python 3.14+
         env:
           PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
         run: |
-          uv sync --extra dev
-          uv run maturin develop
-          uv run pytest tests/unit/
+          uv run task dev
+          uv run task test:unit
 
   # E2E tests with httpbun Docker container - runs on PRs and main branch
   e2e:
@@ -75,11 +68,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
       - name: Build Rust extension
-        run: uv run maturin develop
+        run: uv run task dev
       - name: Add hosts entry
         run: echo '127.0.0.1 httpbun.local' | sudo tee -a /etc/hosts
       - name: Generate SSL certificates
-        run: uv run python scripts/generate_certs.py
+        run: uv run task certs
       - name: Start httpbun container
         run: |
           docker run \
@@ -103,10 +96,7 @@ jobs:
             sleep 1
           done
       - name: Run e2e tests
-        env:
-          HTTPR_E2E_URL: "https://httpbun.local:443"
-          HTTPR_E2E_CA: "${{ github.workspace }}/.certs/ca.pem"
-        run: uv run pytest tests/e2e/ -v
+        run: uv run task test:e2e
       - name: Show httpbun logs
         if: always()
         run: docker logs httpbun || true
