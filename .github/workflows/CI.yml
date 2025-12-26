@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "*.jpg"  # Prevents the benchmark image update from triggering CI
     tags:
       - "*"
   pull_request:
