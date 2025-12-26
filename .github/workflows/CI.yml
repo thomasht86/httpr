@@ -426,7 +426,14 @@ jobs:
           uv run uvicorn benchmark.server:app --host 0.0.0.0 --port 8000 &
           sleep 10
       - name: Run benchmark
-        run: uv run python benchmark/benchmark.py
+        run: |
+          # Extract version from tag (v0.3.0 -> 0.3.0) or use 'dev' for manual runs
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            HTTPR_VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            HTTPR_VERSION="dev"
+          fi
+          uv run python benchmark/benchmark.py --httpr-version "$HTTPR_VERSION"
       - name: Generate and commit benchmark image
         if: startsWith(github.ref, 'refs/tags/')
         run: |
