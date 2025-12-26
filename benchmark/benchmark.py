@@ -69,9 +69,17 @@ AsyncPACKAGES = [
     ("aiohttp", aiohttp_session_factory),
 ]
 
+# Optional override for httpr version (set via --httpr-version CLI arg)
+_httpr_version_override: str | None = None
+
 
 def add_package_version(packages):
-    return [(f"{name} {version(name)}", classname) for name, classname in packages]
+    def get_version(name):
+        if name == "httpr" and _httpr_version_override:
+            return _httpr_version_override
+        return version(name)
+
+    return [(f"{name} {get_version(name)}", classname) for name, classname in packages]
 
 
 def get_test(session_class, requests_number):
@@ -264,7 +272,16 @@ if __name__ == "__main__":
         default=False,
         help="If provided, run the multithreading tests only",
     )
+    parser.add_argument(
+        "--httpr-version",
+        type=str,
+        default=None,
+        help="Override httpr version in benchmark output (e.g., 0.3.0)",
+    )
     args = parser.parse_args()
+
+    if args.httpr_version:
+        _httpr_version_override = args.httpr_version
 
     if args.run_multithread:
         run_multithread_benchmarks()

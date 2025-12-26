@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+"""
+Version management script for httpr CI builds.
+
+This script is called by the GitHub Actions workflow (.github/actions/set-version/)
+to set the package version dynamically based on git tags:
+
+  - Tag release (e.g., v1.2.3): Version is extracted from the tag -> "1.2.3"
+  - Dev release (workflow_dispatch): Base version + run number -> "1.2.3.dev42"
+
+Both pyproject.toml and Cargo.toml are updated. Cargo.toml gets the base version
+without any .dev suffix since Cargo's semver doesn't support that format.
+
+Usage:
+    python set_version.py 1.2.3        # Set version to 1.2.3
+    python set_version.py --get-base   # Print base version from pyproject.toml
+"""
 
 import argparse
 import os
