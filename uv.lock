@@ -1194,7 +1194,7 @@ wheels = [
 
 [[package]]
 name = "httpr"
-version = "0.2.3"
+version = "0.0.0.dev0"
 source = { editable = "." }
 
 [package.optional-dependencies]
