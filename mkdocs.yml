@@ -126,6 +126,8 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
+      # use_pygments: true enables server-side syntax highlighting with Material's color scheme
+      # DO NOT use pygments_lang_class: true as it prevents proper color styling
       use_pygments: true
   - pymdownx.inlinehilite
   - pymdownx.snippets:
