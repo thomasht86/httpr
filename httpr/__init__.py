@@ -212,16 +212,16 @@ class Client(RClient):
             **kwargs: Request parameters (see below).
 
         Keyword Args:
-            params (dict[str, str] | None): Query parameters to append to URL.
-            headers (dict[str, str] | None): Request headers (merged with client defaults).
-            cookies (dict[str, str] | None): Request cookies (merged with client defaults).
-            auth (tuple[str, str | None] | None): Basic auth credentials (overrides client default).
-            auth_bearer (str | None): Bearer token (overrides client default).
-            timeout (float | None): Request timeout in seconds (overrides client default).
-            content (bytes | None): Raw bytes for request body.
-            data (dict[str, Any] | None): Form data for request body (application/x-www-form-urlencoded).
-            json (Any | None): JSON data for request body (application/json).
-            files (dict[str, str] | None): Files for multipart upload (dict mapping field names to file paths).
+            params (Optional[dict[str, str]]): Query parameters to append to URL.
+            headers (Optional[dict[str, str]]): Request headers (merged with client defaults).
+            cookies (Optional[dict[str, str]]): Request cookies (merged with client defaults).
+            auth (Optional[tuple[str, Optional[str]]]): Basic auth credentials (overrides client default).
+            auth_bearer (Optional[str]): Bearer token (overrides client default).
+            timeout (Optional[float]): Request timeout in seconds (overrides client default).
+            content (Optional[bytes]): Raw bytes for request body.
+            data (Optional[dict[str, Any]]): Form data for request body (application/x-www-form-urlencoded).
+            json (Optional[Any]): JSON data for request body (application/json).
+            files (Optional[dict[str, str]]): Files for multipart upload (dict mapping field names to file paths).
 
         Returns:
             Response object with status, headers, and body.
@@ -337,16 +337,16 @@ class Client(RClient):
             **kwargs: Request parameters including body options.
 
         Keyword Args:
-            params (dict[str, str] | None): Query parameters.
-            headers (dict[str, str] | None): Request headers.
-            cookies (dict[str, str] | None): Request cookies.
-            auth (tuple[str, str | None] | None): Basic auth credentials.
-            auth_bearer (str | None): Bearer token.
-            timeout (float | None): Request timeout.
-            content (bytes | None): Raw bytes body.
-            data (dict[str, Any] | None): Form-encoded body.
-            json (Any | None): JSON body.
-            files (dict[str, str] | None): Multipart file uploads.
+            params (Optional[dict[str, str]]): Query parameters.
+            headers (Optional[dict[str, str]]): Request headers.
+            cookies (Optional[dict[str, str]]): Request cookies.
+            auth (Optional[tuple[str, Optional[str]]]): Basic auth credentials.
+            auth_bearer (Optional[str]): Bearer token.
+            timeout (Optional[float]): Request timeout.
+            content (Optional[bytes]): Raw bytes body.
+            data (Optional[dict[str, Any]]): Form-encoded body.
+            json (Optional[Any]): JSON body.
+            files (Optional[dict[str, str]]): Multipart file uploads.
 
         Returns:
             Response object.
