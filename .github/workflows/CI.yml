@@ -64,10 +64,10 @@ jobs:
           uv run task dev
           uv run task test:unit
 
-  # E2E tests with httpbun Docker container - runs on PRs and main branch
+  # E2E tests with httpbun Docker container - runs on PRs, main branch, and tag pushes
   e2e:
     runs-on: ubuntu-22.04
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')))
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v7
