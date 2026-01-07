@@ -32,7 +32,7 @@ import sys
 from collections.abc import AsyncIterator, Generator
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial
-from typing import TYPE_CHECKING, Optional, TypedDict, Union
+from typing import TYPE_CHECKING, TypedDict
 
 if sys.version_info <= (3, 11):
     from typing_extensions import Unpack
@@ -103,22 +103,22 @@ class Client(RClient):
 
     def __init__(
         self,
-        auth: Optional[tuple[str, Optional[str]]] = None,
-        auth_bearer: Optional[str] = None,
-        params: Optional[dict[str, str]] = None,
-        headers: Optional[dict[str, str]] = None,
-        cookies: Optional[dict[str, str]] = None,
-        cookie_store: Optional[bool] = True,
-        referer: Optional[bool] = True,
-        proxy: Optional[str] = None,
-        timeout: Optional[float] = 30,
-        follow_redirects: Optional[bool] = True,
-        max_redirects: Optional[int] = 20,
-        verify: Optional[bool] = True,
-        ca_cert_file: Optional[str] = None,
-        client_pem: Optional[str] = None,
-        https_only: Optional[bool] = False,
-        http2_only: Optional[bool] = False,
+        auth: tuple[str, str | None] | None = None,
+        auth_bearer: str | None = None,
+        params: dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        cookie_store: bool | None = True,
+        referer: bool | None = True,
+        proxy: str | None = None,
+        timeout: float | None = 30,
+        follow_redirects: bool | None = True,
+        max_redirects: int | None = 20,
+        verify: bool | None = True,
+        ca_cert_file: str | None = None,
+        client_pem: str | None = None,
+        https_only: bool | None = False,
+        http2_only: bool | None = False,
     ):
         """
         Initialize an HTTP client.
@@ -784,9 +784,9 @@ class AsyncClient(Client):
 def request(
     method: HttpMethod,
     url: str,
-    verify: Optional[bool] = True,
-    ca_cert_file: Optional[str] = None,
-    client_pem: Optional[str] = None,
+    verify: bool | None = True,
+    ca_cert_file: str | None = None,
+    client_pem: str | None = None,
     **kwargs: Unpack[RequestParams],
 ) -> Response:
     """
