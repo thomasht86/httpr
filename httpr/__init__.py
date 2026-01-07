@@ -32,7 +32,7 @@ import sys
 from collections.abc import AsyncIterator, Generator
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Optional, TypedDict, Union
 
 if sys.version_info <= (3, 11):
     from typing_extensions import Unpack
@@ -103,22 +103,22 @@ class Client(RClient):
 
     def __init__(
         self,
-        auth: tuple[str, str | None] | None = None,
-        auth_bearer: str | None = None,
-        params: dict[str, str] | None = None,
-        headers: dict[str, str] | None = None,
-        cookies: dict[str, str] | None = None,
-        cookie_store: bool | None = True,
-        referer: bool | None = True,
-        proxy: str | None = None,
-        timeout: float | None = 30,
-        follow_redirects: bool | None = True,
-        max_redirects: int | None = 20,
-        verify: bool | None = True,
-        ca_cert_file: str | None = None,
-        client_pem: str | None = None,
-        https_only: bool | None = False,
-        http2_only: bool | None = False,
+        auth: Optional[tuple[str, Optional[str]]] = None,
+        auth_bearer: Optional[str] = None,
+        params: Optional[dict[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
+        cookies: Optional[dict[str, str]] = None,
+        cookie_store: Optional[bool] = True,
+        referer: Optional[bool] = True,
+        proxy: Optional[str] = None,
+        timeout: Optional[float] = 30,
+        follow_redirects: Optional[bool] = True,
+        max_redirects: Optional[int] = 20,
+        verify: Optional[bool] = True,
+        ca_cert_file: Optional[str] = None,
+        client_pem: Optional[str] = None,
+        https_only: Optional[bool] = False,
+        http2_only: Optional[bool] = False,
     ):
         """
         Initialize an HTTP client.
@@ -212,16 +212,16 @@ class Client(RClient):
             **kwargs: Request parameters (see below).
 
         Keyword Args:
-            params (dict[str, str] | None): Query parameters to append to URL.
-            headers (dict[str, str] | None): Request headers (merged with client defaults).
-            cookies (dict[str, str] | None): Request cookies (merged with client defaults).
-            auth (tuple[str, str | None] | None): Basic auth credentials (overrides client default).
-            auth_bearer (str | None): Bearer token (overrides client default).
-            timeout (float | None): Request timeout in seconds (overrides client default).
-            content (bytes | None): Raw bytes for request body.
-            data (dict[str, Any] | None): Form data for request body (application/x-www-form-urlencoded).
-            json (Any | None): JSON data for request body (application/json).
-            files (dict[str, str] | None): Files for multipart upload (dict mapping field names to file paths).
+            params (Optional[dict[str, str]]): Query parameters to append to URL.
+            headers (Optional[dict[str, str]]): Request headers (merged with client defaults).
+            cookies (Optional[dict[str, str]]): Request cookies (merged with client defaults).
+            auth (Optional[tuple[str, Optional[str]]]): Basic auth credentials (overrides client default).
+            auth_bearer (Optional[str]): Bearer token (overrides client default).
+            timeout (Optional[float]): Request timeout in seconds (overrides client default).
+            content (Optional[bytes]): Raw bytes for request body.
+            data (Optional[dict[str, Any]]): Form data for request body (application/x-www-form-urlencoded).
+            json (Optional[Any]): JSON data for request body (application/json).
+            files (Optional[dict[str, str]]): Files for multipart upload (dict mapping field names to file paths).
 
         Returns:
             Response object with status, headers, and body.
@@ -337,16 +337,16 @@ class Client(RClient):
             **kwargs: Request parameters including body options.
 
         Keyword Args:
-            params (dict[str, str] | None): Query parameters.
-            headers (dict[str, str] | None): Request headers.
-            cookies (dict[str, str] | None): Request cookies.
-            auth (tuple[str, str | None] | None): Basic auth credentials.
-            auth_bearer (str | None): Bearer token.
-            timeout (float | None): Request timeout.
-            content (bytes | None): Raw bytes body.
-            data (dict[str, Any] | None): Form-encoded body.
-            json (Any | None): JSON body.
-            files (dict[str, str] | None): Multipart file uploads.
+            params (Optional[dict[str, str]]): Query parameters.
+            headers (Optional[dict[str, str]]): Request headers.
+            cookies (Optional[dict[str, str]]): Request cookies.
+            auth (Optional[tuple[str, Optional[str]]]): Basic auth credentials.
+            auth_bearer (Optional[str]): Bearer token.
+            timeout (Optional[float]): Request timeout.
+            content (Optional[bytes]): Raw bytes body.
+            data (Optional[dict[str, Any]]): Form-encoded body.
+            json (Optional[Any]): JSON body.
+            files (Optional[dict[str, str]]): Multipart file uploads.
 
         Returns:
             Response object.
@@ -784,9 +784,9 @@ class AsyncClient(Client):
 def request(
     method: HttpMethod,
     url: str,
-    verify: bool | None = True,
-    ca_cert_file: str | None = None,
-    client_pem: str | None = None,
+    verify: Optional[bool] = True,
+    ca_cert_file: Optional[str] = None,
+    client_pem: Optional[str] = None,
     **kwargs: Unpack[RequestParams],
 ) -> Response:
     """

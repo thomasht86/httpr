@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Iterator
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, Optional, TypedDict, Union
 
 if sys.version_info <= (3, 11):
     from typing_extensions import Unpack
@@ -13,21 +13,21 @@ else:
 HttpMethod = Literal["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]
 
 class RequestParams(TypedDict, total=False):
-    auth: tuple[str, str | None] | None
-    auth_bearer: str | None
-    params: dict[str, str] | None
-    headers: dict[str, str] | None
-    cookies: dict[str, str] | None
-    timeout: float | None
-    content: bytes | None
-    data: dict[str, Any] | None
-    json: Any | None
-    files: dict[str, str] | None
+    auth: Optional[Union[tuple[str, Optional[str]], None]]
+    auth_bearer: Optional[str]
+    params: Optional[dict[str, str]]
+    headers: Optional[dict[str, str]]
+    cookies: Optional[dict[str, str]]
+    timeout: Optional[float]
+    content: Optional[bytes]
+    data: Optional[dict[str, Any]]
+    json: Optional[Any]
+    files: Optional[dict[str, str]]
 
 class ClientRequestParams(RequestParams):
-    verify: bool | None
-    ca_cert_file: str | None
-    client_pem: str | None
+    verify: Optional[bool]
+    ca_cert_file: Optional[str]
+    client_pem: Optional[str]
 
 class CaseInsensitiveHeaderMap:
     """
@@ -68,7 +68,7 @@ class CaseInsensitiveHeaderMap:
     def values(self) -> list[str]:
         """Return a list of header values."""
         ...
-    def get(self, key: str, default: str | None = None) -> str:
+    def get(self, key: str, default: Optional[str] = None) -> str:
         """
         Get a header value by name (case-insensitive).
 
@@ -272,51 +272,51 @@ class StreamingResponse:
 class RClient:
     def __init__(
         self,
-        auth: tuple[str, str | None] | None = None,
-        auth_bearer: str | None = None,
-        params: dict[str, str] | None = None,
-        headers: dict[str, str] | None = None,
-        cookies: dict[str, str] | None = None,
-        timeout: float | None = None,
-        cookie_store: bool | None = True,
-        referer: bool | None = True,
-        proxy: str | None = None,
-        follow_redirects: bool | None = True,
-        max_redirects: int | None = 20,
-        verify: bool | None = True,
-        ca_cert_file: str | None = None,
-        client_pem: str | None = None,
-        https_only: bool | None = False,
-        http2_only: bool | None = False,
+        auth: Optional[tuple[str, Optional[str]]] = None,
+        auth_bearer: Optional[str] = None,
+        params: Optional[dict[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
+        cookies: Optional[dict[str, str]] = None,
+        timeout: Optional[float] = None,
+        cookie_store: Optional[bool] = True,
+        referer: Optional[bool] = True,
+        proxy: Optional[str] = None,
+        follow_redirects: Optional[bool] = True,
+        max_redirects: Optional[int] = 20,
+        verify: Optional[bool] = True,
+        ca_cert_file: Optional[str] = None,
+        client_pem: Optional[str] = None,
+        https_only: Optional[bool] = False,
+        http2_only: Optional[bool] = False,
     ): ...
     @property
     def headers(self) -> dict[str, str]: ...
     @headers.setter
-    def headers(self, headers: dict[str, str] | None) -> None: ...
+    def headers(self, headers: Optional[dict[str, str]]) -> None: ...
     @property
     def cookies(self) -> dict[str, str]: ...
     @cookies.setter
-    def cookies(self, cookies: dict[str, str] | None) -> None: ...
+    def cookies(self, cookies: Optional[dict[str, str]]) -> None: ...
     @property
-    def proxy(self) -> str | None: ...
+    def proxy(self) -> Optional[str]: ...
     @proxy.setter
     def proxy(self, proxy: str) -> None: ...
     @property
-    def auth(self) -> tuple[str, str | None] | None: ...
+    def auth(self) -> Optional[tuple[str, Optional[str]]]: ...
     @auth.setter
-    def auth(self, auth: tuple[str, str | None] | None) -> None: ...
+    def auth(self, auth: Optional[tuple[str, Optional[str]]]) -> None: ...
     @property
-    def auth_bearer(self) -> str | None: ...
+    def auth_bearer(self) -> Optional[str]: ...
     @auth_bearer.setter
-    def auth_bearer(self, auth_bearer: str | None) -> None: ...
+    def auth_bearer(self, auth_bearer: Optional[str]) -> None: ...
     @property
-    def params(self) -> dict[str, str] | None: ...
+    def params(self) -> Optional[dict[str, str]]: ...
     @params.setter
-    def params(self, params: dict[str, str] | None) -> None: ...
+    def params(self, params: Optional[dict[str, str]]) -> None: ...
     @property
-    def timeout(self) -> float | None: ...
+    def timeout(self) -> Optional[float]: ...
     @timeout.setter
-    def timeout(self, timeout: float | None) -> None: ...
+    def timeout(self, timeout: Optional[float]) -> None: ...
     def request(self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> Response: ...
     def _stream(self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> StreamingResponse: ...
     def get(self, url: str, **kwargs: Unpack[RequestParams]) -> Response: ...
@@ -360,22 +360,22 @@ class Client(RClient):
     """
     def __init__(
         self,
-        auth: tuple[str, str | None] | None = None,
-        auth_bearer: str | None = None,
-        params: dict[str, str] | None = None,
-        headers: dict[str, str] | None = None,
-        cookies: dict[str, str] | None = None,
-        cookie_store: bool | None = True,
-        referer: bool | None = True,
-        proxy: str | None = None,
-        timeout: float | None = 30,
-        follow_redirects: bool | None = True,
-        max_redirects: int | None = 20,
-        verify: bool | None = True,
-        ca_cert_file: str | None = None,
-        client_pem: str | None = None,
-        https_only: bool | None = False,
-        http2_only: bool | None = False,
+        auth: Optional[tuple[str, Optional[str]]] = None,
+        auth_bearer: Optional[str] = None,
+        params: Optional[dict[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
+        cookies: Optional[dict[str, str]] = None,
+        cookie_store: Optional[bool] = True,
+        referer: Optional[bool] = True,
+        proxy: Optional[str] = None,
+        timeout: Optional[float] = 30,
+        follow_redirects: Optional[bool] = True,
+        max_redirects: Optional[int] = 20,
+        verify: Optional[bool] = True,
+        ca_cert_file: Optional[str] = None,
+        client_pem: Optional[str] = None,
+        https_only: Optional[bool] = False,
+        http2_only: Optional[bool] = False,
     ) -> None:
         """
         Initialize an HTTP client.
@@ -458,22 +458,22 @@ class AsyncClient(Client):
     """
     def __init__(
         self,
-        auth: tuple[str, str | None] | None = None,
-        auth_bearer: str | None = None,
-        params: dict[str, str] | None = None,
-        headers: dict[str, str] | None = None,
-        cookies: dict[str, str] | None = None,
-        cookie_store: bool | None = True,
-        referer: bool | None = True,
-        proxy: str | None = None,
-        timeout: float | None = 30,
-        follow_redirects: bool | None = True,
-        max_redirects: int | None = 20,
-        verify: bool | None = True,
-        ca_cert_file: str | None = None,
-        client_pem: str | None = None,
-        https_only: bool | None = False,
-        http2_only: bool | None = False,
+        auth: Optional[tuple[str, Optional[str]]] = None,
+        auth_bearer: Optional[str] = None,
+        params: Optional[dict[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
+        cookies: Optional[dict[str, str]] = None,
+        cookie_store: Optional[bool] = True,
+        referer: Optional[bool] = True,
+        proxy: Optional[str] = None,
+        timeout: Optional[float] = 30,
+        follow_redirects: Optional[bool] = True,
+        max_redirects: Optional[int] = 20,
+        verify: Optional[bool] = True,
+        ca_cert_file: Optional[str] = None,
+        client_pem: Optional[str] = None,
+        https_only: Optional[bool] = False,
+        http2_only: Optional[bool] = False,
     ) -> None:
         """Initialize an async HTTP client. Accepts the same parameters as Client."""
         ...

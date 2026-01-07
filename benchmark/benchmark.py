@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from importlib.metadata import version
 from io import BytesIO
+from typing import Optional
 
 import aiohttp
 import curl_cffi.requests
@@ -70,7 +71,7 @@ AsyncPACKAGES = [
 ]
 
 # Optional override for httpr version (set via --httpr-version CLI arg)
-_httpr_version_override: str | None = None
+_httpr_version_override: Optional[str] = None
 
 
 def add_package_version(packages):

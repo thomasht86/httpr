@@ -6,9 +6,9 @@ build-backend = "maturin"
 name = "httpr"
 description = "Fast HTTP client for Python"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 keywords = [ "python", "request",]
-classifiers = [ "Programming Language :: Rust", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3 :: Only", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.13", "Programming Language :: Python :: Implementation :: CPython", "Programming Language :: Python :: Implementation :: PyPy", "Topic :: Internet :: WWW/HTTP", "Topic :: Software Development :: Libraries :: Python Modules",]
+classifiers = [ "Programming Language :: Rust", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3 :: Only", "Programming Language :: Python :: 3.9", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.13", "Programming Language :: Python :: Implementation :: CPython", "Programming Language :: Python :: Implementation :: PyPy", "Topic :: Internet :: WWW/HTTP", "Topic :: Software Development :: Libraries :: Python Modules",]
 # Version is set dynamically by CI from git tags (e.g., v1.2.3 -> 1.2.3).
 # Do not edit manually. See .github/actions/set-version/ for details.
 version = "0.0.0.dev0"
@@ -49,7 +49,7 @@ select = [ "E", "F", "UP", "B", "SIM", "I",]
 ]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.9"
 exclude = [ "benchmark/",]
 
 [[tool.mypy.overrides]]
