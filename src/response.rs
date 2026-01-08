@@ -192,9 +192,8 @@ impl Response {
 
         if content_type.to_lowercase().contains("application/cbor") {
             // Deserialize as CBOR
-            let cbor_value: serde_json::Value =
-                serde_cbor::from_slice(self.content.as_bytes(py))
-                    .map_err(|e| anyhow!("Failed to deserialize CBOR: {}", e))?;
+            let cbor_value: serde_json::Value = ciborium::from_reader(self.content.as_bytes(py))
+                .map_err(|e| anyhow!("Failed to deserialize CBOR: {}", e))?;
             let result = pythonize(py, &cbor_value)
                 .map_err(|e| anyhow!("Failed to convert CBOR to Python object: {}", e))?
                 .unbind();
@@ -210,7 +209,7 @@ impl Response {
     }
 
     fn cbor(&mut self, py: Python) -> Result<Py<PyAny>> {
-        let cbor_value: serde_json::Value = serde_cbor::from_slice(self.content.as_bytes(py))
+        let cbor_value: serde_json::Value = ciborium::from_reader(self.content.as_bytes(py))
             .map_err(|e| anyhow!("Failed to deserialize CBOR: {}", e))?;
         let result = pythonize(py, &cbor_value)
             .map_err(|e| anyhow!("Failed to convert CBOR to Python object: {}", e))?
