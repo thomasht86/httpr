@@ -5,12 +5,24 @@ Results are published to GitHub Pages via github-action-benchmark.
 """
 
 import asyncio
-import random
+import os
 
-import cbor2
 import pytest
 
 import httpr
+
+
+@pytest.fixture
+def bench_server_url():
+    """URL for the benchmark server (benchmark/server.py).
+
+    Set BENCHMARK_SERVER_URL env var to enable CBOR benchmarks.
+    The server provides /cbor/1, /cbor/10, /cbor/100 endpoints.
+    """
+    url = os.environ.get("BENCHMARK_SERVER_URL")
+    if not url:
+        pytest.skip("BENCHMARK_SERVER_URL not set - start benchmark server for CBOR tests")
+    return url
 
 
 class TestSyncClient:
@@ -68,11 +80,10 @@ class TestAsyncClient:
 
     def test_session_reuse(self, benchmark, base_url):
         """Benchmark async GET request with session reuse."""
-
+        # Note: Each iteration creates a new event loop + client due to asyncio.run()
+        # This measures the full async overhead, not just the request time
         async def run():
             async with httpr.AsyncClient() as client:
-                # Warmup and then benchmark a single request
-                await client.get(f"{base_url}/get")
                 return await client.get(f"{base_url}/get")
 
         benchmark(lambda: asyncio.run(run()))
@@ -115,21 +126,11 @@ class TestHeaders:
             benchmark(make_request)
 
 
-# Pre-generate CBOR test data (similar to benchmark/benchmark_cbor.py)
-# Each payload is a list of arrays containing 1024 random floats
-random.seed(42)  # Reproducible data
-CBOR_PAYLOADS = {
-    1: cbor2.dumps([[random.random() for _ in range(1024)] for _ in range(1)]),
-    10: cbor2.dumps([[random.random() for _ in range(1024)] for _ in range(10)]),
-    100: cbor2.dumps([[random.random() for _ in range(1024)] for _ in range(100)]),
-}
-
-
 class TestCBORDecoding:
-    """Benchmark CBOR decoding performance.
+    """Benchmark httpr's CBOR decoding performance.
 
-    Tests httpr's CBOR decoding against different payload sizes.
-    Mirrors the benchmark/benchmark_cbor.py scenarios.
+    Tests the full request -> response -> .cbor() pipeline.
+    Requires the benchmark server (benchmark/server.py) to be running.
     """
 
     @pytest.mark.parametrize(
@@ -137,12 +138,29 @@ class TestCBORDecoding:
         [1, 10, 100],
         ids=["1_array", "10_arrays", "100_arrays"],
     )
-    def test_cbor_decode(self, benchmark, count):
-        """Benchmark CBOR decoding for different payload sizes."""
-        data = CBOR_PAYLOADS[count]
+    def test_cbor_request(self, benchmark, bench_server_url, count):
+        """Benchmark httpr CBOR request and decoding for different payload sizes."""
+        with httpr.Client() as client:
 
-        def decode():
-            return cbor2.loads(data)
+            def fetch_and_decode():
+                response = client.get(f"{bench_server_url}/cbor/{count}")
+                return response.cbor()
 
-        benchmark.group = f"CBOR Decode ({count} arrays)"
-        benchmark(decode)
+            benchmark.group = f"CBOR Request ({count} arrays)"
+            benchmark(fetch_and_decode)
+
+    @pytest.mark.parametrize(
+        "count",
+        [1, 10, 100],
+        ids=["1_array", "10_arrays", "100_arrays"],
+    )
+    def test_json_request(self, benchmark, bench_server_url, count):
+        """Benchmark httpr JSON request and decoding for comparison with CBOR."""
+        with httpr.Client() as client:
+
+            def fetch_and_decode():
+                response = client.get(f"{bench_server_url}/json/{count}")
+                return response.json()
+
+            benchmark.group = f"JSON Request ({count} arrays)"
+            benchmark(fetch_and_decode)
