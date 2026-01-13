@@ -69,19 +69,13 @@ class TestSyncClient:
 class TestAsyncClient:
     """Benchmark async client operations."""
 
-    def test_single_request(self, benchmark, base_url):
-        """Benchmark single async GET request."""
+    def test_full_overhead(self, benchmark, base_url):
+        """Benchmark async request including event loop and client creation.
 
-        async def run():
-            async with httpr.AsyncClient() as client:
-                return await client.get(f"{base_url}/get")
+        Each iteration creates a new event loop + AsyncClient context.
+        This measures the full async overhead, not just request time.
+        """
 
-        benchmark(lambda: asyncio.run(run()))
-
-    def test_session_reuse(self, benchmark, base_url):
-        """Benchmark async GET request with session reuse."""
-        # Note: Each iteration creates a new event loop + client due to asyncio.run()
-        # This measures the full async overhead, not just the request time
         async def run():
             async with httpr.AsyncClient() as client:
                 return await client.get(f"{base_url}/get")

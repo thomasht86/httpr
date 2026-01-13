@@ -92,7 +92,7 @@ tasks:
   test:benchmark:json:
     desc: Run benchmarks and output JSON (for CI)
     cmds:
-      - uv run pytest tests/benchmark/ --benchmark-json=benchmark-results.json {{.CLI_ARGS}}
+      - uv run pytest tests/benchmark/ --benchmark-only --benchmark-json=benchmark-results.json {{.CLI_ARGS}}
 
   test:
     desc: Run all tests (unit + e2e)
