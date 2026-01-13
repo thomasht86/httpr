@@ -1,0 +1,59 @@
+name: Benchmark
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+      - ".github/workflows/mkdocs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  deployments: write
+
+jobs:
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-bench-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-bench-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Build Rust extension (release mode)
+        run: uv run maturin develop --release
+
+      - name: Run benchmarks
+        run: uv run pytest tests/benchmark/ --benchmark-json=benchmark-results.json
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: httpr Performance
+          tool: pytest
+          output-file-path: benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: "150%"
+          comment-on-alert: true
+          fail-on-alert: false
+          benchmark-data-dir-path: dev/bench
