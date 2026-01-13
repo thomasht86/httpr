@@ -1,0 +1,75 @@
+name: Benchmark
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+      - ".github/workflows/mkdocs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  deployments: write
+
+jobs:
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-bench-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-bench-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: uv sync --extra dev --extra benchmark
+
+      - name: Build Rust extension (release mode)
+        run: uv run maturin develop --release
+
+      - name: Start benchmark server
+        run: |
+          uv run uvicorn benchmark.server:app --host 127.0.0.1 --port 8000 &
+          # Wait for server to be ready
+          for i in $(seq 1 10); do
+            if curl -sf http://127.0.0.1:8000/json/1 > /dev/null 2>&1; then
+              echo "Benchmark server is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Benchmark server failed to start"
+          exit 1
+
+      - name: Run benchmarks
+        env:
+          BENCHMARK_SERVER_URL: "http://127.0.0.1:8000"
+        run: uv run pytest tests/benchmark/ --benchmark-only --benchmark-json=benchmark-results.json
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: httpr Performance
+          tool: pytest
+          output-file-path: benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: "150%"
+          comment-on-alert: true
+          fail-on-alert: false
+          benchmark-data-dir-path: dev/bench
