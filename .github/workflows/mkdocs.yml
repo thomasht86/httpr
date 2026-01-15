@@ -33,6 +33,9 @@ jobs:
         run: uv run mkdocs build
       - name: Deploy to gh-pages (preserving benchmark data)
         run: |
+          # Capture source commit BEFORE switching branches
+          SOURCE_COMMIT=$(git rev-parse --short HEAD)
+
           # Fetch gh-pages branch
           git fetch origin gh-pages:gh-pages || true
 
@@ -56,6 +59,10 @@ jobs:
           git rm -rf . || true
 
           # Copy new docs from site/ directory
+          if [ ! -d "site" ] || [ -z "$(ls -A site 2>/dev/null)" ]; then
+            echo "Error: site/ directory is empty or missing"
+            exit 1
+          fi
           cp -r site/* .
 
           # Restore benchmark data if it existed
@@ -76,6 +83,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to deploy"
           else
-            git commit -m "Deployed $(git rev-parse --short HEAD~0) with MkDocs"
+            git commit -m "Deployed ${SOURCE_COMMIT} with MkDocs"
             git push origin gh-pages --force
           fi
