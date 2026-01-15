@@ -1,13 +1,12 @@
 name: Benchmark
 
 on:
-  push:
+  workflow_run:
+    workflows: ["mkdocs"]
+    types:
+      - completed
     branches:
       - main
-    paths-ignore:
-      - "*.md"
-      - "docs/**"
-      - ".github/workflows/mkdocs.yml"
   workflow_dispatch:
 
 permissions:
@@ -18,6 +17,7 @@ jobs:
   benchmark:
     name: Performance Benchmarks
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
 
