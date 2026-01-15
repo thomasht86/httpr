@@ -1,0 +1,11 @@
+implementation=CPython
+version=3.9
+shared=true
+abi3=true
+lib_name=python3.12
+lib_dir=/usr/lib/x86_64-linux-gnu
+executable=/home/runner/.cache/uv/builds-v0/.tmpfF29P9/bin/python
+pointer_width=64
+build_flags=
+python_framework_prefix=
+suppress_build_script_link_lines=false
