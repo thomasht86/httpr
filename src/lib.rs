@@ -448,7 +448,7 @@ impl RClient {
                     if use_cbor {
                         // Serialize as CBOR
                         let mut cbor_bytes = Vec::new();
-                        ciborium::into_writer(&json_data, &mut cbor_bytes)
+                        serde_cbor_2::to_writer(&mut cbor_bytes, &json_data)
                             .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
                         request_builder = request_builder
                             .header(CONTENT_TYPE, "application/cbor")
@@ -639,7 +639,7 @@ impl RClient {
                     if use_cbor {
                         // Serialize as CBOR
                         let mut cbor_bytes = Vec::new();
-                        ciborium::into_writer(&json_data, &mut cbor_bytes)
+                        serde_cbor_2::to_writer(&mut cbor_bytes, &json_data)
                             .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
                         request_builder = request_builder
                             .header(CONTENT_TYPE, "application/cbor")
