@@ -63,7 +63,7 @@ pip install -U httpr
 
 ## Benchmark
 
-![](https://github.com/thomasht86/httpr/blob/main/benchmark.jpg?raw=true)
+![](https://thomasht86.github.io/httpr/benchmark.jpg)
 
 ## Usage
 

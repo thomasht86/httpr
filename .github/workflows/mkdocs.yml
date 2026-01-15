@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Configure Git Credentials
         run: |
           git config user.name github-actions[bot]
@@ -27,4 +29,53 @@ jobs:
           restore-keys: |
             mkdocs-material-
       - run: uv sync --extra docs
-      - run: uv run mkdocs gh-deploy --force
+      - name: Build docs
+        run: uv run mkdocs build
+      - name: Deploy to gh-pages (preserving benchmark data)
+        run: |
+          # Fetch gh-pages branch
+          git fetch origin gh-pages:gh-pages || true
+
+          # Save benchmark data if it exists
+          mkdir -p /tmp/bench-backup
+          if git show gh-pages:dev/bench/data.js > /tmp/bench-backup/data.js 2>/dev/null; then
+            echo "Found existing benchmark data.js, will preserve it"
+          fi
+          if git show gh-pages:dev/bench/index.html > /tmp/bench-backup/index.html 2>/dev/null; then
+            echo "Found existing benchmark index.html, will preserve it"
+          fi
+          # Save benchmark image if it exists
+          if git show gh-pages:benchmark.jpg > /tmp/bench-backup/benchmark.jpg 2>/dev/null; then
+            echo "Found existing benchmark.jpg, will preserve it"
+          fi
+
+          # Switch to gh-pages branch
+          git checkout gh-pages || git checkout --orphan gh-pages
+
+          # Remove all tracked files
+          git rm -rf . || true
+
+          # Copy new docs from site/ directory
+          cp -r site/* .
+
+          # Restore benchmark data if it existed
+          if [ -f /tmp/bench-backup/data.js ] || [ -f /tmp/bench-backup/index.html ]; then
+            mkdir -p dev/bench
+            [ -f /tmp/bench-backup/data.js ] && cp /tmp/bench-backup/data.js dev/bench/
+            [ -f /tmp/bench-backup/index.html ] && cp /tmp/bench-backup/index.html dev/bench/
+            echo "Restored benchmark chart files"
+          fi
+          # Restore benchmark image if it existed
+          if [ -f /tmp/bench-backup/benchmark.jpg ]; then
+            cp /tmp/bench-backup/benchmark.jpg benchmark.jpg
+            echo "Restored benchmark.jpg"
+          fi
+
+          # Add all files and commit
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to deploy"
+          else
+            git commit -m "Deployed $(git rev-parse --short HEAD~0) with MkDocs"
+            git push origin gh-pages --force
+          fi
