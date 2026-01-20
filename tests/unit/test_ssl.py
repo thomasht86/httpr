@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import http.server
 import os
 import ssl
@@ -7,8 +9,8 @@ import unittest
 
 import trustme
 
-# Import your Client class
-from httpr import Client
+import httpr
+from httpr import AsyncClient, Client
 
 
 class SSLTestHandler(http.server.BaseHTTPRequestHandler):
@@ -21,8 +23,6 @@ class SSLTestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(b"OK")
 
     def finish(self):
-        import contextlib
-
         try:
             self.wfile.flush()
             self.request.settimeout(1.0)
@@ -94,6 +94,30 @@ class TestClientSSL(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.text, "OK")
 
+    def test_valid_ssl_connection_with_pem_data(self):
+        """A connection with client_pem_data (bytes) should work the same as client_pem (path)."""
+        # Read the certificate file into memory
+        with open(self.client_cert_path, "rb") as f:
+            cert_data = f.read()
+
+        # Use client_pem_data instead of client_pem
+        with Client(client_pem_data=cert_data, ca_cert_file=self.client_ca_path) as client:
+            response = client.get(f"https://localhost:{self.server_port}")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.text, "OK")
+
+    def test_client_pem_and_data_are_mutually_exclusive(self):
+        """Passing both client_pem and client_pem_data should raise a ValueError."""
+        with open(self.client_cert_path, "rb") as f:
+            cert_data = f.read()
+
+        with self.assertRaises(ValueError):
+            Client(
+                client_pem=self.client_cert_path,
+                client_pem_data=cert_data,
+                ca_cert_file=self.client_ca_path,
+            )
+
     def test_missing_client_cert(self):
         """Omitting the client certificate should fail the handshake (server requires it)."""
         with Client(ca_cert_file=self.client_ca_path) as client:
@@ -102,9 +126,6 @@ class TestClientSSL(unittest.TestCase):
 
     def test_invalid_client_cert_path(self):
         """Providing a non-existent client certificate file should raise an error."""
-        # Import httpr to use the correct exception type
-        import httpr
-
         with self.assertRaises(httpr.RequestError):
             # Assuming your Client loads the file on initialization.
             with Client(client_pem="nonexistent.pem", ca_cert_file=self.client_ca_path) as client:
@@ -125,6 +146,55 @@ class TestClientSSL(unittest.TestCase):
         with Client(verify=False) as client:
             with self.assertRaises(Exception):
                 client.get(f"https://localhost:{self.server_port}")
+
+    def test_async_client_with_pem_data(self):
+        """AsyncClient with client_pem_data should work the same as sync Client."""
+        with open(self.client_cert_path, "rb") as f:
+            cert_data = f.read()
+
+        async def make_request():
+            async with AsyncClient(
+                client_pem_data=cert_data, ca_cert_file=self.client_ca_path
+            ) as client:
+                return await client.get(f"https://localhost:{self.server_port}")
+
+        response = asyncio.run(make_request())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, "OK")
+
+    def test_request_function_with_pem_data(self):
+        """The request() convenience function should accept client_pem_data."""
+        with open(self.client_cert_path, "rb") as f:
+            cert_data = f.read()
+
+        response = httpr.request(
+            "GET",
+            f"https://localhost:{self.server_port}",
+            client_pem_data=cert_data,
+            ca_cert_file=self.client_ca_path,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, "OK")
+
+    def test_invalid_pem_data_raises_error(self):
+        """Malformed PEM data should raise an appropriate error."""
+        with self.assertRaises(httpr.RequestError):
+            Client(
+                client_pem_data=b"not valid pem data",
+                ca_cert_file=self.client_ca_path,
+            )
+
+    def test_async_client_pem_and_data_are_mutually_exclusive(self):
+        """AsyncClient should also enforce mutual exclusivity."""
+        with open(self.client_cert_path, "rb") as f:
+            cert_data = f.read()
+
+        with self.assertRaises(ValueError):
+            AsyncClient(
+                client_pem=self.client_cert_path,
+                client_pem_data=cert_data,
+                ca_cert_file=self.client_ca_path,
+            )
 
 
 if __name__ == "__main__":

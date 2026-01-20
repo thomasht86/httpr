@@ -117,6 +117,7 @@ class Client(RClient):
         verify: bool | None = True,
         ca_cert_file: str | None = None,
         client_pem: str | None = None,
+        client_pem_data: bytes | None = None,
         https_only: bool | None = False,
         http2_only: bool | None = False,
     ):
@@ -140,6 +141,8 @@ class Client(RClient):
             verify: Verify SSL certificates. Default is True.
             ca_cert_file: Path to CA certificate bundle (PEM format).
             client_pem: Path to client certificate for mTLS (PEM format).
+            client_pem_data: Client certificate and key as bytes for mTLS (PEM format).
+                Use this instead of client_pem when you have the certificate in memory.
             https_only: Only allow HTTPS requests. Default is False.
             http2_only: Use HTTP/2 only (False uses HTTP/1.1). Default is False.
 
@@ -165,9 +168,16 @@ class Client(RClient):
             # Client with proxy
             client = httpr.Client(proxy="http://proxy.example.com:8080")
 
-            # Client with mTLS
+            # Client with mTLS using file path
             client = httpr.Client(
                 client_pem="/path/to/client.pem",
+                ca_cert_file="/path/to/ca.pem",
+            )
+
+            # Client with mTLS using direct certificate data
+            cert_data = b"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"
+            client = httpr.Client(
+                client_pem_data=cert_data,
                 ca_cert_file="/path/to/ca.pem",
             )
             ```
@@ -787,6 +797,7 @@ def request(
     verify: bool | None = True,
     ca_cert_file: str | None = None,
     client_pem: str | None = None,
+    client_pem_data: bytes | None = None,
     **kwargs: Unpack[RequestParams],
 ) -> Response:
     """
@@ -801,6 +812,7 @@ def request(
         verify: Verify SSL certificates. Default is True.
         ca_cert_file: Path to CA certificate bundle.
         client_pem: Path to client certificate for mTLS.
+        client_pem_data: Client certificate and key as bytes for mTLS.
         **kwargs: Additional request parameters.
 
     Returns:
@@ -818,6 +830,7 @@ def request(
         verify=verify,
         ca_cert_file=ca_cert_file,
         client_pem=client_pem,
+        client_pem_data=client_pem_data,
     ) as client:
         return client.request(method, url, **kwargs)
 

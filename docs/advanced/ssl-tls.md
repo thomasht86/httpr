@@ -117,6 +117,33 @@ MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwgg...
 -----END PRIVATE KEY-----
 ```
 
+### Using In-Memory Certificates
+
+For containerized environments or when certificates are stored in secrets managers, you can pass the certificate data directly without writing to the filesystem:
+
+```python
+import httpr
+import os
+
+# Load certificate from environment variable or secrets manager
+cert_data = os.environ.get("CLIENT_CERT_PEM").encode()  # or from secrets manager
+
+client = httpr.Client(
+    client_pem_data=cert_data,  # Pass bytes directly
+    ca_cert_file="/path/to/ca-bundle.pem"
+)
+
+response = client.get("https://mtls.example.com/api")
+```
+
+**Benefits:**
+- No temporary files needed
+- Better security in containerized environments
+- Works with secrets managers (AWS Secrets Manager, HashiCorp Vault, etc.)
+- Reduces filesystem I/O
+
+**Note:** Either `client_pem` (file path) or `client_pem_data` (bytes) can be used, but not both.
+
 ### Complete mTLS Example
 
 ```python

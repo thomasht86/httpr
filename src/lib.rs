@@ -7,6 +7,7 @@ use anyhow::anyhow;
 use bytes::Bytes;
 use foldhash::fast::RandomState;
 use indexmap::IndexMap;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pythonize::depythonize;
@@ -115,7 +116,7 @@ impl RClient {
     #[new]
     #[pyo3(signature = (auth=None, auth_bearer=None, params=None, headers=None, cookies=None,
         cookie_store=true, referer=true, proxy=None, timeout=None, follow_redirects=true,
-        max_redirects=20, verify=true, ca_cert_file=None, client_pem=None, https_only=false, http2_only=false))]
+        max_redirects=20, verify=true, ca_cert_file=None, client_pem=None, client_pem_data=None, https_only=false, http2_only=false))]
     fn new(
         auth: Option<(String, Option<String>)>,
         auth_bearer: Option<String>,
@@ -131,9 +132,15 @@ impl RClient {
         verify: Option<bool>,
         ca_cert_file: Option<String>,
         client_pem: Option<String>,
+        client_pem_data: Option<Vec<u8>>,
         https_only: Option<bool>,
         http2_only: Option<bool>,
     ) -> PyResult<Self> {
+        if client_pem.is_some() && client_pem_data.is_some() {
+            return Err(PyValueError::new_err(
+                "Only one of client_pem or client_pem_data may be set.",
+            ));
+        }
         // Client builder
         let mut client_builder = reqwest::Client::builder();
 
@@ -195,11 +202,17 @@ impl RClient {
                 }
             }
             // Load client pem identity if provided
-            if let Some(client_pem) = &client_pem {
-                let client_identity_pem =
-                    fs::read(client_pem).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-                let identity =
-                    Identity::from_pem(&client_identity_pem).map_err(map_reqwest_error)?;
+            // Either from file path (client_pem) or direct data (client_pem_data)
+            let client_identity_pem = if let Some(pem_data) = &client_pem_data {
+                Some(pem_data.clone())
+            } else if let Some(pem_path) = &client_pem {
+                Some(fs::read(pem_path).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?)
+            } else {
+                None
+            };
+
+            if let Some(pem_bytes) = client_identity_pem {
+                let identity = Identity::from_pem(&pem_bytes).map_err(map_reqwest_error)?;
                 client_builder = client_builder.identity(identity);
             }
         } else {
