@@ -7,6 +7,7 @@ use anyhow::anyhow;
 use bytes::Bytes;
 use foldhash::fast::RandomState;
 use indexmap::IndexMap;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pythonize::depythonize;
@@ -135,6 +136,11 @@ impl RClient {
         https_only: Option<bool>,
         http2_only: Option<bool>,
     ) -> PyResult<Self> {
+        if client_pem.is_some() && client_pem_data.is_some() {
+            return Err(PyValueError::new_err(
+                "Only one of client_pem or client_pem_data may be set.",
+            ));
+        }
         // Client builder
         let mut client_builder = reqwest::Client::builder();
 

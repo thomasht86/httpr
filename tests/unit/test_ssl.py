@@ -106,6 +106,18 @@ class TestClientSSL(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.text, "OK")
 
+    def test_client_pem_and_data_are_mutually_exclusive(self):
+        """Passing both client_pem and client_pem_data should raise a ValueError."""
+        with open(self.client_cert_path, "rb") as f:
+            cert_data = f.read()
+
+        with self.assertRaises(ValueError):
+            Client(
+                client_pem=self.client_cert_path,
+                client_pem_data=cert_data,
+                ca_cert_file=self.client_ca_path,
+            )
+
     def test_missing_client_cert(self):
         """Omitting the client certificate should fail the handshake (server requires it)."""
         with Client(ca_cert_file=self.client_ca_path) as client:
