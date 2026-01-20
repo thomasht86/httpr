@@ -5,7 +5,7 @@ The synchronous HTTP client with connection pooling.
 ## Client
 
 ```python
-Client(auth: tuple[str, str | None] | None = None, auth_bearer: str | None = None, params: dict[str, str] | None = None, headers: dict[str, str] | None = None, cookies: dict[str, str] | None = None, cookie_store: bool | None = True, referer: bool | None = True, proxy: str | None = None, timeout: float | None = 30, follow_redirects: bool | None = True, max_redirects: int | None = 20, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, https_only: bool | None = False, http2_only: bool | None = False)
+Client(auth: tuple[str, str | None] | None = None, auth_bearer: str | None = None, params: dict[str, str] | None = None, headers: dict[str, str] | None = None, cookies: dict[str, str] | None = None, cookie_store: bool | None = True, referer: bool | None = True, proxy: str | None = None, timeout: float | None = 30, follow_redirects: bool | None = True, max_redirects: int | None = 20, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, client_pem_data: bytes | None = None, https_only: bool | None = False, http2_only: bool | None = False)
 ```
 
 A synchronous HTTP client with connection pooling.
@@ -53,64 +53,72 @@ Attributes:
 | `timeout` | \`float           | None\`                                                          |
 | `proxy`   | \`str             | None\`                                                          |
 
-Initialize an HTTP client.
+````text
+    Initialize an HTTP client.
 
-Parameters:
+    Args:
+        auth: Basic auth credentials as (username, password). Password can be None.
+        auth_bearer: Bearer token for Authorization header.
+        params: Default query parameters to include in all requests.
+        headers: Default headers to send with all requests.
+        cookies: Default cookies to send with all requests.
+        cookie_store: Enable persistent cookie store. Cookies from responses will be
+            preserved and included in subsequent requests. Default is True.
+        referer: Automatically set Referer header. Default is True.
+        proxy: Proxy URL (e.g., "http://proxy:8080" or "socks5://127.0.0.1:1080").
+            Falls back to HTTPR_PROXY environment variable.
+        timeout: Request timeout in seconds. Default is 30.
+        follow_redirects: Follow HTTP redirects. Default is True.
+        max_redirects: Maximum redirects to follow. Default is 20.
+        verify: Verify SSL certificates. Default is True.
+        ca_cert_file: Path to CA certificate bundle (PEM format).
+        client_pem: Path to client certificate for mTLS (PEM format).
+        client_pem_data: Client certificate and key as bytes for mTLS (PEM format).
+            Use this instead of client_pem when you have the certificate in memory.
+        https_only: Only allow HTTPS requests. Default is False.
+        http2_only: Use HTTP/2 only (False uses HTTP/1.1). Default is False.
 
-| Name               | Type              | Description | Default                                                                                                                        |
-| ------------------ | ----------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `auth`             | \`tuple\[str, str | None\]      | None\`                                                                                                                         |
-| `auth_bearer`      | \`str             | None\`      | Bearer token for Authorization header.                                                                                         |
-| `params`           | \`dict[str, str]  | None\`      | Default query parameters to include in all requests.                                                                           |
-| `headers`          | \`dict[str, str]  | None\`      | Default headers to send with all requests.                                                                                     |
-| `cookies`          | \`dict[str, str]  | None\`      | Default cookies to send with all requests.                                                                                     |
-| `cookie_store`     | \`bool            | None\`      | Enable persistent cookie store. Cookies from responses will be preserved and included in subsequent requests. Default is True. |
-| `referer`          | \`bool            | None\`      | Automatically set Referer header. Default is True.                                                                             |
-| `proxy`            | \`str             | None\`      | Proxy URL (e.g., "http://proxy:8080" or "socks5://127.0.0.1:1080"). Falls back to HTTPR_PROXY environment variable.            |
-| `timeout`          | \`float           | None\`      | Request timeout in seconds. Default is 30.                                                                                     |
-| `follow_redirects` | \`bool            | None\`      | Follow HTTP redirects. Default is True.                                                                                        |
-| `max_redirects`    | \`int             | None\`      | Maximum redirects to follow. Default is 20.                                                                                    |
-| `verify`           | \`bool            | None\`      | Verify SSL certificates. Default is True.                                                                                      |
-| `ca_cert_file`     | \`str             | None\`      | Path to CA certificate bundle (PEM format).                                                                                    |
-| `client_pem`       | \`str             | None\`      | Path to client certificate for mTLS (PEM format).                                                                              |
-| `https_only`       | \`bool            | None\`      | Only allow HTTPS requests. Default is False.                                                                                   |
-| `http2_only`       | \`bool            | None\`      | Use HTTP/2 only (False uses HTTP/1.1). Default is False.                                                                       |
+    Example:
+        ```python
+        import httpr
 
-Example
+        # Simple client
+        client = httpr.Client()
 
-```python
-import httpr
+        # Client with authentication
+        client = httpr.Client(
+            auth=("username", "password"),
+            timeout=60,
+        )
 
-# Simple client
-client = httpr.Client()
+        # Client with bearer token
+        client = httpr.Client(
+            auth_bearer="your-api-token",
+            headers={"Accept": "application/json"},
+        )
 
-# Client with authentication
-client = httpr.Client(
-    auth=("username", "password"),
-    timeout=60,
-)
+        # Client with proxy
+        client = httpr.Client(proxy="http://proxy.example.com:8080")
 
-# Client with bearer token
-client = httpr.Client(
-    auth_bearer="your-api-token",
-    headers={"Accept": "application/json"},
-)
+        # Client with mTLS using file path
+        client = httpr.Client(
+            client_pem="/path/to/client.pem",
+            ca_cert_file="/path/to/ca.pem",
+        )
 
-# Client with proxy
-client = httpr.Client(proxy="http://proxy.example.com:8080")
+        # Client with mTLS using direct certificate data
+        cert_data = b"-----BEGIN CERTIFICATE-----
+````
 
-# Client with mTLS
-client = httpr.Client(
-    client_pem="/path/to/client.pem",
-    ca_cert_file="/path/to/ca.pem",
-)
-```
+... -----END CERTIFICATE-----" client = httpr.Client( client_pem_data=cert_data, ca_cert_file="/path/to/ca.pem", )
+
+````
 
 ### request
 
 ```python
 request(method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> Response
-```
+````
 
 Make an HTTP request.
 

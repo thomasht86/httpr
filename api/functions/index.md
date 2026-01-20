@@ -9,7 +9,7 @@ These functions create a temporary `Client` internally for each request. For mul
 ### request
 
 ```python
-request(method: HttpMethod, url: str, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, **kwargs: Unpack[RequestParams]) -> Response
+request(method: HttpMethod, url: str, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, client_pem_data: bytes | None = None, **kwargs: Unpack[RequestParams]) -> Response
 ```
 
 Make an HTTP request using a temporary client.
@@ -18,14 +18,15 @@ This is a convenience function for one-off requests. For multiple requests, use 
 
 Parameters:
 
-| Name           | Type                    | Description                                                 | Default                                   |
-| -------------- | ----------------------- | ----------------------------------------------------------- | ----------------------------------------- |
-| `method`       | `HttpMethod`            | HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS). | *required*                                |
-| `url`          | `str`                   | Request URL.                                                | *required*                                |
-| `verify`       | \`bool                  | None\`                                                      | Verify SSL certificates. Default is True. |
-| `ca_cert_file` | \`str                   | None\`                                                      | Path to CA certificate bundle.            |
-| `client_pem`   | \`str                   | None\`                                                      | Path to client certificate for mTLS.      |
-| `**kwargs`     | `Unpack[RequestParams]` | Additional request parameters.                              | `{}`                                      |
+| Name              | Type                    | Description                                                 | Default                                       |
+| ----------------- | ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |
+| `method`          | `HttpMethod`            | HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS). | *required*                                    |
+| `url`             | `str`                   | Request URL.                                                | *required*                                    |
+| `verify`          | \`bool                  | None\`                                                      | Verify SSL certificates. Default is True.     |
+| `ca_cert_file`    | \`str                   | None\`                                                      | Path to CA certificate bundle.                |
+| `client_pem`      | \`str                   | None\`                                                      | Path to client certificate for mTLS.          |
+| `client_pem_data` | \`bytes                 | None\`                                                      | Client certificate and key as bytes for mTLS. |
+| `**kwargs`        | `Unpack[RequestParams]` | Additional request parameters.                              | `{}`                                          |
 
 Returns:
 
