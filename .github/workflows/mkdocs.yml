@@ -36,6 +36,9 @@ jobs:
           # Capture source commit BEFORE switching branches
           SOURCE_COMMIT=$(git rev-parse --short HEAD)
 
+          # Save the built site before switching branches
+          cp -r site /tmp/site-backup
+
           # Fetch gh-pages branch
           git fetch origin gh-pages:gh-pages || true
 
@@ -58,12 +61,12 @@ jobs:
           # Remove all tracked files
           git rm -rf . || true
 
-          # Copy new docs from site/ directory
-          if [ ! -d "site" ] || [ -z "$(ls -A site 2>/dev/null)" ]; then
+          # Copy new docs from backup
+          if [ ! -d "/tmp/site-backup" ] || [ -z "$(ls -A /tmp/site-backup 2>/dev/null)" ]; then
             echo "Error: site/ directory is empty or missing"
             exit 1
           fi
-          cp -r site/* .
+          cp -r /tmp/site-backup/* .
 
           # Restore benchmark data if it existed
           if [ -f /tmp/bench-backup/data.js ] || [ -f /tmp/bench-backup/index.html ]; then
