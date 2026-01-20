@@ -94,6 +94,18 @@ class TestClientSSL(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.text, "OK")
 
+    def test_valid_ssl_connection_with_pem_data(self):
+        """A connection with client_pem_data (bytes) should work the same as client_pem (path)."""
+        # Read the certificate file into memory
+        with open(self.client_cert_path, "rb") as f:
+            cert_data = f.read()
+
+        # Use client_pem_data instead of client_pem
+        with Client(client_pem_data=cert_data, ca_cert_file=self.client_ca_path) as client:
+            response = client.get(f"https://localhost:{self.server_port}")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.text, "OK")
+
     def test_missing_client_cert(self):
         """Omitting the client certificate should fail the handshake (server requires it)."""
         with Client(ca_cert_file=self.client_ca_path) as client:

@@ -28,6 +28,7 @@ class ClientRequestParams(RequestParams):
     verify: bool | None
     ca_cert_file: str | None
     client_pem: str | None
+    client_pem_data: bytes | None
 
 class CaseInsensitiveHeaderMap:
     """
@@ -286,6 +287,7 @@ class RClient:
         verify: bool | None = True,
         ca_cert_file: str | None = None,
         client_pem: str | None = None,
+        client_pem_data: bytes | None = None,
         https_only: bool | None = False,
         http2_only: bool | None = False,
     ): ...
@@ -374,6 +376,7 @@ class Client(RClient):
         verify: bool | None = True,
         ca_cert_file: str | None = None,
         client_pem: str | None = None,
+        client_pem_data: bytes | None = None,
         https_only: bool | None = False,
         http2_only: bool | None = False,
     ) -> None:
@@ -395,6 +398,7 @@ class Client(RClient):
             verify: Verify SSL certificates. Default is True.
             ca_cert_file: Path to CA certificate bundle (PEM format).
             client_pem: Path to client certificate for mTLS (PEM format).
+            client_pem_data: Client certificate and key as bytes for mTLS (PEM format).
             https_only: Only allow HTTPS requests. Default is False.
             http2_only: Use HTTP/2 only. Default is False.
         """
@@ -472,6 +476,7 @@ class AsyncClient(Client):
         verify: bool | None = True,
         ca_cert_file: str | None = None,
         client_pem: str | None = None,
+        client_pem_data: bytes | None = None,
         https_only: bool | None = False,
         http2_only: bool | None = False,
     ) -> None:
