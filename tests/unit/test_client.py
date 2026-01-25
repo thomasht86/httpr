@@ -278,6 +278,48 @@ def test_client_post_files(test_files):
     assert json_data["files"] == {"file1": "aaa111", "file2": "bbb222"}
 
 
+def test_constructor_headers_accessible():
+    """Test that headers passed to constructor are accessible via the headers property."""
+    client = httpr.Client(headers={"X-Custom": "value", "User-Agent": "test-agent"})
+    assert client.headers == {"x-custom": "value", "user-agent": "test-agent"}
+    client.close()
+
+
+def test_constructor_headers_with_cookies():
+    """Test that cookies are excluded from headers getter when passed to constructor."""
+    client = httpr.Client(
+        headers={"X-Custom": "value"},
+        cookies={"session": "abc123"},
+    )
+    # Cookies should not appear in headers getter
+    assert client.headers == {"x-custom": "value"}
+    # But cookies should be accessible via cookies getter
+    assert client.cookies == {"session": "abc123"}
+    client.close()
+
+
+def test_constructor_cookies_only():
+    """Test that cookies-only constructor doesn't expose Cookie header."""
+    client = httpr.Client(cookies={"session": "abc123"})
+    # Headers should be empty (no Cookie header exposed)
+    assert client.headers == {}
+    # Cookies should be accessible
+    assert client.cookies == {"session": "abc123"}
+    client.close()
+
+
+def test_setter_overwrites_constructor_headers():
+    """Test that setting headers overwrites constructor headers."""
+    client = httpr.Client(headers={"X-Original": "original"})
+    assert client.headers == {"x-original": "original"}
+    # Overwrite with new headers
+    client.headers = {"X-New": "new"}
+    assert client.headers == {"x-new": "new"}
+    # Original header should be gone
+    assert "x-original" not in client.headers
+    client.close()
+
+
 def test_graceful_invalid_header_handling(base_url_ssl, ca_bundle):
     """Test that invalid header values are handled gracefully without crashing."""
     client = httpr.Client(ca_cert_file=ca_bundle)
