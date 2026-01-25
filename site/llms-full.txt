@@ -1,0 +1,5077 @@
+# httpr
+
+> Blazing fast HTTP client for Python, built in Rust
+
+httpr is a high-performance HTTP client for Python built in Rust using PyO3 and reqwest.
+It provides a familiar requests/httpx-like API with significantly better performance through
+Rust's native speed. Zero Python dependencies - all functionality is implemented in Rust.
+
+
+# Getting Started
+
+# httpr
+
+**Blazing fast HTTP client** for Python, built in Rust.
+
+______________________________________________________________________
+
+**httpr** is a drop-in replacement for `httpx` and `requests` with significantly better performance. Built on top of Rust's `reqwest` library with zero Python dependencies.
+
+```python
+import httpr
+
+# Simple as requests
+response = httpr.get("https://httpbin.org/get")
+print(response.json())
+
+# Or use a client for connection pooling
+with httpr.Client() as client:
+    response = client.get("https://httpbin.org/get")
+    print(response.status_code)  # 200
+```
+
+______________________________________________________________________
+
+- **Fast**
+
+  ______________________________________________________________________
+
+  Built on Rust's `reqwest` - one of the fastest HTTP clients available. See the [benchmarks](https://github.com/thomasht86/httpr#benchmark).
+
+- **Sync & Async**
+
+  ______________________________________________________________________
+
+  Both synchronous `Client` and `AsyncClient` with identical APIs. First-class async support.
+
+- **Lightweight**
+
+  ______________________________________________________________________
+
+  Zero Python dependencies. Everything is implemented in Rust. Just install and use.
+
+- **Secure**
+
+  ______________________________________________________________________
+
+  Full SSL/TLS support including mTLS (mutual TLS) for enterprise authentication.
+
+- **HTTP/2**
+
+  ______________________________________________________________________
+
+  Native HTTP/2 support for better performance with multiplexed connections.
+
+- **Cookie Store**
+
+  ______________________________________________________________________
+
+  Automatic cookie handling with persistent cookie store across requests.
+
+______________________________________________________________________
+
+## Installation
+
+```bash
+uv add httpr
+```
+
+```bash
+pip install httpr
+```
+
+______________________________________________________________________
+
+## Quick Example
+
+```python
+import httpr
+
+# Create a client with default settings
+client = httpr.Client(
+    timeout=30,
+    follow_redirects=True,
+)
+
+# Make requests
+response = client.get("https://httpbin.org/get", params={"key": "value"})
+print(response.status_code)  # 200
+print(response.json())       # {"args": {"key": "value"}, ...}
+
+# POST with JSON
+response = client.post(
+    "https://httpbin.org/post",
+    json={"name": "httpr", "fast": True}
+)
+
+# Response properties
+print(response.text)         # Response body as text
+print(response.content)      # Response body as bytes
+print(response.headers)      # Response headers (case-insensitive)
+print(response.cookies)      # Response cookies
+```
+
+______________________________________________________________________
+
+## Features
+
+- **Streaming**
+
+  ______________________________________________________________________
+
+  Stream large responses efficiently without buffering entire response in memory. Iterate bytes, text, or lines.
+
+## Not Yet Implemented
+
+- **Fine-grained error handling**: Detailed error types are in development
+
+______________________________________________________________________
+
+## LLM-Friendly Documentation
+
+This documentation is available in LLM-optimized formats:
+
+- **[llms.txt](https://thomasht86.github.io/httpr/llms.txt)** - Documentation index for LLMs
+- **[llms-full.txt](https://thomasht86.github.io/httpr/llms-full.txt)** - Complete documentation in a single file
+
+______________________________________________________________________
+
+- **Learn**
+
+  ______________________________________________________________________
+
+  New to httpr? Start with the [Quickstart](https://thomasht86.github.io/httpr/quickstart/index.md) guide.
+
+  [Quickstart](https://thomasht86.github.io/httpr/quickstart/index.md)
+
+- **Tutorial**
+
+  ______________________________________________________________________
+
+  Step-by-step guides covering all features.
+
+  [Tutorial](https://thomasht86.github.io/httpr/tutorial/index.md)
+
+- **Advanced**
+
+  ______________________________________________________________________
+
+  SSL/TLS, proxies, cookies, and more.
+
+  [Advanced](https://thomasht86.github.io/httpr/advanced/index.md)
+
+- **API Reference**
+
+  ______________________________________________________________________
+
+  Complete API documentation.
+
+  [API Reference](https://thomasht86.github.io/httpr/api/index.md)
+
+# Quickstart
+
+This guide will get you up and running with httpr in minutes.
+
+## Installation
+
+```bash
+uv add httpr
+```
+
+```bash
+pip install httpr
+```
+
+## Your First Request
+
+The simplest way to make a request is using the module-level functions:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/get")
+print(response.status_code)  # 200
+print(response.json())
+```
+
+httpr provides functions for all common HTTP methods:
+
+```python
+import httpr
+
+# GET
+response = httpr.get("https://httpbin.org/get")
+
+# POST
+response = httpr.post("https://httpbin.org/post", json={"key": "value"})
+
+# PUT
+response = httpr.put("https://httpbin.org/put", json={"key": "value"})
+
+# PATCH
+response = httpr.patch("https://httpbin.org/patch", json={"key": "value"})
+
+# DELETE
+response = httpr.delete("https://httpbin.org/delete")
+
+# HEAD
+response = httpr.head("https://httpbin.org/get")
+
+# OPTIONS
+response = httpr.options("https://httpbin.org/get")
+```
+
+## Using a Client
+
+For multiple requests, use a `Client` instance. This provides connection pooling and allows you to configure default settings:
+
+```python
+import httpr
+
+# Create a client
+client = httpr.Client()
+
+# Make multiple requests
+response1 = client.get("https://httpbin.org/get")
+response2 = client.post("https://httpbin.org/post", json={"key": "value"})
+
+# Always close when done (or use context manager)
+client.close()
+```
+
+### Context Manager (Recommended)
+
+Use the context manager to ensure the client is properly closed:
+
+```python
+import httpr
+
+with httpr.Client() as client:
+    response = client.get("https://httpbin.org/get")
+    print(response.json())
+# Client is automatically closed here
+```
+
+## Query Parameters
+
+Add query parameters using the `params` argument:
+
+```python
+import httpr
+
+# These are equivalent:
+response = httpr.get("https://httpbin.org/get?name=httpr&version=1")
+response = httpr.get("https://httpbin.org/get", params={"name": "httpr", "version": "1"})
+
+print(response.json()["args"])  # {"name": "httpr", "version": "1"}
+```
+
+Numeric parameters are automatically converted to strings:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/get", params={"page": 1, "limit": 10})
+print(response.json()["args"])  # {"page": "1", "limit": "10"}
+```
+
+## Request Headers
+
+Set custom headers using the `headers` argument:
+
+```python
+import httpr
+
+response = httpr.get(
+    "https://httpbin.org/headers",
+    headers={
+        "X-Custom-Header": "my-value",
+        "Accept": "application/json"
+    }
+)
+print(response.json()["headers"]["X-Custom-Header"])  # "my-value"
+```
+
+## Sending Data
+
+### JSON Data
+
+Send JSON data using the `json` argument:
+
+```python
+import httpr
+
+response = httpr.post(
+    "https://httpbin.org/post",
+    json={"name": "httpr", "version": 1, "fast": True}
+)
+print(response.json()["json"])  # {"name": "httpr", "version": 1, "fast": true}
+```
+
+### Form Data
+
+Send form-encoded data using the `data` argument:
+
+```python
+import httpr
+
+response = httpr.post(
+    "https://httpbin.org/post",
+    data={"username": "user", "password": "secret"}
+)
+print(response.json()["form"])  # {"username": "user", "password": "secret"}
+```
+
+### Binary Data
+
+Send raw bytes using the `content` argument:
+
+```python
+import httpr
+
+response = httpr.post(
+    "https://httpbin.org/post",
+    content=b"raw binary data"
+)
+print(response.json()["data"])  # "raw binary data"
+```
+
+### File Uploads
+
+Upload files using the `files` argument:
+
+```python
+import httpr
+
+response = httpr.post(
+    "https://httpbin.org/post",
+    files={
+        "document": "/path/to/file.txt",
+        "image": "/path/to/image.png"
+    }
+)
+```
+
+Note
+
+The `files` argument takes a dictionary mapping field names to file paths.
+
+## Response Handling
+
+The response object provides several ways to access the response data:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/get")
+
+# Status code
+print(response.status_code)  # 200
+
+# Response body as text
+print(response.text)
+
+# Response body as bytes
+print(response.content)
+
+# Parse JSON response
+data = response.json()
+
+# Response headers (case-insensitive)
+print(response.headers["content-type"])
+print(response.headers["Content-Type"])  # Same result
+
+# Response cookies
+print(response.cookies)
+
+# Final URL (after redirects)
+print(response.url)
+
+# Detected encoding
+print(response.encoding)
+```
+
+### HTML to Text Conversion
+
+httpr can convert HTML responses to plain text or markdown:
+
+```python
+import httpr
+
+response = httpr.get("https://example.com")
+
+# Convert HTML to Markdown
+print(response.text_markdown)
+
+# Convert HTML to plain text
+print(response.text_plain)
+
+# Convert HTML to rich text
+print(response.text_rich)
+```
+
+### Streaming Responses
+
+For large responses, stream the data to avoid loading everything into memory:
+
+```python
+import httpr
+
+with httpr.Client() as client:
+    # Stream bytes
+    with client.stream("GET", "https://httpbin.org/stream-bytes/10000") as response:
+        for chunk in response.iter_bytes():
+            process(chunk)  # Process each chunk as it arrives
+
+    # Stream text
+    with client.stream("GET", "https://httpbin.org/html") as response:
+        for text in response.iter_text():
+            print(text, end="")
+
+    # Stream lines (great for Server-Sent Events)
+    with client.stream("GET", "https://httpbin.org/stream/10") as response:
+        for line in response.iter_lines():
+            print(line.strip())
+```
+
+Tip
+
+Headers, status code, and cookies are available immediately, before reading the body.
+
+## Timeouts
+
+Set a timeout in seconds to limit how long to wait for a response:
+
+```python
+import httpr
+
+# Request-level timeout
+response = httpr.get("https://httpbin.org/delay/1", timeout=5)
+
+# Client-level default timeout
+client = httpr.Client(timeout=10)
+response = client.get("https://httpbin.org/get")
+
+# Override client timeout for specific request
+response = client.get("https://httpbin.org/delay/5", timeout=30)
+```
+
+## Redirects
+
+By default, httpr follows redirects automatically:
+
+```python
+import httpr
+
+# Follows redirects by default
+response = httpr.get("https://httpbin.org/redirect/3")
+print(response.url)  # Final URL after redirects
+
+# Disable redirects
+client = httpr.Client(follow_redirects=False)
+
+# Limit number of redirects
+client = httpr.Client(max_redirects=5)
+```
+
+## What's Next?
+
+- **[Tutorial](https://thomasht86.github.io/httpr/tutorial/index.md)**: Learn httpr step by step
+- **[Authentication](https://thomasht86.github.io/httpr/tutorial/authentication/index.md)**: Basic auth, bearer tokens
+- **[Async Client](https://thomasht86.github.io/httpr/tutorial/async/index.md)**: Async/await support
+- **[SSL/TLS](https://thomasht86.github.io/httpr/advanced/ssl-tls/index.md)**: Certificate configuration, mTLS
+- **[API Reference](https://thomasht86.github.io/httpr/api/index.md)**: Complete API documentation
+# Tutorial
+
+# Tutorial
+
+Welcome to the httpr tutorial! This guide will take you through all the features of httpr step by step.
+
+## What You'll Learn
+
+This tutorial is organized into sections that build on each other:
+
+- **Making Requests**
+
+  ______________________________________________________________________
+
+  Learn how to make HTTP requests with different methods, headers, and data.
+
+  [Making Requests](https://thomasht86.github.io/httpr/tutorial/making-requests/index.md)
+
+- **Response Handling**
+
+  ______________________________________________________________________
+
+  Work with response data, headers, cookies, and status codes.
+
+  [Response Handling](https://thomasht86.github.io/httpr/tutorial/response-handling/index.md)
+
+- **Authentication**
+
+  ______________________________________________________________________
+
+  Use Basic Auth, Bearer tokens, and other authentication methods.
+
+  [Authentication](https://thomasht86.github.io/httpr/tutorial/authentication/index.md)
+
+- **Async Client**
+
+  ______________________________________________________________________
+
+  Use async/await for concurrent requests.
+
+  [Async Client](https://thomasht86.github.io/httpr/tutorial/async/index.md)
+
+## Prerequisites
+
+Before starting, make sure you have httpr installed:
+
+```bash
+uv add httpr
+# or
+pip install httpr
+```
+
+Verify the installation:
+
+```python
+import httpr
+print(httpr.__version__ if hasattr(httpr, '__version__') else "httpr installed!")
+```
+
+## Module-Level Functions vs Client
+
+httpr provides two ways to make requests:
+
+### Module-Level Functions
+
+For quick, one-off requests:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/get")
+```
+
+Each call creates a new client internally, which is convenient but not efficient for multiple requests.
+
+### Client Instance
+
+For applications making multiple requests:
+
+```python
+import httpr
+
+with httpr.Client() as client:
+    response1 = client.get("https://httpbin.org/get")
+    response2 = client.get("https://httpbin.org/ip")
+```
+
+Benefits of using a `Client`:
+
+- **Connection pooling**: Reuses connections for better performance
+- **Default configuration**: Set headers, auth, timeout once
+- **Cookie persistence**: Cookies are automatically stored and sent
+- **Resource management**: Proper cleanup with context manager
+
+## Next Steps
+
+Start with [Making Requests](https://thomasht86.github.io/httpr/tutorial/making-requests/index.md) to learn the basics of sending HTTP requests.
+
+# Making Requests
+
+This guide covers everything you need to know about making HTTP requests with httpr.
+
+## HTTP Methods
+
+httpr supports all standard HTTP methods:
+
+```python
+import httpr
+
+client = httpr.Client()
+
+# GET - Retrieve data
+response = client.get("https://httpbin.org/get")
+
+# POST - Create/submit data
+response = client.post("https://httpbin.org/post", json={"key": "value"})
+
+# PUT - Update/replace data
+response = client.put("https://httpbin.org/put", json={"key": "value"})
+
+# PATCH - Partial update
+response = client.patch("https://httpbin.org/patch", json={"key": "value"})
+
+# DELETE - Remove data
+response = client.delete("https://httpbin.org/delete")
+
+# HEAD - Get headers only (no body)
+response = client.head("https://httpbin.org/get")
+
+# OPTIONS - Get supported methods
+response = client.options("https://httpbin.org/get")
+```
+
+You can also use the generic `request()` method:
+
+```python
+import httpr
+
+client = httpr.Client()
+response = client.request("GET", "https://httpbin.org/get")
+response = client.request("POST", "https://httpbin.org/post", json={"key": "value"})
+```
+
+## Query Parameters
+
+Add query parameters to the URL using the `params` argument:
+
+```python
+import httpr
+
+# Using params dict
+response = httpr.get(
+    "https://httpbin.org/get",
+    params={"search": "python", "page": 1, "limit": 10}
+)
+
+# Result: https://httpbin.org/get?search=python&page=1&limit=10
+print(response.json()["args"])
+# {"search": "python", "page": "1", "limit": "10"}
+```
+
+Automatic String Conversion
+
+All parameter values are automatically converted to strings. Numbers, booleans, and other types work seamlessly.
+
+### Default Parameters
+
+Set default query parameters on the client that are included in every request:
+
+```python
+import httpr
+
+# API key included in all requests
+client = httpr.Client(params={"api_key": "your-api-key"})
+
+response = client.get("https://api.example.com/users")
+# URL: https://api.example.com/users?api_key=your-api-key
+
+response = client.get("https://api.example.com/posts", params={"page": 1})
+# URL: https://api.example.com/posts?api_key=your-api-key&page=1
+```
+
+## Request Headers
+
+Set custom headers for individual requests or as client defaults:
+
+### Per-Request Headers
+
+```python
+import httpr
+
+response = httpr.get(
+    "https://httpbin.org/headers",
+    headers={
+        "X-Custom-Header": "my-value",
+        "Accept": "application/json",
+        "User-Agent": "my-app/1.0"
+    }
+)
+```
+
+### Default Headers
+
+Set headers that are sent with every request:
+
+```python
+import httpr
+
+client = httpr.Client(
+    headers={
+        "Authorization": "Bearer token123",
+        "Accept": "application/json"
+    }
+)
+
+# All requests include these headers
+response = client.get("https://api.example.com/data")
+```
+
+### Modifying Client Headers
+
+Update headers after client creation:
+
+```python
+import httpr
+
+client = httpr.Client()
+
+# Set new headers
+client.headers = {"X-Api-Key": "secret"}
+
+# Read current headers
+print(client.headers)  # {"x-api-key": "secret"}
+```
+
+Header Case
+
+Headers are stored in lowercase internally (HTTP/2 requirement) but can be accessed case-insensitively.
+
+## Request Body
+
+httpr supports multiple ways to send data in the request body. These options are **mutually exclusive** - use only one per request.
+
+### JSON Data
+
+The most common way to send structured data:
+
+```python
+import httpr
+
+response = httpr.post(
+    "https://httpbin.org/post",
+    json={
+        "name": "John Doe",
+        "email": "john@example.com",
+        "tags": ["python", "rust"],
+        "metadata": {"version": 1}
+    }
+)
+
+# Content-Type is automatically set to application/json
+print(response.json()["json"])
+```
+
+### CBOR Data (Transparent)
+
+CBOR (Concise Binary Object Representation) encoding is automatically used when you set the `Accept: application/cbor` header:
+
+```python
+import httpr
+
+# Simply add Accept header - serialization happens transparently
+response = httpr.post(
+    "https://api.example.com/data",
+    json={  # Use json parameter as normal
+        "name": "John Doe",
+        "values": [1, 2, 3, 4, 5],
+        "metadata": {"version": 1}
+    },
+    headers={"Accept": "application/cbor"}  # Triggers CBOR serialization
+)
+
+# Content-Type is automatically set to application/cbor
+# Server receives CBOR-encoded data
+```
+
+CBOR offers several advantages over JSON:
+
+- **Smaller size**: Binary encoding is more compact than text
+- **Faster processing**: No text parsing overhead
+- **Better for binary data**: Native support for byte arrays
+- **Type preservation**: Maintains exact numeric types
+
+Use CBOR when:
+
+- Working with large arrays or datasets
+- Building high-performance APIs
+- Developing IoT or embedded applications
+- Reducing bandwidth usage is critical
+
+Note
+
+The server must support CBOR requests. Check the API documentation to confirm CBOR is accepted.
+
+### Form Data
+
+Send URL-encoded form data:
+
+```python
+import httpr
+
+response = httpr.post(
+    "https://httpbin.org/post",
+    data={
+        "username": "john",
+        "password": "secret",
+        "remember": "true"
+    }
+)
+
+# Content-Type: application/x-www-form-urlencoded
+print(response.json()["form"])
+# {"username": "john", "password": "secret", "remember": "true"}
+```
+
+### Binary Data
+
+Send raw bytes directly:
+
+```python
+import httpr
+
+# Send raw bytes
+response = httpr.post(
+    "https://httpbin.org/post",
+    content=b"raw binary data"
+)
+
+# Send string as bytes
+response = httpr.post(
+    "https://httpbin.org/post",
+    content="text data".encode("utf-8")
+)
+```
+
+### File Uploads
+
+Upload files using multipart/form-data:
+
+```python
+import httpr
+
+response = httpr.post(
+    "https://httpbin.org/post",
+    files={
+        "document": "/path/to/document.pdf",
+        "image": "/path/to/photo.jpg"
+    }
+)
+```
+
+The `files` dictionary maps form field names to file paths. Files are read and uploaded automatically.
+
+File Paths
+
+The `files` argument expects file paths as strings, not file objects. The files must exist on disk.
+
+## Timeouts
+
+Control how long to wait for responses:
+
+### Request Timeout
+
+```python
+import httpr
+
+# Wait up to 10 seconds for this request
+response = httpr.get("https://httpbin.org/delay/2", timeout=10)
+```
+
+### Client Default Timeout
+
+```python
+import httpr
+
+# Default timeout for all requests
+client = httpr.Client(timeout=30)
+
+# Uses 30 second timeout
+response = client.get("https://httpbin.org/get")
+
+# Override for specific request
+response = client.get("https://httpbin.org/delay/5", timeout=60)
+```
+
+### Timeout Behavior
+
+- Default timeout is 30 seconds
+- Timeout of `0` or very small values may cause immediate timeout
+- If the server doesn't respond within the timeout, an exception is raised
+
+```python
+import httpr
+
+try:
+    response = httpr.get("https://httpbin.org/delay/10", timeout=1)
+except Exception as e:
+    print(f"Request timed out: {e}")
+```
+
+## Redirects
+
+By default, httpr follows HTTP redirects automatically:
+
+```python
+import httpr
+
+# Follows up to 20 redirects by default
+response = httpr.get("https://httpbin.org/redirect/3")
+print(response.url)  # Final URL after redirects
+```
+
+### Configuring Redirects
+
+```python
+import httpr
+
+# Disable redirects
+client = httpr.Client(follow_redirects=False)
+response = client.get("https://httpbin.org/redirect/1")
+print(response.status_code)  # 302
+
+# Limit number of redirects
+client = httpr.Client(max_redirects=5)
+```
+
+## Protocol Options
+
+### HTTPS Only
+
+Restrict to secure connections only:
+
+```python
+import httpr
+
+client = httpr.Client(https_only=True)
+
+# Works
+response = client.get("https://example.com")
+
+# Fails - HTTP not allowed
+# response = client.get("http://example.com")
+```
+
+### HTTP/2
+
+Enable HTTP/2 only mode:
+
+```python
+import httpr
+
+# Use only HTTP/2
+client = httpr.Client(http2_only=True)
+response = client.get("https://example.com")
+```
+
+Note
+
+When `http2_only=False` (default), httpr uses HTTP/1.1. Set to `True` for HTTP/2.
+
+## Complete Example
+
+Here's a complete example showing various request options:
+
+```python
+import httpr
+
+# Create a configured client
+client = httpr.Client(
+    headers={"User-Agent": "my-app/1.0"},
+    params={"api_version": "v2"},
+    timeout=30,
+    follow_redirects=True,
+    max_redirects=10,
+)
+
+# GET request with query params
+response = client.get(
+    "https://httpbin.org/get",
+    params={"search": "python"},
+    headers={"Accept": "application/json"}
+)
+print(f"Status: {response.status_code}")
+print(f"URL: {response.url}")
+
+# POST with JSON
+response = client.post(
+    "https://httpbin.org/post",
+    json={"message": "Hello, World!"},
+    timeout=60  # Override timeout for this request
+)
+print(response.json())
+
+# Cleanup
+client.close()
+```
+
+## Next Steps
+
+- [Response Handling](https://thomasht86.github.io/httpr/tutorial/response-handling/index.md) - Learn to work with response data
+- [Authentication](https://thomasht86.github.io/httpr/tutorial/authentication/index.md) - Add authentication to your requests
+
+# Response Handling
+
+This guide covers how to work with HTTP responses in httpr.
+
+## The Response Object
+
+Every request returns a `Response` object with all the information about the server's response:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/get")
+
+# Access response data
+print(response.status_code)  # HTTP status code
+print(response.text)         # Body as string
+print(response.content)      # Body as bytes
+print(response.headers)      # Response headers
+print(response.cookies)      # Response cookies
+print(response.url)          # Final URL (after redirects)
+print(response.encoding)     # Character encoding
+```
+
+## Status Codes
+
+Check the HTTP status code to determine if the request succeeded:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/status/200")
+print(response.status_code)  # 200
+
+response = httpr.get("https://httpbin.org/status/404")
+print(response.status_code)  # 404
+
+# Check for success (2xx status codes)
+if 200 <= response.status_code < 300:
+    print("Success!")
+elif 400 <= response.status_code < 500:
+    print("Client error")
+elif 500 <= response.status_code < 600:
+    print("Server error")
+```
+
+## Response Body
+
+### Text Content
+
+Get the response body as a decoded string:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/html")
+print(response.text)  # HTML content as string
+```
+
+The encoding is automatically detected from:
+
+1. The `Content-Type` header charset
+1. HTML meta charset tag (first 2048 bytes)
+1. Falls back to UTF-8
+
+Access the detected encoding:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/encoding/utf8")
+print(response.encoding)  # "utf-8"
+```
+
+### Binary Content
+
+Get the raw response body as bytes:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/bytes/100")
+print(type(response.content))  # <class 'bytes'>
+print(len(response.content))   # 100
+
+# Useful for binary files
+response = httpr.get("https://httpbin.org/image/png")
+with open("image.png", "wb") as f:
+    f.write(response.content)
+```
+
+### JSON Content
+
+Parse the response body as JSON:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/json")
+data = response.json()
+
+print(type(data))  # <class 'dict'>
+print(data["slideshow"]["title"])
+```
+
+Note
+
+`json()` is a method, not a property. Call it with parentheses.
+
+### CBOR Content (Transparent Deserialization)
+
+When the server returns `Content-Type: application/cbor`, the `json()` method automatically deserializes CBOR data:
+
+```python
+import httpr
+
+# Request CBOR data by setting Accept header
+response = httpr.get(
+    "https://api.example.com/data",
+    headers={"Accept": "application/cbor"}
+)
+
+# json() automatically detects and deserializes CBOR based on Content-Type
+data = response.json()  # Works transparently with CBOR!
+
+print(type(data))  # <class 'dict'> or <class 'list'>
+print(data)
+```
+
+You can also explicitly use `cbor()` if you know the data is CBOR:
+
+```python
+import httpr
+
+response = httpr.get("https://api.example.com/cbor-data")
+data = response.cbor()  # Explicitly deserialize as CBOR
+```
+
+CBOR is a binary serialization format that's more compact than JSON, making it ideal for:
+
+- **Large datasets**: Smaller payload sizes compared to JSON
+- **IoT applications**: Efficient data transfer for resource-constrained devices
+- **High-performance APIs**: Faster serialization/deserialization
+
+Transparent Usage
+
+In most cases, you don't need to think about CBOR vs JSON. Just use `response.json()` and httpr will automatically handle the deserialization based on the Content-Type header.
+
+### HTML Conversion
+
+httpr provides built-in HTML-to-text conversion using Rust's `html2text` crate:
+
+```python
+import httpr
+
+response = httpr.get("https://example.com")
+
+# Convert HTML to Markdown
+markdown = response.text_markdown
+print(markdown)
+
+# Convert HTML to plain text (no formatting)
+plain = response.text_plain
+print(plain)
+
+# Convert HTML to rich text
+rich = response.text_rich
+print(rich)
+```
+
+This is useful for:
+
+- Extracting readable content from web pages
+- Processing HTML for text analysis
+- Creating plain-text versions of HTML emails
+
+## Response Headers
+
+Access response headers through the `headers` attribute:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/response-headers?X-Custom=test")
+
+# Headers are case-insensitive
+print(response.headers["content-type"])
+print(response.headers["Content-Type"])  # Same result
+print(response.headers["CONTENT-TYPE"])  # Also works
+
+# Check if header exists
+if "x-custom" in response.headers:
+    print(response.headers["x-custom"])
+
+# Get with default value
+value = response.headers.get("x-missing", "default")
+
+# Iterate over headers
+for key, value in response.headers.items():
+    print(f"{key}: {value}")
+
+# Get all header names
+print(list(response.headers.keys()))
+
+# Get all header values
+print(list(response.headers.values()))
+```
+
+### Common Headers
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/get")
+
+# Content information
+content_type = response.headers.get("content-type")
+content_length = response.headers.get("content-length")
+
+# Caching
+cache_control = response.headers.get("cache-control")
+etag = response.headers.get("etag")
+
+# Server information
+server = response.headers.get("server")
+date = response.headers.get("date")
+```
+
+## Response Cookies
+
+Access cookies set by the server:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/cookies/set?session=abc123")
+
+# Cookies as a dictionary
+print(response.cookies)  # {"session": "abc123"}
+
+# Access specific cookie
+if "session" in response.cookies:
+    print(response.cookies["session"])
+```
+
+### Cookie Persistence
+
+With `cookie_store=True` (default), cookies are automatically stored and sent with subsequent requests:
+
+```python
+import httpr
+
+client = httpr.Client(cookie_store=True)  # Default
+
+# First request sets a cookie
+client.get("https://httpbin.org/cookies/set?token=xyz")
+
+# Cookie is automatically included in next request
+response = client.get("https://httpbin.org/cookies")
+print(response.json()["cookies"])  # {"token": "xyz"}
+```
+
+See the [Cookie Handling](https://thomasht86.github.io/httpr/advanced/cookies/index.md) guide for more details.
+
+## Final URL
+
+After redirects, check the final URL:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/redirect/3")
+
+# The URL after following all redirects
+print(response.url)  # https://httpbin.org/get
+```
+
+This is useful for:
+
+- Detecting redirects
+- Getting the canonical URL
+- Debugging redirect chains
+
+## Complete Example
+
+Here's a comprehensive example of response handling:
+
+```python
+import httpr
+
+def fetch_and_process(url: str) -> dict:
+    """Fetch a URL and return processed response data."""
+
+    response = httpr.get(url, timeout=10)
+
+    result = {
+        "url": response.url,
+        "status": response.status_code,
+        "success": 200 <= response.status_code < 300,
+    }
+
+    # Get content type
+    content_type = response.headers.get("content-type", "")
+    result["content_type"] = content_type
+
+    # Process based on content type
+    if "application/json" in content_type:
+        result["data"] = response.json()
+    elif "text/html" in content_type:
+        result["text"] = response.text_markdown  # Convert HTML to markdown
+    else:
+        result["text"] = response.text
+
+    # Include cookies if present
+    if response.cookies:
+        result["cookies"] = response.cookies
+
+    return result
+
+
+# Usage
+result = fetch_and_process("https://httpbin.org/json")
+print(f"Status: {result['status']}")
+print(f"Data: {result['data']}")
+```
+
+## Error Handling
+
+Handle potential errors when processing responses:
+
+```python
+import httpr
+
+try:
+    response = httpr.get("https://httpbin.org/status/500")
+
+    if response.status_code >= 400:
+        print(f"HTTP Error: {response.status_code}")
+    else:
+        data = response.json()
+
+except Exception as e:
+    print(f"Request failed: {e}")
+```
+
+## Streaming Responses
+
+For large responses, you can stream the data instead of buffering it entirely in memory. This is useful for downloading large files, processing Server-Sent Events (SSE), or handling large API responses.
+
+### Basic Streaming
+
+Use the `stream()` context manager to get a streaming response:
+
+```python
+import httpr
+
+client = httpr.Client()
+
+# Stream response bytes
+with client.stream("GET", "https://httpbin.org/stream-bytes/10000") as response:
+    print(f"Status: {response.status_code}")
+
+    for chunk in response.iter_bytes():
+        print(f"Received {len(chunk)} bytes")
+        # Process chunk without loading entire response in memory
+```
+
+### Streaming Modes
+
+httpr provides three ways to iterate over streaming responses:
+
+#### 1. Byte Chunks (`iter_bytes()`)
+
+Iterate over raw bytes chunks:
+
+```python
+with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
+    for chunk in response.iter_bytes():
+        # chunk is bytes
+        process_binary_data(chunk)
+```
+
+Or use direct iteration (equivalent to `iter_bytes()`):
+
+```python
+with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
+    for chunk in response:  # Same as response.iter_bytes()
+        process_binary_data(chunk)
+```
+
+#### 2. Text Chunks (`iter_text()`)
+
+Iterate over decoded text chunks:
+
+```python
+with client.stream("GET", "https://httpbin.org/html") as response:
+    for text_chunk in response.iter_text():
+        # text_chunk is str, decoded using response encoding
+        print(text_chunk, end="")
+```
+
+The text is automatically decoded using the response's character encoding (from `Content-Type` header or detected from content).
+
+#### 3. Line by Line (`iter_lines()`)
+
+Iterate over the response line by line:
+
+```python
+with client.stream("GET", "https://httpbin.org/stream/10") as response:
+    for line in response.iter_lines():
+        # line is str
+        print(line.strip())
+```
+
+This is particularly useful for:
+
+- **Server-Sent Events (SSE)**: Process events as they arrive
+- **JSONL/NDJSON**: Parse newline-delimited JSON
+- **Log streaming**: Process log lines in real-time
+
+```python
+# Example: Processing Server-Sent Events
+with client.stream("GET", "https://example.com/events") as response:
+    for line in response.iter_lines():
+        if line.startswith("data:"):
+            data = line[5:].strip()  # Remove "data:" prefix
+            process_event(data)
+```
+
+### Conditional Reading
+
+You can check headers before deciding whether to read the body:
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    # Headers are available immediately
+    content_type = response.headers.get("content-type")
+    content_length = response.headers.get("content-length")
+
+    if response.status_code != 200:
+        print(f"Error: {response.status_code}")
+        return  # Don't read body
+
+    if content_length and int(content_length) > 1_000_000:
+        print("File too large!")
+        return  # Don't read body
+
+    # Only read if checks pass
+    for chunk in response.iter_bytes():
+        process(chunk)
+```
+
+### Reading All at Once
+
+If you need to read the entire response after starting a stream:
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    # Check headers first
+    if response.status_code == 200:
+        # Read entire remaining response
+        content = response.read()
+        print(f"Total size: {len(content)} bytes")
+```
+
+### Downloading Large Files
+
+Streaming is ideal for downloading large files:
+
+```python
+import httpr
+
+client = httpr.Client()
+
+with client.stream("GET", "https://example.com/large-file.zip") as response:
+    if response.status_code == 200:
+        with open("large-file.zip", "wb") as f:
+            for chunk in response.iter_bytes():
+                f.write(chunk)
+        print("Download complete!")
+```
+
+With progress tracking:
+
+```python
+with client.stream("GET", "https://example.com/large-file.zip") as response:
+    total_size = int(response.headers.get("content-length", 0))
+    downloaded = 0
+
+    with open("large-file.zip", "wb") as f:
+        for chunk in response.iter_bytes():
+            f.write(chunk)
+            downloaded += len(chunk)
+            if total_size:
+                percent = (downloaded / total_size) * 100
+                print(f"Downloaded: {percent:.1f}%", end="\r")
+```
+
+### Streaming with POST
+
+Streaming works with all HTTP methods:
+
+```python
+with client.stream(
+    "POST",
+    "https://api.example.com/process",
+    json={"input": "data"}
+) as response:
+    # Stream the API response
+    for line in response.iter_lines():
+        result = json.loads(line)
+        print(result)
+```
+
+### Stream State
+
+The streaming response tracks its state:
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    print(response.is_closed)    # False
+    print(response.is_consumed)  # False
+
+    content = response.read()
+
+    print(response.is_consumed)  # True (after reading)
+
+print(response.is_closed)  # True (after context manager exits)
+```
+
+### Exception Handling
+
+Streaming raises specific exceptions:
+
+```python
+import httpr
+
+try:
+    with client.stream("GET", "https://httpbin.org/get") as response:
+        content = response.read()
+
+        # This will raise StreamConsumed
+        more = response.read()
+
+except httpr.StreamConsumed:
+    print("Cannot read stream twice")
+
+except httpr.StreamClosed:
+    print("Stream was closed")
+```
+
+### Async Streaming
+
+The `AsyncClient` also supports streaming with the same API:
+
+```python
+import asyncio
+import httpr
+
+async def stream_data():
+    async with httpr.AsyncClient() as client:
+        async with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
+            # Note: iteration is sync, but context manager is async
+            for chunk in response.iter_bytes():
+                process(chunk)
+
+asyncio.run(stream_data())
+```
+
+Note
+
+With `AsyncClient`, the context manager is async (`async with`), but the iteration over chunks remains synchronous (regular `for` loop, not `async for`).
+
+### Important Notes
+
+- **Always use context manager**: The `with` statement ensures proper cleanup
+- **Headers available immediately**: You can check status, headers, and cookies before reading the body
+- **Cannot re-read**: Once the stream is consumed, you cannot read it again
+- **Automatic cleanup**: The stream is automatically closed when the context manager exits
+
+## Next Steps
+
+- [Authentication](https://thomasht86.github.io/httpr/tutorial/authentication/index.md) - Add authentication to requests
+- [Async Client](https://thomasht86.github.io/httpr/tutorial/async/index.md) - Use async/await for concurrent requests
+
+# Authentication
+
+httpr supports multiple authentication methods for securing your HTTP requests.
+
+## Basic Authentication
+
+HTTP Basic Authentication sends username and password encoded in the request header.
+
+### Per-Request Authentication
+
+```python
+import httpr
+
+response = httpr.get(
+    "https://httpbin.org/basic-auth/user/pass",
+    auth=("user", "pass")
+)
+print(response.status_code)  # 200
+```
+
+### Client Default Authentication
+
+Set authentication for all requests from a client:
+
+```python
+import httpr
+
+client = httpr.Client(auth=("username", "password"))
+
+# All requests include Basic Auth header
+response = client.get("https://api.example.com/protected")
+response = client.get("https://api.example.com/another-endpoint")
+```
+
+### Password-less Basic Auth
+
+Some APIs require only a username (API key) without a password:
+
+```python
+import httpr
+
+# Password can be None
+response = httpr.get(
+    "https://api.example.com/data",
+    auth=("api_key_here", None)
+)
+```
+
+### How It Works
+
+Basic auth creates an `Authorization` header with base64-encoded credentials:
+
+```python
+import httpr
+
+response = httpr.get(
+    "https://httpbin.org/headers",
+    auth=("user", "password")
+)
+
+# The Authorization header is automatically set
+auth_header = response.json()["headers"]["Authorization"]
+print(auth_header)  # "Basic dXNlcjpwYXNzd29yZA=="
+```
+
+## Bearer Token Authentication
+
+Bearer tokens are commonly used for OAuth 2.0 and API authentication.
+
+### Per-Request Bearer Token
+
+```python
+import httpr
+
+response = httpr.get(
+    "https://api.example.com/data",
+    auth_bearer="your-token-here"
+)
+```
+
+### Client Default Bearer Token
+
+```python
+import httpr
+
+client = httpr.Client(auth_bearer="your-api-token")
+
+# All requests include the Bearer token
+response = client.get("https://api.example.com/users")
+response = client.get("https://api.example.com/posts")
+```
+
+### How It Works
+
+Bearer auth creates an `Authorization: Bearer <token>` header:
+
+```python
+import httpr
+
+response = httpr.get(
+    "https://httpbin.org/headers",
+    auth_bearer="my-secret-token"
+)
+
+auth_header = response.json()["headers"]["Authorization"]
+print(auth_header)  # "Bearer my-secret-token"
+```
+
+## Custom Authentication Headers
+
+For APIs that use non-standard authentication headers:
+
+```python
+import httpr
+
+# API key in custom header
+response = httpr.get(
+    "https://api.example.com/data",
+    headers={"X-API-Key": "your-api-key"}
+)
+
+# Multiple auth headers
+client = httpr.Client(
+    headers={
+        "X-API-Key": "key123",
+        "X-API-Secret": "secret456"
+    }
+)
+```
+
+## Updating Authentication
+
+You can update client authentication after creation:
+
+```python
+import httpr
+
+client = httpr.Client()
+
+# Set auth via property
+client.auth = ("new-user", "new-pass")
+print(client.auth)  # ("new-user", "new-pass")
+
+# Or use headers directly for bearer tokens
+client.headers = {"Authorization": "Bearer new-token"}
+```
+
+## Authentication Patterns
+
+### API with Token Refresh
+
+```python
+import httpr
+
+class ApiClient:
+    def __init__(self, token: str):
+        self.client = httpr.Client(auth_bearer=token)
+
+    def refresh_token(self, new_token: str):
+        """Update the bearer token."""
+        self.client = httpr.Client(auth_bearer=new_token)
+
+    def get_users(self):
+        return self.client.get("https://api.example.com/users").json()
+
+# Usage
+api = ApiClient("initial-token")
+users = api.get_users()
+
+# When token expires
+api.refresh_token("refreshed-token")
+users = api.get_users()
+```
+
+### Environment-Based Auth
+
+```python
+import os
+import httpr
+
+# Load credentials from environment
+api_token = os.environ.get("API_TOKEN")
+if not api_token:
+    raise ValueError("API_TOKEN environment variable required")
+
+client = httpr.Client(auth_bearer=api_token)
+```
+
+### Different Auth per Endpoint
+
+```python
+import httpr
+
+# Public API - no auth
+public_client = httpr.Client()
+public_data = public_client.get("https://api.example.com/public").json()
+
+# Authenticated API
+auth_client = httpr.Client(auth_bearer="secret-token")
+private_data = auth_client.get("https://api.example.com/private").json()
+```
+
+## mTLS Authentication
+
+For mutual TLS (client certificate authentication), see the [SSL/TLS Guide](https://thomasht86.github.io/httpr/advanced/ssl-tls/#mtls-mutual-tls).
+
+```python
+import httpr
+
+# Client certificate authentication
+client = httpr.Client(
+    client_pem="/path/to/client-cert.pem",
+    ca_cert_file="/path/to/ca-bundle.pem"
+)
+```
+
+## Security Best Practices
+
+Security Tips
+
+1. **Never hardcode credentials** in source code
+1. **Use environment variables** or secure vaults for secrets
+1. **Use HTTPS** for all authenticated requests
+1. **Rotate tokens** regularly
+1. **Use short-lived tokens** when possible
+
+```python
+import os
+import httpr
+
+# Good: Load from environment
+client = httpr.Client(
+    auth_bearer=os.environ["API_TOKEN"],
+    https_only=True  # Enforce HTTPS
+)
+
+# Bad: Hardcoded credentials (don't do this!)
+# client = httpr.Client(auth=("admin", "password123"))
+```
+
+## Complete Example
+
+```python
+import os
+import httpr
+
+def create_api_client() -> httpr.Client:
+    """Create an authenticated API client."""
+
+    # Get token from environment
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        raise ValueError("GITHUB_TOKEN not set")
+
+    return httpr.Client(
+        auth_bearer=token,
+        headers={"Accept": "application/vnd.github.v3+json"},
+        timeout=30,
+    )
+
+def get_user_repos(client: httpr.Client, username: str) -> list:
+    """Get repositories for a GitHub user."""
+    response = client.get(
+        f"https://api.github.com/users/{username}/repos",
+        params={"per_page": 10, "sort": "updated"}
+    )
+
+    if response.status_code == 200:
+        return response.json()
+    elif response.status_code == 401:
+        raise ValueError("Invalid or expired token")
+    else:
+        raise Exception(f"API error: {response.status_code}")
+
+# Usage
+if __name__ == "__main__":
+    client = create_api_client()
+    repos = get_user_repos(client, "thomasht86")
+    for repo in repos:
+        print(f"- {repo['name']}: {repo['description']}")
+```
+
+## Next Steps
+
+- [Async Client](https://thomasht86.github.io/httpr/tutorial/async/index.md) - Make concurrent authenticated requests
+- [SSL/TLS](https://thomasht86.github.io/httpr/advanced/ssl-tls/index.md) - Client certificate authentication (mTLS)
+
+# Async Client
+
+httpr provides an `AsyncClient` for use with Python's `asyncio`. This allows you to make concurrent HTTP requests efficiently.
+
+## Basic Usage
+
+Use `AsyncClient` with `async`/`await` syntax:
+
+```python
+import asyncio
+import httpr
+
+async def main():
+    async with httpr.AsyncClient() as client:
+        response = await client.get("https://httpbin.org/get")
+        print(response.json())
+
+asyncio.run(main())
+```
+
+## Creating an AsyncClient
+
+`AsyncClient` accepts all the same parameters as `Client`:
+
+```python
+import httpr
+
+client = httpr.AsyncClient(
+    auth=("user", "password"),
+    auth_bearer="token",
+    headers={"User-Agent": "my-app/1.0"},
+    cookies={"session": "abc123"},
+    timeout=30,
+    follow_redirects=True,
+    max_redirects=10,
+    verify=True,
+    ca_cert_file="/path/to/ca-bundle.pem",
+    proxy="http://proxy:8080",
+)
+```
+
+## Context Manager
+
+Always use the async context manager to ensure proper cleanup:
+
+```python
+import asyncio
+import httpr
+
+async def main():
+    async with httpr.AsyncClient() as client:
+        response = await client.get("https://httpbin.org/get")
+        print(response.status_code)
+    # Client is automatically closed
+
+asyncio.run(main())
+```
+
+Or manually close the client:
+
+```python
+import asyncio
+import httpr
+
+async def main():
+    client = httpr.AsyncClient()
+    try:
+        response = await client.get("https://httpbin.org/get")
+        print(response.status_code)
+    finally:
+        await client.aclose()
+
+asyncio.run(main())
+```
+
+## HTTP Methods
+
+All HTTP methods are available as async:
+
+```python
+import asyncio
+import httpr
+
+async def main():
+    async with httpr.AsyncClient() as client:
+        # GET
+        response = await client.get("https://httpbin.org/get")
+
+        # POST
+        response = await client.post(
+            "https://httpbin.org/post",
+            json={"key": "value"}
+        )
+
+        # PUT
+        response = await client.put(
+            "https://httpbin.org/put",
+            json={"key": "value"}
+        )
+
+        # PATCH
+        response = await client.patch(
+            "https://httpbin.org/patch",
+            json={"key": "value"}
+        )
+
+        # DELETE
+        response = await client.delete("https://httpbin.org/delete")
+
+        # HEAD
+        response = await client.head("https://httpbin.org/get")
+
+        # OPTIONS
+        response = await client.options("https://httpbin.org/get")
+
+        # Generic request
+        response = await client.request("GET", "https://httpbin.org/get")
+
+asyncio.run(main())
+```
+
+## Concurrent Requests
+
+The main benefit of `AsyncClient` is making multiple requests concurrently:
+
+### Using asyncio.gather
+
+```python
+import asyncio
+import httpr
+
+async def fetch_url(client: httpr.AsyncClient, url: str) -> dict:
+    response = await client.get(url)
+    return {"url": url, "status": response.status_code}
+
+async def main():
+    urls = [
+        "https://httpbin.org/get",
+        "https://httpbin.org/ip",
+        "https://httpbin.org/user-agent",
+        "https://httpbin.org/headers",
+    ]
+
+    async with httpr.AsyncClient() as client:
+        # Fetch all URLs concurrently
+        tasks = [fetch_url(client, url) for url in urls]
+        results = await asyncio.gather(*tasks)
+
+        for result in results:
+            print(f"{result['url']}: {result['status']}")
+
+asyncio.run(main())
+```
+
+### Using asyncio.as_completed
+
+Process results as they complete:
+
+```python
+import asyncio
+import httpr
+
+async def fetch_url(client: httpr.AsyncClient, url: str) -> dict:
+    response = await client.get(url)
+    return {"url": url, "status": response.status_code, "data": response.json()}
+
+async def main():
+    urls = [
+        "https://httpbin.org/delay/2",
+        "https://httpbin.org/delay/1",
+        "https://httpbin.org/get",
+    ]
+
+    async with httpr.AsyncClient() as client:
+        tasks = [fetch_url(client, url) for url in urls]
+
+        # Process results as they complete (fastest first)
+        for coro in asyncio.as_completed(tasks):
+            result = await coro
+            print(f"Completed: {result['url']}")
+
+asyncio.run(main())
+```
+
+### With Semaphore (Rate Limiting)
+
+Limit concurrent requests to avoid overwhelming servers:
+
+```python
+import asyncio
+import httpr
+
+async def fetch_with_limit(
+    client: httpr.AsyncClient,
+    url: str,
+    semaphore: asyncio.Semaphore
+) -> dict:
+    async with semaphore:  # Limit concurrent requests
+        response = await client.get(url)
+        return {"url": url, "status": response.status_code}
+
+async def main():
+    urls = [f"https://httpbin.org/get?id={i}" for i in range(20)]
+
+    # Allow max 5 concurrent requests
+    semaphore = asyncio.Semaphore(5)
+
+    async with httpr.AsyncClient() as client:
+        tasks = [fetch_with_limit(client, url, semaphore) for url in urls]
+        results = await asyncio.gather(*tasks)
+
+        print(f"Fetched {len(results)} URLs")
+
+asyncio.run(main())
+```
+
+## Error Handling
+
+Handle errors in async code:
+
+```python
+import asyncio
+import httpr
+
+async def safe_fetch(client: httpr.AsyncClient, url: str) -> dict | None:
+    try:
+        response = await client.get(url, timeout=5)
+        return {"url": url, "status": response.status_code, "data": response.json()}
+    except Exception as e:
+        print(f"Error fetching {url}: {e}")
+        return None
+
+async def main():
+    urls = [
+        "https://httpbin.org/get",
+        "https://httpbin.org/delay/10",  # Will timeout
+        "https://invalid.url.example",    # Will fail
+    ]
+
+    async with httpr.AsyncClient(timeout=2) as client:
+        tasks = [safe_fetch(client, url) for url in urls]
+        results = await asyncio.gather(*tasks)
+
+        successful = [r for r in results if r is not None]
+        print(f"Successful: {len(successful)}/{len(urls)}")
+
+asyncio.run(main())
+```
+
+## Real-World Example: API Aggregator
+
+```python
+import asyncio
+import httpr
+
+class ApiAggregator:
+    """Fetch data from multiple APIs concurrently."""
+
+    def __init__(self, timeout: float = 10):
+        self.client = httpr.AsyncClient(timeout=timeout)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        await self.client.aclose()
+
+    async def fetch_user(self, user_id: int) -> dict:
+        """Fetch user from API."""
+        response = await self.client.get(
+            f"https://jsonplaceholder.typicode.com/users/{user_id}"
+        )
+        return response.json()
+
+    async def fetch_posts(self, user_id: int) -> list:
+        """Fetch posts for a user."""
+        response = await self.client.get(
+            "https://jsonplaceholder.typicode.com/posts",
+            params={"userId": user_id}
+        )
+        return response.json()
+
+    async def fetch_user_with_posts(self, user_id: int) -> dict:
+        """Fetch user and their posts concurrently."""
+        user, posts = await asyncio.gather(
+            self.fetch_user(user_id),
+            self.fetch_posts(user_id)
+        )
+        return {"user": user, "posts": posts}
+
+async def main():
+    async with ApiAggregator() as api:
+        # Fetch data for multiple users concurrently
+        user_ids = [1, 2, 3]
+        tasks = [api.fetch_user_with_posts(uid) for uid in user_ids]
+        results = await asyncio.gather(*tasks)
+
+        for result in results:
+            user = result["user"]
+            posts = result["posts"]
+            print(f"{user['name']}: {len(posts)} posts")
+
+asyncio.run(main())
+```
+
+## Implementation Note
+
+How AsyncClient Works
+
+`AsyncClient` wraps the synchronous Rust client using `asyncio.run_in_executor()`. This means:
+
+- Requests run in a thread pool, not native async I/O
+- Still provides concurrency benefits for I/O-bound tasks
+- Compatible with asyncio event loops
+- Same performance as sync client for individual requests
+
+This design keeps the implementation simple while providing async compatibility.
+
+## Comparison: Sync vs Async
+
+```python
+import time
+import asyncio
+import httpr
+
+# Synchronous - sequential requests
+def sync_fetch():
+    with httpr.Client() as client:
+        for i in range(5):
+            client.get(f"https://httpbin.org/delay/1")
+
+# Asynchronous - concurrent requests
+async def async_fetch():
+    async with httpr.AsyncClient() as client:
+        tasks = [
+            client.get(f"https://httpbin.org/delay/1")
+            for i in range(5)
+        ]
+        await asyncio.gather(*tasks)
+
+# Sync: ~5 seconds (sequential)
+start = time.time()
+sync_fetch()
+print(f"Sync: {time.time() - start:.2f}s")
+
+# Async: ~1 second (concurrent)
+start = time.time()
+asyncio.run(async_fetch())
+print(f"Async: {time.time() - start:.2f}s")
+```
+
+## Next Steps
+
+- [SSL/TLS](https://thomasht86.github.io/httpr/advanced/ssl-tls/index.md) - Secure connections with async
+- [Proxy Configuration](https://thomasht86.github.io/httpr/advanced/proxy/index.md) - Use proxies with AsyncClient
+- [API Reference](https://thomasht86.github.io/httpr/api/async-client/index.md) - Complete AsyncClient API
+# Advanced Usage
+
+# Advanced Features
+
+This section covers advanced httpr features for production use cases.
+
+- **SSL/TLS & mTLS**
+
+  ______________________________________________________________________
+
+  Configure SSL certificates, CA bundles, and mutual TLS authentication.
+
+  [SSL/TLS Guide](https://thomasht86.github.io/httpr/advanced/ssl-tls/index.md)
+
+- **Proxy Configuration**
+
+  ______________________________________________________________________
+
+  Route requests through HTTP and SOCKS proxies.
+
+  [Proxy Guide](https://thomasht86.github.io/httpr/advanced/proxy/index.md)
+
+- **Cookie Handling**
+
+  ______________________________________________________________________
+
+  Manage cookies with persistent cookie store and manual control.
+
+  [Cookie Guide](https://thomasht86.github.io/httpr/advanced/cookies/index.md)
+
+## Overview
+
+### SSL/TLS
+
+httpr provides full SSL/TLS support:
+
+- **Certificate verification** (enabled by default)
+- **Custom CA bundles** for corporate/internal certificates
+- **mTLS (mutual TLS)** for client certificate authentication
+- **HTTP/2** with TLS
+
+```python
+import httpr
+
+# Custom CA certificate
+client = httpr.Client(ca_cert_file="/path/to/ca-bundle.pem")
+
+# mTLS with client certificate
+client = httpr.Client(
+    client_pem="/path/to/client.pem",
+    ca_cert_file="/path/to/ca-bundle.pem"
+)
+```
+
+[Learn more about SSL/TLS](https://thomasht86.github.io/httpr/advanced/ssl-tls/index.md)
+
+### Proxy Support
+
+Route requests through proxy servers:
+
+```python
+import httpr
+
+# HTTP proxy
+client = httpr.Client(proxy="http://proxy.example.com:8080")
+
+# SOCKS5 proxy
+client = httpr.Client(proxy="socks5://127.0.0.1:1080")
+```
+
+[Learn more about proxies](https://thomasht86.github.io/httpr/advanced/proxy/index.md)
+
+### Cookie Management
+
+Automatic cookie handling with fine-grained control:
+
+```python
+import httpr
+
+# Persistent cookie store (default)
+client = httpr.Client(cookie_store=True)
+
+# Manual cookie management
+client = httpr.Client(cookies={"session": "abc123"})
+```
+
+[Learn more about cookies](https://thomasht86.github.io/httpr/advanced/cookies/index.md)
+
+## Environment Variables
+
+httpr respects these environment variables:
+
+| Variable          | Description                   |
+| ----------------- | ----------------------------- |
+| `HTTPR_PROXY`     | Default proxy URL             |
+| `HTTPR_CA_BUNDLE` | Path to CA certificate bundle |
+
+```bash
+# Set proxy for all httpr clients
+export HTTPR_PROXY="http://proxy:8080"
+
+# Set CA bundle
+export HTTPR_CA_BUNDLE="/etc/ssl/certs/ca-certificates.crt"
+```
+
+## Best Practices
+
+### Connection Pooling
+
+Use a single `Client` instance for multiple requests to the same host:
+
+```python
+import httpr
+
+# Good: Reuse client
+with httpr.Client() as client:
+    for url in urls:
+        response = client.get(url)
+
+# Bad: New client per request
+for url in urls:
+    response = httpr.get(url)  # Creates new client each time
+```
+
+### Timeout Configuration
+
+Set appropriate timeouts for your use case:
+
+```python
+import httpr
+
+# API calls - shorter timeout
+api_client = httpr.Client(timeout=10)
+
+# File downloads - longer timeout
+download_client = httpr.Client(timeout=300)
+```
+
+### Error Handling
+
+```python
+import httpr
+
+try:
+    response = httpr.get("https://api.example.com/data")
+    response_data = response.json()
+except Exception as e:
+    # Handle connection errors, timeouts, etc.
+    print(f"Request failed: {e}")
+```
+
+### Resource Cleanup
+
+Always close clients when done:
+
+```python
+import httpr
+
+# Best: Context manager
+with httpr.Client() as client:
+    response = client.get(url)
+
+# Alternative: Manual close
+client = httpr.Client()
+try:
+    response = client.get(url)
+finally:
+    client.close()
+```
+
+# SSL/TLS & mTLS
+
+This guide covers SSL/TLS configuration in httpr, including certificate verification, custom CA bundles, and mutual TLS (mTLS) authentication.
+
+## Overview
+
+By default, httpr verifies SSL/TLS certificates using the system's certificate store. You can customize this behavior for:
+
+- Corporate/internal certificates
+- Self-signed certificates (development)
+- Client certificate authentication (mTLS)
+
+## Certificate Verification
+
+### Default Behavior
+
+SSL certificate verification is enabled by default:
+
+```python
+import httpr
+
+# Verification enabled (default)
+client = httpr.Client(verify=True)
+response = client.get("https://example.com")  # Certificate is verified
+```
+
+### Disabling Verification
+
+Security Warning
+
+Disabling certificate verification exposes you to man-in-the-middle attacks. Only use this for local development or testing.
+
+```python
+import httpr
+
+# Disable verification (insecure!)
+client = httpr.Client(verify=False)
+response = client.get("https://self-signed.badssl.com/")
+```
+
+## Custom CA Certificates
+
+### Using a Custom CA Bundle
+
+For corporate environments or internal services with custom certificate authorities:
+
+```python
+import httpr
+
+# Specify custom CA bundle
+client = httpr.Client(ca_cert_file="/path/to/ca-bundle.pem")
+response = client.get("https://internal.company.com/api")
+```
+
+### Using certifi
+
+The popular `certifi` package provides Mozilla's CA bundle:
+
+```python
+import certifi
+import httpr
+
+client = httpr.Client(ca_cert_file=certifi.where())
+response = client.get("https://example.com")
+```
+
+### Environment Variable
+
+Set the CA bundle via environment variable:
+
+```bash
+export HTTPR_CA_BUNDLE="/etc/ssl/certs/ca-certificates.crt"
+```
+
+```python
+import httpr
+
+# Automatically uses HTTPR_CA_BUNDLE
+client = httpr.Client()
+```
+
+Note
+
+The `ca_cert_file` parameter internally sets the `HTTPR_CA_BUNDLE` environment variable.
+
+## mTLS (Mutual TLS)
+
+Mutual TLS requires both the server and client to present certificates. This is common in:
+
+- Zero-trust architectures
+- Service mesh communication
+- Banking and financial APIs
+- IoT device authentication
+
+### Configuration
+
+```python
+import httpr
+
+client = httpr.Client(
+    client_pem="/path/to/client-cert.pem",  # Client certificate + key
+    ca_cert_file="/path/to/ca-bundle.pem"    # CA to verify server
+)
+
+response = client.get("https://mtls.example.com/api")
+```
+
+### Certificate Format
+
+The `client_pem` file should contain both the certificate and private key in PEM format:
+
+```text
+-----BEGIN CERTIFICATE-----
+MIIDXTCCAkWgAwIBAgIJAJC1HiIAZAiUMA0Gcq...
+-----END CERTIFICATE-----
+-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwgg...
+-----END PRIVATE KEY-----
+```
+
+### Using In-Memory Certificates
+
+For containerized environments or when certificates are stored in secrets managers, you can pass the certificate data directly without writing to the filesystem:
+
+```python
+import httpr
+import os
+
+# Load certificate from environment variable or secrets manager
+cert_data = os.environ.get("CLIENT_CERT_PEM").encode()  # or from secrets manager
+
+client = httpr.Client(
+    client_pem_data=cert_data,  # Pass bytes directly
+    ca_cert_file="/path/to/ca-bundle.pem"
+)
+
+response = client.get("https://mtls.example.com/api")
+```
+
+**Benefits:**
+
+- No temporary files needed
+- Better security in containerized environments
+- Works with secrets managers (AWS Secrets Manager, HashiCorp Vault, etc.)
+- Reduces filesystem I/O
+
+**Note:** Either `client_pem` (file path) or `client_pem_data` (bytes) can be used, but not both.
+
+### Complete mTLS Example
+
+```python
+import httpr
+
+def create_mtls_client(
+    client_cert: str,
+    ca_bundle: str,
+    timeout: float = 30
+) -> httpr.Client:
+    """Create a client configured for mTLS."""
+    return httpr.Client(
+        client_pem=client_cert,
+        ca_cert_file=ca_bundle,
+        timeout=timeout,
+        verify=True,  # Must be True for mTLS
+    )
+
+# Usage
+client = create_mtls_client(
+    client_cert="/certs/client.pem",
+    ca_bundle="/certs/ca.pem"
+)
+
+with client:
+    response = client.get("https://secure-api.example.com/data")
+    print(response.json())
+```
+
+## HTTP/2
+
+httpr supports HTTP/2 over TLS:
+
+```python
+import httpr
+
+# HTTP/2 only mode
+client = httpr.Client(http2_only=True)
+response = client.get("https://http2.example.com")
+```
+
+Note
+
+HTTP/2 requires TLS. The `http2_only` option forces HTTP/2 protocol. When `http2_only=False` (default), httpr uses HTTP/1.1.
+
+## HTTPS Only Mode
+
+Restrict the client to HTTPS connections only:
+
+```python
+import httpr
+
+client = httpr.Client(https_only=True)
+
+# Works
+response = client.get("https://example.com")
+
+# Raises an error
+# response = client.get("http://example.com")
+```
+
+This is useful for ensuring all traffic is encrypted, especially when handling sensitive data.
+
+## Testing with Self-Signed Certificates
+
+For local development with self-signed certificates:
+
+### Using trustme (Python testing)
+
+```python
+import trustme
+import httpr
+
+# Generate test CA and certificates
+ca = trustme.CA()
+server_cert = ca.issue_cert("localhost")
+
+# Export certificates
+ca.cert_pem.write_to_path("test-ca.pem")
+server_cert.private_key_and_cert_chain_pem.write_to_path("server.pem")
+
+# Use in httpr
+client = httpr.Client(ca_cert_file="test-ca.pem")
+```
+
+### Development Configuration
+
+```python
+import os
+import httpr
+
+def get_client() -> httpr.Client:
+    """Get configured client based on environment."""
+    if os.environ.get("ENVIRONMENT") == "development":
+        # Development: Use test CA or disable verification
+        return httpr.Client(
+            ca_cert_file=os.environ.get("DEV_CA_BUNDLE"),
+            verify=bool(os.environ.get("DEV_CA_BUNDLE"))
+        )
+    else:
+        # Production: Use system CA bundle
+        return httpr.Client(verify=True)
+```
+
+## Troubleshooting
+
+### Certificate Errors
+
+**"certificate verify failed"**
+
+The server's certificate is not trusted:
+
+1. Check if the certificate is expired
+1. Verify the CA bundle includes the issuing CA
+1. For internal CAs, specify the correct `ca_cert_file`
+
+```python
+import httpr
+
+# Try with certifi's CA bundle
+import certifi
+client = httpr.Client(ca_cert_file=certifi.where())
+```
+
+**"unable to get local issuer certificate"**
+
+The CA certificate chain is incomplete:
+
+1. Ensure your CA bundle includes intermediate certificates
+1. Try using a complete CA bundle
+
+**"wrong version number" or "SSL handshake failed"**
+
+Protocol mismatch:
+
+1. Server may not support modern TLS versions
+1. Try `http2_only=False` if using HTTP/2
+
+### mTLS Errors
+
+**"no client certificate presented"**
+
+1. Verify `client_pem` file path is correct
+1. Check the PEM file contains both cert and key
+1. Ensure `verify=True` is set
+
+**"certificate signature failure"**
+
+1. Client certificate not signed by expected CA
+1. Certificate may have been revoked
+
+## Security Recommendations
+
+1. **Always verify certificates in production** - Never use `verify=False`
+1. **Keep CA bundles updated** - Use system CA or update certifi regularly
+1. **Protect private keys** - Secure `client_pem` files with appropriate permissions
+1. **Use HTTPS everywhere** - Consider `https_only=True` for sensitive applications
+1. **Rotate certificates** - Implement certificate rotation for mTLS
+
+```python
+import httpr
+
+# Production-ready client
+client = httpr.Client(
+    verify=True,           # Always verify
+    https_only=True,       # HTTPS only
+    timeout=30,            # Reasonable timeout
+    # ca_cert_file=...,    # Custom CA if needed
+    # client_pem=...,      # mTLS if required
+)
+```
+
+# Proxy Configuration
+
+httpr supports routing requests through HTTP and SOCKS5 proxy servers.
+
+## Basic Proxy Usage
+
+### HTTP Proxy
+
+```python
+import httpr
+
+client = httpr.Client(proxy="http://proxy.example.com:8080")
+response = client.get("https://httpbin.org/ip")
+print(response.json())  # Shows proxy's IP
+```
+
+### HTTPS Proxy
+
+```python
+import httpr
+
+client = httpr.Client(proxy="https://secure-proxy.example.com:8443")
+response = client.get("https://httpbin.org/ip")
+```
+
+### SOCKS5 Proxy
+
+```python
+import httpr
+
+# SOCKS5 proxy (e.g., Tor, SSH tunnel)
+client = httpr.Client(proxy="socks5://127.0.0.1:1080")
+response = client.get("https://httpbin.org/ip")
+```
+
+## Proxy Authentication
+
+Include credentials in the proxy URL:
+
+```python
+import httpr
+
+# HTTP proxy with auth
+client = httpr.Client(
+    proxy="http://username:password@proxy.example.com:8080"
+)
+
+# SOCKS5 proxy with auth
+client = httpr.Client(
+    proxy="socks5://user:pass@127.0.0.1:1080"
+)
+```
+
+## Environment Variable
+
+Set a default proxy using the `HTTPR_PROXY` environment variable:
+
+```bash
+# Set for HTTP proxy
+export HTTPR_PROXY="http://proxy.example.com:8080"
+
+# Set for SOCKS5 proxy
+export HTTPR_PROXY="socks5://127.0.0.1:1080"
+```
+
+```python
+import httpr
+
+# Automatically uses HTTPR_PROXY
+client = httpr.Client()
+response = client.get("https://httpbin.org/ip")
+```
+
+The `proxy` parameter takes precedence over the environment variable:
+
+```python
+import httpr
+
+# Uses specified proxy, ignores HTTPR_PROXY
+client = httpr.Client(proxy="http://other-proxy:8080")
+```
+
+## Changing Proxy at Runtime
+
+You can change the proxy on an existing client:
+
+```python
+import httpr
+
+client = httpr.Client()
+
+# Set proxy
+client.proxy = "http://proxy.example.com:8080"
+
+# Read current proxy
+print(client.proxy)  # "http://proxy.example.com:8080"
+
+# Remove proxy
+client.proxy = None
+```
+
+Performance Note
+
+Changing the `proxy` property **rebuilds the entire internal HTTP client**. This is an expensive operation. For best performance, create separate clients for different proxy configurations.
+
+```python
+import httpr
+
+# Better: Create separate clients
+direct_client = httpr.Client()
+proxy_client = httpr.Client(proxy="http://proxy:8080")
+
+# Avoid: Changing proxy repeatedly
+client = httpr.Client()
+for proxy in proxies:
+    client.proxy = proxy  # Rebuilds client each time!
+    client.get(url)
+```
+
+## Use Cases
+
+### Corporate Proxy
+
+Route traffic through a corporate proxy server:
+
+```python
+import os
+import httpr
+
+def get_corporate_client() -> httpr.Client:
+    """Create client configured for corporate network."""
+    proxy = os.environ.get("CORPORATE_PROXY", "http://proxy.corp:8080")
+    ca_bundle = os.environ.get("CORPORATE_CA", "/etc/ssl/corp-ca.pem")
+
+    return httpr.Client(
+        proxy=proxy,
+        ca_cert_file=ca_bundle,
+        timeout=30,
+    )
+
+with get_corporate_client() as client:
+    response = client.get("https://api.example.com/data")
+```
+
+### Tor Network
+
+Route requests through Tor for anonymity:
+
+```python
+import httpr
+
+# Tor SOCKS5 proxy (default port 9050)
+tor_client = httpr.Client(proxy="socks5://127.0.0.1:9050")
+
+# Check Tor connection
+response = tor_client.get("https://check.torproject.org/api/ip")
+print(response.json())  # {"IsTor": true, "IP": "..."}
+```
+
+### SSH Tunnel
+
+Use an SSH SOCKS tunnel:
+
+```bash
+# Create SSH tunnel (in terminal)
+ssh -D 1080 -N user@server.example.com
+```
+
+```python
+import httpr
+
+# Use SSH tunnel
+client = httpr.Client(proxy="socks5://127.0.0.1:1080")
+response = client.get("https://httpbin.org/ip")
+```
+
+### Rotating Proxies
+
+Use different proxies for different requests:
+
+```python
+import httpr
+
+proxies = [
+    "http://proxy1.example.com:8080",
+    "http://proxy2.example.com:8080",
+    "http://proxy3.example.com:8080",
+]
+
+def fetch_with_rotation(urls: list[str]) -> list[dict]:
+    """Fetch URLs using rotating proxies."""
+    results = []
+
+    for i, url in enumerate(urls):
+        proxy = proxies[i % len(proxies)]
+
+        with httpr.Client(proxy=proxy) as client:
+            response = client.get(url)
+            results.append({
+                "url": url,
+                "proxy": proxy,
+                "status": response.status_code
+            })
+
+    return results
+```
+
+### Conditional Proxy
+
+Use proxy only for certain hosts:
+
+```python
+import httpr
+from urllib.parse import urlparse
+
+class ProxyRouter:
+    """Route requests through proxy based on host."""
+
+    def __init__(self, proxy: str, proxy_hosts: set[str]):
+        self.proxy_client = httpr.Client(proxy=proxy)
+        self.direct_client = httpr.Client()
+        self.proxy_hosts = proxy_hosts
+
+    def get(self, url: str, **kwargs):
+        host = urlparse(url).netloc
+        if host in self.proxy_hosts:
+            return self.proxy_client.get(url, **kwargs)
+        return self.direct_client.get(url, **kwargs)
+
+    def close(self):
+        self.proxy_client.close()
+        self.direct_client.close()
+
+# Usage
+router = ProxyRouter(
+    proxy="http://proxy:8080",
+    proxy_hosts={"api.external.com", "data.external.com"}
+)
+
+# Direct connection
+router.get("https://api.internal.com/data")
+
+# Through proxy
+router.get("https://api.external.com/data")
+```
+
+## Async Client with Proxy
+
+Proxy configuration works the same with `AsyncClient`:
+
+```python
+import asyncio
+import httpr
+
+async def main():
+    async with httpr.AsyncClient(proxy="http://proxy:8080") as client:
+        response = await client.get("https://httpbin.org/ip")
+        print(response.json())
+
+asyncio.run(main())
+```
+
+## Supported Proxy Protocols
+
+| Protocol | URL Format           | Notes                      |
+| -------- | -------------------- | -------------------------- |
+| HTTP     | `http://host:port`   | Most common                |
+| HTTPS    | `https://host:port`  | Encrypted proxy connection |
+| SOCKS5   | `socks5://host:port` | Supports TCP               |
+
+Note
+
+SOCKS4 and SOCKS4a are not currently supported. Use SOCKS5 instead.
+
+## Troubleshooting
+
+### Connection Refused
+
+```text
+connection refused
+```
+
+- Verify proxy host and port are correct
+- Check if proxy server is running
+- Ensure firewall allows connection to proxy
+
+### Authentication Failed
+
+```text
+proxy authentication required
+```
+
+- Include credentials in proxy URL: `http://user:pass@proxy:8080`
+- Verify credentials are correct
+- Check if proxy requires specific auth method
+
+### Timeout Through Proxy
+
+- Increase timeout: `httpr.Client(proxy=proxy, timeout=60)`
+- Proxy may be slow or overloaded
+- Try a different proxy server
+
+### SSL Errors Through Proxy
+
+- Some proxies intercept HTTPS traffic
+- May need to add proxy's CA certificate to `ca_cert_file`
+- Or use SOCKS5 proxy for end-to-end encryption
+
+# Cookie Handling
+
+httpr provides automatic cookie management with a persistent cookie store. This guide covers how cookies work and how to control them.
+
+## Cookie Store
+
+By default, httpr maintains a persistent cookie store that:
+
+- Automatically stores cookies from `Set-Cookie` response headers
+- Sends stored cookies with subsequent requests to matching domains
+- Handles cookie expiration and path matching
+
+### Default Behavior
+
+```python
+import httpr
+
+client = httpr.Client(cookie_store=True)  # Default
+
+# First request - server sets a cookie
+client.get("https://httpbin.org/cookies/set?session=abc123")
+
+# Second request - cookie is automatically included
+response = client.get("https://httpbin.org/cookies")
+print(response.json())  # {"cookies": {"session": "abc123"}}
+```
+
+### Disabling Cookie Store
+
+For stateless requests, disable the cookie store:
+
+```python
+import httpr
+
+client = httpr.Client(cookie_store=False)
+
+# Cookie is set but not persisted
+client.get("https://httpbin.org/cookies/set?session=abc123")
+
+# Cookie not sent in subsequent request
+response = client.get("https://httpbin.org/cookies")
+print(response.json())  # {"cookies": {}}
+```
+
+## Sending Cookies
+
+### Initial Cookies
+
+Set cookies when creating the client:
+
+```python
+import httpr
+
+client = httpr.Client(
+    cookies={
+        "session": "abc123",
+        "user_id": "456"
+    }
+)
+
+response = client.get("https://httpbin.org/cookies")
+print(response.json())  # {"cookies": {"session": "abc123", "user_id": "456"}}
+```
+
+### Per-Request Cookies
+
+Send cookies with specific requests:
+
+```python
+import httpr
+
+client = httpr.Client()
+
+response = client.get(
+    "https://httpbin.org/cookies",
+    cookies={"temporary": "cookie-value"}
+)
+print(response.json())  # {"cookies": {"temporary": "cookie-value"}}
+```
+
+Per-request cookies are merged with client-level cookies:
+
+```python
+import httpr
+
+client = httpr.Client(cookies={"persistent": "value1"})
+
+response = client.get(
+    "https://httpbin.org/cookies",
+    cookies={"temporary": "value2"}
+)
+# Both cookies sent
+print(response.json())  # {"cookies": {"persistent": "value1", "temporary": "value2"}}
+```
+
+## Reading Cookies
+
+### From Response
+
+Access cookies set by the server:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/cookies/set?name=value")
+print(response.cookies)  # {"name": "value"}
+```
+
+### From Client
+
+Get the current cookies on a client:
+
+```python
+import httpr
+
+client = httpr.Client(cookies={"initial": "cookie"})
+print(client.cookies)  # {"initial": "cookie"}
+
+# After server sets more cookies
+client.get("https://httpbin.org/cookies/set?new=cookie")
+# Note: client.cookies may not reflect all cookies from cookie_store
+```
+
+## Updating Cookies
+
+### Set Cookies
+
+Update client cookies after creation:
+
+```python
+import httpr
+
+client = httpr.Client()
+
+# Set new cookies
+client.cookies = {"session": "new-session-id"}
+
+# Read current cookies
+print(client.cookies)  # {"session": "new-session-id"}
+```
+
+### Clear Cookies
+
+Clear all client cookies:
+
+```python
+import httpr
+
+client = httpr.Client(cookies={"old": "cookie"})
+
+# Clear cookies
+client.cookies = {}
+```
+
+## Cookie Header Format
+
+Cookies are sent as a single `Cookie` header:
+
+```python
+import httpr
+
+response = httpr.get(
+    "https://httpbin.org/headers",
+    cookies={"name1": "value1", "name2": "value2"}
+)
+
+# Check the Cookie header that was sent
+headers = response.json()["headers"]
+print(headers["Cookie"])  # "name1=value1; name2=value2"
+```
+
+Note
+
+The `client.headers` getter excludes the `Cookie` header. Use `client.cookies` to access cookies separately.
+
+## Use Cases
+
+### Session Management
+
+Maintain authenticated sessions:
+
+```python
+import httpr
+
+class ApiSession:
+    """Manage API session with cookies."""
+
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.client = httpr.Client(cookie_store=True)
+
+    def login(self, username: str, password: str) -> bool:
+        """Login and store session cookie."""
+        response = self.client.post(
+            f"{self.base_url}/login",
+            data={"username": username, "password": password}
+        )
+        return response.status_code == 200
+
+    def get_profile(self) -> dict:
+        """Get user profile (requires login)."""
+        response = self.client.get(f"{self.base_url}/profile")
+        return response.json()
+
+    def logout(self):
+        """Logout and clear session."""
+        self.client.post(f"{self.base_url}/logout")
+        self.client.cookies = {}
+
+    def close(self):
+        self.client.close()
+
+# Usage
+session = ApiSession("https://api.example.com")
+session.login("user", "password")
+profile = session.get_profile()
+session.logout()
+session.close()
+```
+
+### Testing with Specific Cookies
+
+```python
+import httpr
+
+def test_authenticated_endpoint():
+    """Test endpoint with mock session cookie."""
+    client = httpr.Client(
+        cookies={"session": "test-session-token"},
+        cookie_store=False  # Don't persist new cookies
+    )
+
+    response = client.get("https://api.example.com/protected")
+    assert response.status_code == 200
+```
+
+### Multiple Sessions
+
+Handle multiple user sessions:
+
+```python
+import httpr
+
+class MultiUserClient:
+    """Manage multiple user sessions."""
+
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.sessions: dict[str, httpr.Client] = {}
+
+    def get_session(self, user_id: str) -> httpr.Client:
+        """Get or create session for user."""
+        if user_id not in self.sessions:
+            self.sessions[user_id] = httpr.Client(cookie_store=True)
+        return self.sessions[user_id]
+
+    def login(self, user_id: str, credentials: dict) -> bool:
+        """Login as specific user."""
+        client = self.get_session(user_id)
+        response = client.post(f"{self.base_url}/login", data=credentials)
+        return response.status_code == 200
+
+    def request(self, user_id: str, method: str, path: str, **kwargs):
+        """Make request as specific user."""
+        client = self.get_session(user_id)
+        return client.request(method, f"{self.base_url}{path}", **kwargs)
+
+    def close(self):
+        """Close all sessions."""
+        for client in self.sessions.values():
+            client.close()
+```
+
+### Cookie Debugging
+
+Inspect cookies for debugging:
+
+```python
+import httpr
+
+def debug_cookies(url: str):
+    """Debug cookie flow for a URL."""
+    client = httpr.Client(cookie_store=True)
+
+    print(f"Initial cookies: {client.cookies}")
+
+    response = client.get(url)
+
+    print(f"Response cookies: {response.cookies}")
+    print(f"Client cookies after: {client.cookies}")
+
+    return response
+
+debug_cookies("https://httpbin.org/cookies/set?debug=true")
+```
+
+## Cookie Behavior Details
+
+### Cookie Store vs Manual Cookies
+
+| Feature                | `cookie_store=True` | `cookie_store=False` |
+| ---------------------- | ------------------- | -------------------- |
+| Store response cookies | Yes                 | No                   |
+| Send stored cookies    | Yes                 | No                   |
+| Use `cookies` param    | Yes                 | Yes                  |
+| Session persistence    | Yes                 | No                   |
+
+### Header Exclusion
+
+The `client.headers` property excludes the `Cookie` header:
+
+```python
+import httpr
+
+client = httpr.Client(
+    headers={"X-Custom": "header"},
+    cookies={"session": "abc"}
+)
+
+print(client.headers)   # {"x-custom": "header"} - no Cookie header
+print(client.cookies)   # {"session": "abc"}
+```
+
+This separation allows independent management of headers and cookies.
+
+## Async Client
+
+Cookie handling works identically with `AsyncClient`:
+
+```python
+import asyncio
+import httpr
+
+async def main():
+    async with httpr.AsyncClient(cookie_store=True) as client:
+        # Set cookie
+        await client.get("https://httpbin.org/cookies/set?async=cookie")
+
+        # Cookie persists
+        response = await client.get("https://httpbin.org/cookies")
+        print(response.json())  # {"cookies": {"async": "cookie"}}
+
+asyncio.run(main())
+```
+# API Reference
+
+# API Reference
+
+Complete API documentation for httpr.
+
+## Overview
+
+httpr provides a simple, intuitive API for making HTTP requests:
+
+| Component                                                                     | Description                                     |
+| ----------------------------------------------------------------------------- | ----------------------------------------------- |
+| [`Client`](https://thomasht86.github.io/httpr/api/client/index.md)            | Synchronous HTTP client with connection pooling |
+| [`AsyncClient`](https://thomasht86.github.io/httpr/api/async-client/index.md) | Asynchronous HTTP client for asyncio            |
+| [`Response`](https://thomasht86.github.io/httpr/api/response/index.md)        | HTTP response with body, headers, and metadata  |
+| [Module Functions](https://thomasht86.github.io/httpr/api/functions/index.md) | Convenience functions for one-off requests      |
+
+## Quick Reference
+
+### Client Configuration
+
+```python
+import httpr
+
+client = httpr.Client(
+    # Authentication
+    auth=("username", "password"),    # Basic auth
+    auth_bearer="token",              # Bearer token
+
+    # Request defaults
+    headers={"User-Agent": "my-app"},
+    cookies={"session": "abc"},
+    params={"api_version": "v2"},
+    timeout=30,
+
+    # Cookie handling
+    cookie_store=True,                # Persistent cookies
+    referer=True,                     # Auto Referer header
+
+    # Network
+    proxy="http://proxy:8080",
+    follow_redirects=True,
+    max_redirects=20,
+
+    # SSL/TLS
+    verify=True,
+    ca_cert_file="/path/to/ca.pem",
+    client_pem="/path/to/client.pem", # mTLS
+
+    # Protocol
+    https_only=False,
+    http2_only=False,
+)
+```
+
+### Request Parameters
+
+```python
+response = client.get(
+    "https://api.example.com/data",
+    params={"key": "value"},          # Query params
+    headers={"Accept": "application/json"},
+    cookies={"session": "xyz"},
+    auth=("user", "pass"),            # Override client auth
+    auth_bearer="token",              # Or bearer token
+    timeout=60,                       # Override timeout
+)
+
+response = client.post(
+    "https://api.example.com/data",
+    json={"key": "value"},            # JSON body
+    # OR
+    data={"field": "value"},          # Form body
+    # OR
+    content=b"raw bytes",             # Binary body
+    # OR
+    files={"doc": "/path/to/file"},   # Multipart upload
+)
+```
+
+### Response Object
+
+```python
+response = client.get("https://api.example.com")
+
+# Status
+response.status_code      # int: 200, 404, etc.
+
+# Body
+response.text             # str: decoded text
+response.content          # bytes: raw bytes
+response.json()           # Any: parsed JSON
+
+# Headers & Cookies
+response.headers          # dict-like, case-insensitive
+response.cookies          # dict[str, str]
+
+# Metadata
+response.url              # str: final URL (after redirects)
+response.encoding         # str: detected encoding
+
+# HTML conversion
+response.text_markdown    # HTML to Markdown
+response.text_plain       # HTML to plain text
+```
+
+## Module Contents
+
+httpr - Blazing fast HTTP client for Python, built in Rust.
+
+httpr is a high-performance HTTP client that can be used as a drop-in replacement for `httpx` and `requests` in most cases.
+
+Example
+
+Simple GET request:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/get")
+print(response.json())
+```
+
+Using a client for connection pooling:
+
+```python
+import httpr
+
+with httpr.Client() as client:
+    response = client.get("https://httpbin.org/get")
+    print(response.status_code)
+```
+
+# Client
+
+The synchronous HTTP client with connection pooling.
+
+## Client
+
+```python
+Client(auth: tuple[str, str | None] | None = None, auth_bearer: str | None = None, params: dict[str, str] | None = None, headers: dict[str, str] | None = None, cookies: dict[str, str] | None = None, cookie_store: bool | None = True, referer: bool | None = True, proxy: str | None = None, timeout: float | None = 30, follow_redirects: bool | None = True, max_redirects: int | None = 20, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, client_pem_data: bytes | None = None, https_only: bool | None = False, http2_only: bool | None = False)
+```
+
+A synchronous HTTP client with connection pooling.
+
+The Client class provides a high-level interface for making HTTP requests. It supports connection pooling, automatic cookie handling, and various authentication methods.
+
+Example
+
+Basic usage:
+
+```python
+import httpr
+
+# Using context manager (recommended)
+with httpr.Client() as client:
+    response = client.get("https://httpbin.org/get")
+    print(response.json())
+
+# Or manually
+client = httpr.Client()
+response = client.get("https://httpbin.org/get")
+client.close()
+```
+
+With configuration:
+
+```python
+import httpr
+
+client = httpr.Client(
+    auth_bearer="your-api-token",
+    headers={"User-Agent": "my-app/1.0"},
+    timeout=30,
+)
+```
+
+Attributes:
+
+| Name      | Type              | Description                                                     |
+| --------- | ----------------- | --------------------------------------------------------------- |
+| `headers` | `dict[str, str]`  | Default headers sent with all requests. Excludes Cookie header. |
+| `cookies` | `dict[str, str]`  | Default cookies sent with all requests.                         |
+| `auth`    | \`tuple\[str, str | None\]                                                          |
+| `params`  | \`dict[str, str]  | None\`                                                          |
+| `timeout` | \`float           | None\`                                                          |
+| `proxy`   | \`str             | None\`                                                          |
+
+````text
+    Initialize an HTTP client.
+
+    Args:
+        auth: Basic auth credentials as (username, password). Password can be None.
+        auth_bearer: Bearer token for Authorization header.
+        params: Default query parameters to include in all requests.
+        headers: Default headers to send with all requests.
+        cookies: Default cookies to send with all requests.
+        cookie_store: Enable persistent cookie store. Cookies from responses will be
+            preserved and included in subsequent requests. Default is True.
+        referer: Automatically set Referer header. Default is True.
+        proxy: Proxy URL (e.g., "http://proxy:8080" or "socks5://127.0.0.1:1080").
+            Falls back to HTTPR_PROXY environment variable.
+        timeout: Request timeout in seconds. Default is 30.
+        follow_redirects: Follow HTTP redirects. Default is True.
+        max_redirects: Maximum redirects to follow. Default is 20.
+        verify: Verify SSL certificates. Default is True.
+        ca_cert_file: Path to CA certificate bundle (PEM format).
+        client_pem: Path to client certificate for mTLS (PEM format).
+        client_pem_data: Client certificate and key as bytes for mTLS (PEM format).
+            Use this instead of client_pem when you have the certificate in memory.
+        https_only: Only allow HTTPS requests. Default is False.
+        http2_only: Use HTTP/2 only (False uses HTTP/1.1). Default is False.
+
+    Example:
+        ```python
+        import httpr
+
+        # Simple client
+        client = httpr.Client()
+
+        # Client with authentication
+        client = httpr.Client(
+            auth=("username", "password"),
+            timeout=60,
+        )
+
+        # Client with bearer token
+        client = httpr.Client(
+            auth_bearer="your-api-token",
+            headers={"Accept": "application/json"},
+        )
+
+        # Client with proxy
+        client = httpr.Client(proxy="http://proxy.example.com:8080")
+
+        # Client with mTLS using file path
+        client = httpr.Client(
+            client_pem="/path/to/client.pem",
+            ca_cert_file="/path/to/ca.pem",
+        )
+
+        # Client with mTLS using direct certificate data
+        cert_data = b"-----BEGIN CERTIFICATE-----
+````
+
+... -----END CERTIFICATE-----" client = httpr.Client( client_pem_data=cert_data, ca_cert_file="/path/to/ca.pem", )
+
+````
+
+### request
+
+```python
+request(method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> Response
+````
+
+Make an HTTP request.
+
+Parameters:
+
+| Name       | Type                    | Description                                                 | Default    |
+| ---------- | ----------------------- | ----------------------------------------------------------- | ---------- |
+| `method`   | `HttpMethod`            | HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS). | *required* |
+| `url`      | `str`                   | Request URL.                                                | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters (see below).                             | `{}`       |
+
+Other Parameters:
+
+| Name          | Type                                  | Description                                                          |
+| ------------- | ------------------------------------- | -------------------------------------------------------------------- |
+| `params`      | `Optional[dict[str, str]]`            | Query parameters to append to URL.                                   |
+| `headers`     | `Optional[dict[str, str]]`            | Request headers (merged with client defaults).                       |
+| `cookies`     | `Optional[dict[str, str]]`            | Request cookies (merged with client defaults).                       |
+| `auth`        | `Optional[tuple[str, Optional[str]]]` | Basic auth credentials (overrides client default).                   |
+| `auth_bearer` | `Optional[str]`                       | Bearer token (overrides client default).                             |
+| `timeout`     | `Optional[float]`                     | Request timeout in seconds (overrides client default).               |
+| `content`     | `Optional[bytes]`                     | Raw bytes for request body.                                          |
+| `data`        | `Optional[dict[str, Any]]`            | Form data for request body (application/x-www-form-urlencoded).      |
+| `json`        | `Optional[Any]`                       | JSON data for request body (application/json).                       |
+| `files`       | `Optional[dict[str, str]]`            | Files for multipart upload (dict mapping field names to file paths). |
+
+Returns:
+
+| Type       | Description                                     |
+| ---------- | ----------------------------------------------- |
+| `Response` | Response object with status, headers, and body. |
+
+Raises:
+
+| Type         | Description                                         |
+| ------------ | --------------------------------------------------- |
+| `ValueError` | If method is not a valid HTTP method.               |
+| `Exception`  | If request fails (timeout, connection error, etc.). |
+
+Example
+
+```python
+response = client.request("GET", "https://httpbin.org/get")
+response = client.request("POST", "https://httpbin.org/post", json={"key": "value"})
+```
+
+Note
+
+Only one of `content`, `data`, `json`, or `files` can be specified per request.
+
+### get
+
+```python
+get(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make a GET request.
+
+Parameters:
+
+| Name       | Type                    | Description                                                                | Default    |
+| ---------- | ----------------------- | -------------------------------------------------------------------------- | ---------- |
+| `url`      | `str`                   | Request URL.                                                               | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters (params, headers, cookies, auth, auth_bearer, timeout). | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+response = client.get(
+    "https://httpbin.org/get",
+    params={"key": "value"},
+    headers={"Accept": "application/json"},
+)
+print(response.json())
+```
+
+### head
+
+```python
+head(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make a HEAD request.
+
+Returns only headers, no response body.
+
+Parameters:
+
+| Name       | Type                    | Description                                                                | Default    |
+| ---------- | ----------------------- | -------------------------------------------------------------------------- | ---------- |
+| `url`      | `str`                   | Request URL.                                                               | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters (params, headers, cookies, auth, auth_bearer, timeout). | `{}`       |
+
+Returns:
+
+| Type       | Description                           |
+| ---------- | ------------------------------------- |
+| `Response` | Response object (body will be empty). |
+
+Example
+
+```python
+response = client.head("https://httpbin.org/get")
+print(response.headers["content-length"])
+```
+
+### options
+
+```python
+options(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make an OPTIONS request.
+
+Parameters:
+
+| Name       | Type                    | Description                                                                | Default    |
+| ---------- | ----------------------- | -------------------------------------------------------------------------- | ---------- |
+| `url`      | `str`                   | Request URL.                                                               | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters (params, headers, cookies, auth, auth_bearer, timeout). | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+response = client.options("https://httpbin.org/get")
+print(response.headers.get("allow"))
+```
+
+### delete
+
+```python
+delete(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make a DELETE request.
+
+Parameters:
+
+| Name       | Type                    | Description                                                                | Default    |
+| ---------- | ----------------------- | -------------------------------------------------------------------------- | ---------- |
+| `url`      | `str`                   | Request URL.                                                               | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters (params, headers, cookies, auth, auth_bearer, timeout). | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+response = client.delete("https://httpbin.org/delete")
+print(response.status_code)
+```
+
+### post
+
+```python
+post(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make a POST request.
+
+Parameters:
+
+| Name       | Type                    | Description                                | Default    |
+| ---------- | ----------------------- | ------------------------------------------ | ---------- |
+| `url`      | `str`                   | Request URL.                               | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters including body options. | `{}`       |
+
+Other Parameters:
+
+| Name          | Type                                  | Description             |
+| ------------- | ------------------------------------- | ----------------------- |
+| `params`      | `Optional[dict[str, str]]`            | Query parameters.       |
+| `headers`     | `Optional[dict[str, str]]`            | Request headers.        |
+| `cookies`     | `Optional[dict[str, str]]`            | Request cookies.        |
+| `auth`        | `Optional[tuple[str, Optional[str]]]` | Basic auth credentials. |
+| `auth_bearer` | `Optional[str]`                       | Bearer token.           |
+| `timeout`     | `Optional[float]`                     | Request timeout.        |
+| `content`     | `Optional[bytes]`                     | Raw bytes body.         |
+| `data`        | `Optional[dict[str, Any]]`            | Form-encoded body.      |
+| `json`        | `Optional[Any]`                       | JSON body.              |
+| `files`       | `Optional[dict[str, str]]`            | Multipart file uploads. |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+# JSON body
+response = client.post(
+    "https://httpbin.org/post",
+    json={"name": "httpr", "fast": True},
+)
+
+# Form data
+response = client.post(
+    "https://httpbin.org/post",
+    data={"username": "user", "password": "pass"},
+)
+
+# File upload
+response = client.post(
+    "https://httpbin.org/post",
+    files={"document": "/path/to/file.pdf"},
+)
+```
+
+### put
+
+```python
+put(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make a PUT request.
+
+Parameters:
+
+| Name       | Type                    | Description                                | Default    |
+| ---------- | ----------------------- | ------------------------------------------ | ---------- |
+| `url`      | `str`                   | Request URL.                               | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters including body options. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+response = client.put(
+    "https://httpbin.org/put",
+    json={"key": "updated_value"},
+)
+```
+
+### patch
+
+```python
+patch(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make a PATCH request.
+
+Parameters:
+
+| Name       | Type                    | Description                                | Default    |
+| ---------- | ----------------------- | ------------------------------------------ | ---------- |
+| `url`      | `str`                   | Request URL.                               | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters including body options. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+response = client.patch(
+    "https://httpbin.org/patch",
+    json={"field": "new_value"},
+)
+```
+
+### stream
+
+```python
+stream(method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> Generator[StreamingResponse, None, None]
+```
+
+Make a streaming HTTP request.
+
+Returns a context manager that yields a StreamingResponse for iterating over the response body in chunks without buffering the entire response in memory.
+
+Parameters:
+
+| Name       | Type                    | Description                                                 | Default    |
+| ---------- | ----------------------- | ----------------------------------------------------------- | ---------- |
+| `method`   | `HttpMethod`            | HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS). | *required* |
+| `url`      | `str`                   | Request URL.                                                | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters (same as request()).                     | `{}`       |
+
+Yields:
+
+| Name                | Type                | Description                                               |
+| ------------------- | ------------------- | --------------------------------------------------------- |
+| `StreamingResponse` | `StreamingResponse` | A response object that can be iterated to receive chunks. |
+
+Example
+
+Basic streaming:
+
+```python
+with client.stream("GET", "https://example.com/large-file") as response:
+    for chunk in response.iter_bytes():
+        process(chunk)
+```
+
+Streaming text:
+
+```python
+with client.stream("GET", "https://example.com/text") as response:
+    for text in response.iter_text():
+        print(text, end="")
+```
+
+Streaming lines (e.g., Server-Sent Events):
+
+```python
+with client.stream("GET", "https://example.com/events") as response:
+    for line in response.iter_lines():
+        print(line.strip())
+```
+
+Conditional reading:
+
+```python
+with client.stream("GET", url) as response:
+    if response.status_code == 200:
+        content = response.read()  # Read all remaining content
+    else:
+        pass  # Don't read the body
+```
+
+Note
+
+The response body is only read when you iterate over it or call read(). Always use this as a context manager to ensure proper cleanup.
+
+### close
+
+```python
+close() -> None
+```
+
+Close the client and release resources.
+
+Example
+
+```python
+client = httpr.Client()
+try:
+    response = client.get("https://example.com")
+finally:
+    client.close()
+```
+
+# AsyncClient
+
+The asynchronous HTTP client for use with asyncio.
+
+## AsyncClient
+
+```python
+AsyncClient(*args, **kwargs)
+```
+
+An asynchronous HTTP client for use with asyncio.
+
+AsyncClient wraps the synchronous Client using asyncio.run_in_executor(), providing an async interface while leveraging the Rust implementation's performance.
+
+Example
+
+Basic usage:
+
+```python
+import asyncio
+import httpr
+
+async def main():
+    async with httpr.AsyncClient() as client:
+        response = await client.get("https://httpbin.org/get")
+        print(response.json())
+
+asyncio.run(main())
+```
+
+Concurrent requests:
+
+```python
+import asyncio
+import httpr
+
+async def main():
+    async with httpr.AsyncClient() as client:
+        tasks = [
+            client.get("https://httpbin.org/get"),
+            client.get("https://httpbin.org/ip"),
+        ]
+        responses = await asyncio.gather(*tasks)
+        for response in responses:
+            print(response.json())
+
+asyncio.run(main())
+```
+
+Note
+
+AsyncClient runs synchronous Rust code in a thread executor. It provides concurrency benefits for I/O-bound tasks but is not native async I/O.
+
+Initialize an async HTTP client.
+
+Accepts the same parameters as Client.
+
+### request
+
+```python
+request(method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make an async HTTP request.
+
+Parameters:
+
+| Name       | Type                    | Description         | Default    |
+| ---------- | ----------------------- | ------------------- | ---------- |
+| `method`   | `HttpMethod`            | HTTP method.        | *required* |
+| `url`      | `str`                   | Request URL.        | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+response = await client.request("GET", "https://httpbin.org/get")
+```
+
+### get
+
+```python
+get(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make an async GET request.
+
+Parameters:
+
+| Name       | Type                    | Description         | Default    |
+| ---------- | ----------------------- | ------------------- | ---------- |
+| `url`      | `str`                   | Request URL.        | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+response = await client.get("https://httpbin.org/get")
+```
+
+### head
+
+```python
+head(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make an async HEAD request.
+
+Parameters:
+
+| Name       | Type                    | Description         | Default    |
+| ---------- | ----------------------- | ------------------- | ---------- |
+| `url`      | `str`                   | Request URL.        | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+### options
+
+```python
+options(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make an async OPTIONS request.
+
+Parameters:
+
+| Name       | Type                    | Description         | Default    |
+| ---------- | ----------------------- | ------------------- | ---------- |
+| `url`      | `str`                   | Request URL.        | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+### delete
+
+```python
+delete(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make an async DELETE request.
+
+Parameters:
+
+| Name       | Type                    | Description         | Default    |
+| ---------- | ----------------------- | ------------------- | ---------- |
+| `url`      | `str`                   | Request URL.        | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+### post
+
+```python
+post(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make an async POST request.
+
+Parameters:
+
+| Name       | Type                    | Description                                | Default    |
+| ---------- | ----------------------- | ------------------------------------------ | ---------- |
+| `url`      | `str`                   | Request URL.                               | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters including body options. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+response = await client.post(
+    "https://httpbin.org/post",
+    json={"key": "value"},
+)
+```
+
+### put
+
+```python
+put(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make an async PUT request.
+
+Parameters:
+
+| Name       | Type                    | Description                                | Default    |
+| ---------- | ----------------------- | ------------------------------------------ | ---------- |
+| `url`      | `str`                   | Request URL.                               | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters including body options. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+### patch
+
+```python
+patch(url: str, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make an async PATCH request.
+
+Parameters:
+
+| Name       | Type                    | Description                                | Default    |
+| ---------- | ----------------------- | ------------------------------------------ | ---------- |
+| `url`      | `str`                   | Request URL.                               | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters including body options. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+### stream
+
+```python
+stream(method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> AsyncIterator[StreamingResponse]
+```
+
+Make an async streaming HTTP request.
+
+Returns an async context manager that yields a StreamingResponse for iterating over the response body in chunks.
+
+Parameters:
+
+| Name       | Type                    | Description         | Default    |
+| ---------- | ----------------------- | ------------------- | ---------- |
+| `method`   | `HttpMethod`            | HTTP method.        | *required* |
+| `url`      | `str`                   | Request URL.        | *required* |
+| `**kwargs` | `Unpack[RequestParams]` | Request parameters. | `{}`       |
+
+Yields:
+
+| Name                | Type                               | Description                             |
+| ------------------- | ---------------------------------- | --------------------------------------- |
+| `StreamingResponse` | `AsyncIterator[StreamingResponse]` | A response object that can be iterated. |
+
+Example
+
+```python
+async with client.stream("GET", "https://example.com/large-file") as response:
+    for chunk in response.iter_bytes():
+        process(chunk)
+```
+
+Note
+
+Iteration over the response is synchronous (uses iter_bytes, iter_text, iter_lines). The async part is initiating the request and entering the context manager.
+
+### aclose
+
+```python
+aclose()
+```
+
+Close the async client.
+
+Example
+
+```python
+client = httpr.AsyncClient()
+try:
+    response = await client.get("https://example.com")
+finally:
+    await client.aclose()
+```
+
+# Response
+
+The HTTP response object returned by all request methods.
+
+## Overview
+
+The `Response` class provides access to all aspects of an HTTP response:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/get")
+
+# Status
+print(response.status_code)  # 200
+
+# Body
+print(response.text)         # Decoded text
+print(response.content)      # Raw bytes
+data = response.json()       # Parsed JSON
+
+# Headers (case-insensitive)
+print(response.headers["content-type"])
+print(response.headers["Content-Type"])  # Same result
+
+# Cookies
+print(response.cookies)      # {"session": "value"}
+
+# Metadata
+print(response.url)          # Final URL after redirects
+print(response.encoding)     # Detected encoding
+```
+
+## Properties
+
+### status_code
+
+```python
+@property
+def status_code(self) -> int
+```
+
+HTTP status code (e.g., 200, 404, 500).
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/status/201")
+print(response.status_code)  # 201
+```
+
+______________________________________________________________________
+
+### text
+
+```python
+@property
+def text(self) -> str
+```
+
+Response body decoded as text.
+
+Encoding is automatically detected from:
+
+1. `Content-Type` header charset
+1. HTML meta charset tag
+1. Falls back to UTF-8
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/html")
+print(response.text)  # HTML content
+```
+
+______________________________________________________________________
+
+### content
+
+```python
+@property
+def content(self) -> bytes
+```
+
+Response body as raw bytes.
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/bytes/100")
+print(len(response.content))  # 100
+
+# Save binary file
+response = httpr.get("https://httpbin.org/image/png")
+with open("image.png", "wb") as f:
+    f.write(response.content)
+```
+
+______________________________________________________________________
+
+### headers
+
+```python
+@property
+def headers(self) -> CaseInsensitiveHeaderMap
+```
+
+Response headers as a case-insensitive dict-like object.
+
+Supports:
+
+- `response.headers["Content-Type"]` - get by key
+- `response.headers.get("content-type", "default")` - get with default
+- `"content-type" in response.headers` - check existence
+- `response.headers.keys()` - all header names
+- `response.headers.values()` - all header values
+- `response.headers.items()` - key-value pairs
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/get")
+
+# Case-insensitive access
+print(response.headers["content-type"])
+print(response.headers["Content-Type"])  # Same
+
+# Iteration
+for name, value in response.headers.items():
+    print(f"{name}: {value}")
+```
+
+______________________________________________________________________
+
+### cookies
+
+```python
+@property
+def cookies(self) -> dict[str, str]
+```
+
+Cookies set by the server via `Set-Cookie` headers.
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/cookies/set?name=value")
+print(response.cookies)  # {"name": "value"}
+```
+
+______________________________________________________________________
+
+### url
+
+```python
+@property
+def url(self) -> str
+```
+
+Final URL after following any redirects.
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/redirect/3")
+print(response.url)  # https://httpbin.org/get
+```
+
+______________________________________________________________________
+
+### encoding
+
+```python
+@property
+def encoding(self) -> str
+```
+
+Character encoding detected from response headers or content.
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/encoding/utf8")
+print(response.encoding)  # "utf-8"
+```
+
+______________________________________________________________________
+
+### text_markdown
+
+```python
+@property
+def text_markdown(self) -> str
+```
+
+HTML response body converted to Markdown format.
+
+Uses Rust's `html2text` crate for conversion.
+
+**Example:**
+
+```python
+response = httpr.get("https://example.com")
+print(response.text_markdown)
+# # Example Domain
+#
+# This domain is for use in illustrative examples...
+```
+
+______________________________________________________________________
+
+### text_plain
+
+```python
+@property
+def text_plain(self) -> str
+```
+
+HTML response body converted to plain text (no formatting).
+
+**Example:**
+
+```python
+response = httpr.get("https://example.com")
+print(response.text_plain)
+```
+
+______________________________________________________________________
+
+### text_rich
+
+```python
+@property
+def text_rich(self) -> str
+```
+
+HTML response body converted to rich text format.
+
+______________________________________________________________________
+
+## Methods
+
+### json
+
+```python
+def json(self) -> Any
+```
+
+Parse response body as JSON.
+
+**Returns:** Parsed JSON (dict, list, str, int, float, bool, or None)
+
+**Raises:** Exception if body is not valid JSON
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/json")
+data = response.json()
+print(data["slideshow"]["title"])
+```
+
+Note
+
+`json()` is a method, not a property. Call it with parentheses.
+
+______________________________________________________________________
+
+## StreamingResponse
+
+For streaming large responses without buffering the entire response in memory, use the `Client.stream()` method which returns a `StreamingResponse`.
+
+```python
+import httpr
+
+with httpr.Client() as client:
+    with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
+        for chunk in response.iter_bytes():
+            process(chunk)
+```
+
+### Properties
+
+#### status_code
+
+```python
+@property
+def status_code(self) -> int
+```
+
+HTTP status code (e.g., 200, 404, 500).
+
+**Example:**
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    print(response.status_code)  # 200
+```
+
+______________________________________________________________________
+
+#### headers
+
+```python
+@property
+def headers(self) -> CaseInsensitiveHeaderMap
+```
+
+Response headers as a case-insensitive dict-like object.
+
+**Example:**
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    content_type = response.headers["content-type"]
+```
+
+______________________________________________________________________
+
+#### cookies
+
+```python
+@property
+def cookies(self) -> dict[str, str]
+```
+
+Cookies set by the server via `Set-Cookie` headers.
+
+______________________________________________________________________
+
+#### url
+
+```python
+@property
+def url(self) -> str
+```
+
+Final URL after following any redirects.
+
+______________________________________________________________________
+
+#### is_closed
+
+```python
+@property
+def is_closed(self) -> bool
+```
+
+Whether the stream has been closed.
+
+**Example:**
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    print(response.is_closed)  # False
+print(response.is_closed)  # True (after context manager exits)
+```
+
+______________________________________________________________________
+
+#### is_consumed
+
+```python
+@property
+def is_consumed(self) -> bool
+```
+
+Whether the stream has been fully consumed.
+
+**Example:**
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    print(response.is_consumed)  # False
+    _ = list(response)  # Consume the stream
+    print(response.is_consumed)  # True
+```
+
+______________________________________________________________________
+
+### Methods
+
+#### iter_bytes
+
+```python
+def iter_bytes(self) -> Iterator[bytes]
+```
+
+Iterate over the response body as bytes chunks.
+
+**Returns:** Iterator yielding bytes chunks
+
+**Example:**
+
+```python
+with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
+    for chunk in response.iter_bytes():
+        print(f"Received {len(chunk)} bytes")
+```
+
+______________________________________________________________________
+
+#### iter_text
+
+```python
+def iter_text(self) -> TextIterator
+```
+
+Iterate over the response body as text chunks, decoded using the response encoding.
+
+**Returns:** TextIterator yielding string chunks
+
+**Example:**
+
+```python
+with client.stream("GET", "https://httpbin.org/html") as response:
+    for text in response.iter_text():
+        print(text, end="")
+```
+
+______________________________________________________________________
+
+#### iter_lines
+
+```python
+def iter_lines(self) -> LineIterator
+```
+
+Iterate over the response body line by line.
+
+**Returns:** LineIterator yielding string lines
+
+Useful for Server-Sent Events (SSE) and line-based protocols.
+
+**Example:**
+
+```python
+with client.stream("GET", "https://httpbin.org/stream/10") as response:
+    for line in response.iter_lines():
+        print(line.strip())
+```
+
+______________________________________________________________________
+
+#### read
+
+```python
+def read(self) -> bytes
+```
+
+Read the entire remaining response body into memory.
+
+**Returns:** Response body as bytes
+
+**Example:**
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    if response.status_code == 200:
+        content = response.read()
+```
+
+______________________________________________________________________
+
+#### close
+
+```python
+def close(self) -> None
+```
+
+Close the stream and release resources.
+
+**Note:** When using the context manager, `close()` is called automatically.
+
+**Example:**
+
+```python
+with client.stream("GET", "https://httpbin.org/get") as response:
+    # Process headers
+    if response.status_code != 200:
+        response.close()  # Close early without reading body
+        return
+    # Otherwise read body
+    content = response.read()
+```
+
+______________________________________________________________________
+
+### Direct Iteration
+
+`StreamingResponse` supports direct iteration, which is equivalent to calling `iter_bytes()`:
+
+```python
+with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
+    for chunk in response:  # Same as response.iter_bytes()
+        process(chunk)
+```
+
+______________________________________________________________________
+
+### Important Notes
+
+- **Always use as context manager**: Ensures proper cleanup of resources
+- **Headers available immediately**: Status code, headers, cookies, and URL are accessible before reading the body
+- **Body only read on demand**: The response body is only fetched when you iterate or call `read()`
+- **Cannot re-read**: Once consumed, the stream cannot be read again
+- **Supported for all methods**: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
+
+______________________________________________________________________
+
+### Exception Handling
+
+The streaming response raises specific exceptions:
+
+- `StreamClosed`: Raised when attempting to read from a closed stream
+- `StreamConsumed`: Raised when attempting to re-read a consumed stream
+
+**Example:**
+
+```python
+import httpr
+
+with client.stream("GET", "https://httpbin.org/get") as response:
+    content = response.read()
+
+    # This will raise StreamConsumed
+    try:
+        more = response.read()
+    except httpr.StreamConsumed:
+        print("Stream already consumed")
+```
+
+# Module Functions
+
+Convenience functions for making one-off HTTP requests.
+
+These functions create a temporary `Client` internally for each request. For multiple requests, use a [`Client`](https://thomasht86.github.io/httpr/api/client/index.md) instance for better performance.
+
+## Functions
+
+### request
+
+```python
+request(method: HttpMethod, url: str, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, client_pem_data: bytes | None = None, **kwargs: Unpack[RequestParams]) -> Response
+```
+
+Make an HTTP request using a temporary client.
+
+This is a convenience function for one-off requests. For multiple requests, use a Client instance for better performance (connection pooling).
+
+Parameters:
+
+| Name              | Type                    | Description                                                 | Default                                       |
+| ----------------- | ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |
+| `method`          | `HttpMethod`            | HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS). | *required*                                    |
+| `url`             | `str`                   | Request URL.                                                | *required*                                    |
+| `verify`          | \`bool                  | None\`                                                      | Verify SSL certificates. Default is True.     |
+| `ca_cert_file`    | \`str                   | None\`                                                      | Path to CA certificate bundle.                |
+| `client_pem`      | \`str                   | None\`                                                      | Path to client certificate for mTLS.          |
+| `client_pem_data` | \`bytes                 | None\`                                                      | Client certificate and key as bytes for mTLS. |
+| `**kwargs`        | `Unpack[RequestParams]` | Additional request parameters.                              | `{}`                                          |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+import httpr
+
+response = httpr.request("GET", "https://httpbin.org/get")
+response = httpr.request("POST", "https://httpbin.org/post", json={"key": "value"})
+```
+
+### get
+
+```python
+get(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response
+```
+
+Make a GET request using a temporary client.
+
+Parameters:
+
+| Name       | Type                          | Description                                                         | Default    |
+| ---------- | ----------------------------- | ------------------------------------------------------------------- | ---------- |
+| `url`      | `str`                         | Request URL.                                                        | *required* |
+| `**kwargs` | `Unpack[ClientRequestParams]` | Request parameters (params, headers, cookies, auth, timeout, etc.). | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/get", params={"key": "value"})
+print(response.json())
+```
+
+### post
+
+```python
+post(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response
+```
+
+Make a POST request using a temporary client.
+
+Parameters:
+
+| Name       | Type                          | Description                                            | Default    |
+| ---------- | ----------------------------- | ------------------------------------------------------ | ---------- |
+| `url`      | `str`                         | Request URL.                                           | *required* |
+| `**kwargs` | `Unpack[ClientRequestParams]` | Request parameters (json, data, content, files, etc.). | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+import httpr
+
+# JSON body
+response = httpr.post("https://httpbin.org/post", json={"key": "value"})
+
+# Form data
+response = httpr.post("https://httpbin.org/post", data={"field": "value"})
+```
+
+### put
+
+```python
+put(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response
+```
+
+Make a PUT request using a temporary client.
+
+Parameters:
+
+| Name       | Type                          | Description         | Default    |
+| ---------- | ----------------------------- | ------------------- | ---------- |
+| `url`      | `str`                         | Request URL.        | *required* |
+| `**kwargs` | `Unpack[ClientRequestParams]` | Request parameters. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+import httpr
+
+response = httpr.put("https://httpbin.org/put", json={"key": "value"})
+```
+
+### patch
+
+```python
+patch(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response
+```
+
+Make a PATCH request using a temporary client.
+
+Parameters:
+
+| Name       | Type                          | Description         | Default    |
+| ---------- | ----------------------------- | ------------------- | ---------- |
+| `url`      | `str`                         | Request URL.        | *required* |
+| `**kwargs` | `Unpack[ClientRequestParams]` | Request parameters. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+import httpr
+
+response = httpr.patch("https://httpbin.org/patch", json={"field": "new_value"})
+```
+
+### delete
+
+```python
+delete(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response
+```
+
+Make a DELETE request using a temporary client.
+
+Parameters:
+
+| Name       | Type                          | Description         | Default    |
+| ---------- | ----------------------------- | ------------------- | ---------- |
+| `url`      | `str`                         | Request URL.        | *required* |
+| `**kwargs` | `Unpack[ClientRequestParams]` | Request parameters. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+import httpr
+
+response = httpr.delete("https://httpbin.org/delete")
+```
+
+### head
+
+```python
+head(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response
+```
+
+Make a HEAD request using a temporary client.
+
+Parameters:
+
+| Name       | Type                          | Description         | Default    |
+| ---------- | ----------------------------- | ------------------- | ---------- |
+| `url`      | `str`                         | Request URL.        | *required* |
+| `**kwargs` | `Unpack[ClientRequestParams]` | Request parameters. | `{}`       |
+
+Returns:
+
+| Type       | Description                           |
+| ---------- | ------------------------------------- |
+| `Response` | Response object (body will be empty). |
+
+Example
+
+```python
+import httpr
+
+response = httpr.head("https://httpbin.org/get")
+print(response.headers)
+```
+
+### options
+
+```python
+options(url: str, **kwargs: Unpack[ClientRequestParams]) -> Response
+```
+
+Make an OPTIONS request using a temporary client.
+
+Parameters:
+
+| Name       | Type                          | Description         | Default    |
+| ---------- | ----------------------------- | ------------------- | ---------- |
+| `url`      | `str`                         | Request URL.        | *required* |
+| `**kwargs` | `Unpack[ClientRequestParams]` | Request parameters. | `{}`       |
+
+Returns:
+
+| Type       | Description      |
+| ---------- | ---------------- |
+| `Response` | Response object. |
+
+Example
+
+```python
+import httpr
+
+response = httpr.options("https://httpbin.org/get")
+```
+# Blog
+
+# Lorem ipsum dolor sit amet
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a diam lectus. Sed sit amet ipsum mauris. Maecenas congue ligula ac quam viverra nec consectetur ante hendrerit. Donec et mollis dolor. Praesent et diam eget libero egestas mattis sit amet vitae augue. Nam tincidunt est et ultrices eleifend, nunc risus varius orci, in dignissim purus enim quis turpis.
