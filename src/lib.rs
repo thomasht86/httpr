@@ -145,7 +145,7 @@ impl RClient {
         let mut client_builder = reqwest::Client::builder();
 
         // Headers || Cookies
-        if headers.is_some() || cookies.is_some() {
+        let headers_headermap = if headers.is_some() || cookies.is_some() {
             let headers = headers.unwrap_or_else(|| IndexMap::with_hasher(RandomState::default()));
             let mut headers_headermap = headers.to_headermap();
             if let Some(cookies) = cookies {
@@ -156,7 +156,10 @@ impl RClient {
                         .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?,
                 );
             }
-            client_builder = client_builder.default_headers(headers_headermap);
+            client_builder = client_builder.default_headers(headers_headermap.clone());
+            headers_headermap
+        } else {
+            reqwest::header::HeaderMap::new()
         };
 
         // Cookie_store
@@ -231,7 +234,7 @@ impl RClient {
         let client = Arc::new(Mutex::new(
             client_builder.build().map_err(map_reqwest_error)?,
         ));
-        let headers = Arc::new(Mutex::new(reqwest::header::HeaderMap::new()));
+        let headers = Arc::new(Mutex::new(headers_headermap));
 
         Ok(RClient {
             client,
