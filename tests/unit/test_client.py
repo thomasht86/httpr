@@ -76,6 +76,7 @@ def test_client_setters(base_url_ssl, ca_bundle):
     assert response.status_code == 200
     assert client.auth == ("user", "password")
     assert client.headers == {"x-test": "TesT"}  # Headers are lowercased (necessary for HTTP/2)
+    assert client.headers["X-Test"] == "TesT"  # but still accessible case-insensitively
     assert client.cookies == {"ccc": "ddd", "cccc": "dddd"}
     assert client.params == {"x": "aaa", "y": "bbb"}
     assert client.timeout == 20.0
@@ -317,6 +318,29 @@ def test_setter_overwrites_constructor_headers():
     assert client.headers == {"x-new": "new"}
     # Original header should be gone
     assert "x-original" not in client.headers
+    client.close()
+
+
+def test_client_headers_case_insensitive():
+    """Test that client.headers supports case-insensitive access."""
+    client = httpr.Client(headers={"X-Custom": "value", "Content-Type": "application/json"})
+
+    # Case-insensitive access should work
+    assert client.headers["x-custom"] == "value"
+    assert client.headers["X-Custom"] == "value"
+    assert client.headers["X-CUSTOM"] == "value"
+
+    # Contains check should be case-insensitive
+    assert "x-custom" in client.headers
+    assert "X-Custom" in client.headers
+
+    # get() should be case-insensitive
+    assert client.headers.get("X-Custom") == "value"
+    assert client.headers.get("x-custom") == "value"
+
+    # Dict equality should still work (keys are lowercased)
+    assert client.headers == {"x-custom": "value", "content-type": "application/json"}
+
     client.close()
 
 
