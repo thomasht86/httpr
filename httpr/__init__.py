@@ -42,6 +42,32 @@ else:
 
 from .httpr import CaseInsensitiveHeaderMap, RClient, Response, StreamingResponse
 
+
+class CaseInsensitiveDict(dict):
+    """A dict subclass that provides case-insensitive key access."""
+
+    def __getitem__(self, key):
+        return super().__getitem__(key.lower())
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key.lower(), value)
+
+    def __delitem__(self, key):
+        super().__delitem__(key.lower())
+
+    def __contains__(self, key):
+        return super().__contains__(key.lower())
+
+    def get(self, key, default=None):
+        return super().get(key.lower(), default)
+
+    def pop(self, key, *args):
+        return super().pop(key.lower(), *args)
+
+    def setdefault(self, key, default=None):
+        return super().setdefault(key.lower(), default)
+
+
 if TYPE_CHECKING:
     from .httpr import ClientRequestParams, HttpMethod, RequestParams
 else:
@@ -206,6 +232,15 @@ class Client(RClient):
             ```
         """
         del self
+
+    @property
+    def headers(self) -> dict[str, str]:
+        """Headers configured for this client (case-insensitive access)."""
+        return CaseInsensitiveDict(super().headers)
+
+    @headers.setter
+    def headers(self, value: dict[str, str] | None) -> None:
+        RClient.headers.__set__(self, value)  # type: ignore[attr-defined]
 
     def request(
         self,
