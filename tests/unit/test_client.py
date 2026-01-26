@@ -341,6 +341,20 @@ def test_client_headers_case_insensitive():
     # Dict equality should still work (keys are lowercased)
     assert client.headers == {"x-custom": "value", "content-type": "application/json"}
 
+    # Test mutating methods on the returned dict (doesn't affect client, but should work)
+    headers = client.headers
+    headers["X-New"] = "new-value"
+    assert headers["x-new"] == "new-value"
+
+    del headers["X-New"]
+    assert "x-new" not in headers
+
+    headers["X-Pop"] = "pop-value"
+    assert headers.pop("X-POP") == "pop-value"
+
+    assert headers.setdefault("X-Default", "default") == "default"
+    assert headers["x-default"] == "default"
+
     client.close()
 
 
