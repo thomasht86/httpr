@@ -1,6 +1,291 @@
 import pytest
 
 import httpr  # type: ignore
+from httpr import CaseInsensitiveDict
+
+
+class TestCaseInsensitiveDict:
+    """Unit tests for CaseInsensitiveDict class."""
+
+    def test_init_empty(self):
+        d = CaseInsensitiveDict()
+        assert len(d) == 0
+        assert dict(d) == {}
+
+    def test_init_with_dict(self):
+        d = CaseInsensitiveDict({"X-Custom": "value", "Content-Type": "application/json"})
+        assert d["x-custom"] == "value"
+        assert d["content-type"] == "application/json"
+
+    def test_init_with_kwargs(self):
+        d = CaseInsensitiveDict(Authorization="Bearer token")
+        assert d["authorization"] == "Bearer token"
+
+    def test_init_with_dict_and_kwargs(self):
+        d = CaseInsensitiveDict({"X-Custom": "value"}, Authorization="Bearer token")
+        assert d["x-custom"] == "value"
+        assert d["authorization"] == "Bearer token"
+
+    def test_case_insensitive_getitem(self):
+        d = CaseInsensitiveDict({"x-custom": "value"})
+        assert d["x-custom"] == "value"
+        assert d["X-Custom"] == "value"
+        assert d["X-CUSTOM"] == "value"
+        assert d["x-CUSTOM"] == "value"
+
+    def test_case_insensitive_setitem(self):
+        d = CaseInsensitiveDict()
+        d["X-Custom"] = "value1"
+        assert d["x-custom"] == "value1"
+        d["x-CUSTOM"] = "value2"  # Should overwrite
+        assert d["x-custom"] == "value2"
+        assert len(d) == 1
+
+    def test_case_insensitive_delitem(self):
+        d = CaseInsensitiveDict({"X-Custom": "value"})
+        del d["x-CUSTOM"]
+        assert "x-custom" not in d
+
+    def test_case_insensitive_contains(self):
+        d = CaseInsensitiveDict({"X-Custom": "value"})
+        assert "x-custom" in d
+        assert "X-Custom" in d
+        assert "X-CUSTOM" in d
+        assert "other" not in d
+
+    def test_len(self):
+        d = CaseInsensitiveDict({"a": "1", "b": "2", "c": "3"})
+        assert len(d) == 3
+
+    def test_iter(self):
+        d = CaseInsensitiveDict({"X-Custom": "value", "Content-Type": "json"})
+        keys = list(d)
+        assert "x-custom" in keys
+        assert "content-type" in keys
+
+    def test_eq_with_caseinsensitivedict(self):
+        d1 = CaseInsensitiveDict({"x-custom": "value"})
+        d2 = CaseInsensitiveDict({"X-Custom": "value"})
+        assert d1 == d2
+
+    def test_eq_with_dict(self):
+        d = CaseInsensitiveDict({"x-custom": "value"})
+        assert d == {"x-custom": "value"}
+        assert d == {"X-Custom": "value"}  # Case-insensitive comparison
+
+    def test_eq_different_values(self):
+        d = CaseInsensitiveDict({"x-custom": "value1"})
+        assert d != {"x-custom": "value2"}
+
+    def test_eq_different_keys(self):
+        d = CaseInsensitiveDict({"x-custom": "value"})
+        assert d != {"other": "value"}
+
+    def test_repr(self):
+        d = CaseInsensitiveDict({"x-custom": "value"})
+        r = repr(d)
+        assert "CaseInsensitiveDict" in r
+        assert "x-custom" in r
+        assert "value" in r
+
+    def test_copy(self):
+        d1 = CaseInsensitiveDict({"x-custom": "value"})
+        d2 = d1.copy()
+        assert d1 == d2
+        d2["x-custom"] = "modified"
+        assert d1["x-custom"] == "value"  # Original unchanged
+
+    def test_lower_items(self):
+        d = CaseInsensitiveDict({"X-Custom": "value", "Content-Type": "json"})
+        items = list(d.lower_items())
+        assert ("x-custom", "value") in items
+        assert ("content-type", "json") in items
+
+    def test_get_method(self):
+        d = CaseInsensitiveDict({"x-custom": "value"})
+        assert d.get("x-custom") == "value"
+        assert d.get("X-Custom") == "value"
+        assert d.get("missing") is None
+        assert d.get("missing", "default") == "default"
+
+    def test_update_method(self):
+        d = CaseInsensitiveDict({"x-custom": "value1"})
+        d.update({"X-Custom": "value2", "Authorization": "Bearer token"})
+        assert d["x-custom"] == "value2"
+        assert d["authorization"] == "Bearer token"
+
+    def test_keys_values_items(self):
+        d = CaseInsensitiveDict({"x-custom": "value"})
+        assert list(d.keys()) == ["x-custom"]
+        assert list(d.values()) == ["value"]
+        assert list(d.items()) == [("x-custom", "value")]
+
+    def test_pop_method(self):
+        d = CaseInsensitiveDict({"x-custom": "value"})
+        assert d.pop("X-Custom") == "value"
+        assert "x-custom" not in d
+
+    def test_setdefault_method(self):
+        d = CaseInsensitiveDict()
+        assert d.setdefault("X-Custom", "value") == "value"
+        assert d["x-custom"] == "value"
+        assert d.setdefault("x-CUSTOM", "other") == "value"  # Existing key
+
+
+class TestClientHeadersCaseInsensitive:
+    """Integration tests for Client.headers with CaseInsensitiveDict."""
+
+    def test_headers_returns_caseinsensitivedict(self):
+        client = httpr.Client(headers={"X-Custom": "value"})
+        assert isinstance(client.headers, CaseInsensitiveDict)
+        client.close()
+
+    def test_headers_case_insensitive_access(self):
+        client = httpr.Client(headers={"X-Custom": "value"})
+        assert client.headers["x-custom"] == "value"
+        assert client.headers["X-Custom"] == "value"
+        assert client.headers["X-CUSTOM"] == "value"
+        client.close()
+
+    def test_headers_case_insensitive_membership(self):
+        client = httpr.Client(headers={"X-Custom": "value"})
+        assert "x-custom" in client.headers
+        assert "X-Custom" in client.headers
+        assert "X-CUSTOM" in client.headers
+        client.close()
+
+    def test_headers_backward_compatible_eq(self):
+        client = httpr.Client(headers={"X-Custom": "value"})
+        # Backward compatible - lowercase comparison
+        assert client.headers == {"x-custom": "value"}
+        # Case-insensitive comparison
+        assert client.headers == {"X-Custom": "value"}
+        client.close()
+
+    def test_headers_setter_with_dict(self):
+        client = httpr.Client()
+        client.headers = {"X-Custom": "value"}
+        assert client.headers["x-custom"] == "value"
+        assert client.headers["X-Custom"] == "value"
+        client.close()
+
+    def test_headers_setter_with_caseinsensitivedict(self):
+        client = httpr.Client()
+        client.headers = CaseInsensitiveDict({"X-Custom": "value"})
+        assert client.headers["x-custom"] == "value"
+        client.close()
+
+    def test_headers_get_method(self):
+        client = httpr.Client(headers={"X-Custom": "value"})
+        assert client.headers.get("X-Custom") == "value"
+        assert client.headers.get("x-custom") == "value"
+        assert client.headers.get("Missing", "default") == "default"
+        client.close()
+
+    def test_headers_update_method(self):
+        client = httpr.Client(headers={"X-Custom": "value"})
+        client.headers.update({"Authorization": "Bearer token"})
+        # Mutations now sync back to the client
+        assert client.headers["authorization"] == "Bearer token"
+        assert client.headers["x-custom"] == "value"
+        client.close()
+
+    def test_headers_items_iteration(self):
+        client = httpr.Client(headers={"X-Custom": "value", "User-Agent": "test"})
+        items = list(client.headers.items())
+        assert ("x-custom", "value") in items
+        assert ("user-agent", "test") in items
+        client.close()
+
+    def test_headers_setitem_syncs_to_client(self):
+        """Test that __setitem__ syncs back to client."""
+        client = httpr.Client(headers={"X-Custom": "value"})
+        client.headers["Authorization"] = "Bearer token"
+        # Verify sync by getting headers again
+        assert client.headers["authorization"] == "Bearer token"
+        assert client.headers["x-custom"] == "value"
+        client.close()
+
+    def test_headers_delitem_syncs_to_client(self):
+        """Test that __delitem__ syncs back to client."""
+        client = httpr.Client(headers={"X-Custom": "value", "X-Delete": "me"})
+        del client.headers["X-Delete"]
+        # Verify sync by getting headers again
+        assert "x-delete" not in client.headers
+        assert client.headers["x-custom"] == "value"
+        client.close()
+
+    def test_headers_clear_syncs_to_client(self):
+        """Test that clear() syncs back to client."""
+        client = httpr.Client(headers={"X-Custom": "value", "User-Agent": "test"})
+        client.headers.clear()
+        # Verify sync by getting headers again
+        assert len(client.headers) == 0
+        assert dict(client.headers) == {}
+        client.close()
+
+    def test_headers_pop_syncs_to_client(self):
+        """Test that pop() syncs back to client."""
+        client = httpr.Client(headers={"X-Custom": "value", "X-Pop": "me"})
+        result = client.headers.pop("X-Pop")
+        assert result == "me"
+        # Verify sync by getting headers again
+        assert "x-pop" not in client.headers
+        assert client.headers["x-custom"] == "value"
+        client.close()
+
+    def test_headers_pop_with_default(self):
+        """Test that pop() with default works correctly."""
+        client = httpr.Client(headers={"X-Custom": "value"})
+        result = client.headers.pop("X-Missing", "default")
+        assert result == "default"
+        # Original headers unchanged
+        assert client.headers["x-custom"] == "value"
+        client.close()
+
+    def test_headers_setdefault_syncs_to_client(self):
+        """Test that setdefault() syncs back to client when key is missing."""
+        client = httpr.Client(headers={"X-Custom": "value"})
+        result = client.headers.setdefault("X-New", "new-value")
+        assert result == "new-value"
+        # Verify sync by getting headers again
+        assert client.headers["x-new"] == "new-value"
+        assert client.headers["x-custom"] == "value"
+        client.close()
+
+    def test_headers_setdefault_existing_key(self):
+        """Test that setdefault() doesn't modify existing key."""
+        client = httpr.Client(headers={"X-Custom": "value"})
+        result = client.headers.setdefault("X-Custom", "other")
+        assert result == "value"
+        # Original value unchanged
+        assert client.headers["x-custom"] == "value"
+        client.close()
+
+    def test_headers_multiple_mutations_sync(self):
+        """Test that multiple mutations all sync correctly."""
+        client = httpr.Client(headers={"X-Original": "original"})
+        # Multiple mutations
+        client.headers["X-First"] = "first"
+        client.headers["X-Second"] = "second"
+        client.headers.update({"X-Third": "third"})
+        del client.headers["X-Original"]
+        # Verify all mutations synced
+        assert "x-original" not in client.headers
+        assert client.headers["x-first"] == "first"
+        assert client.headers["x-second"] == "second"
+        assert client.headers["x-third"] == "third"
+        client.close()
+
+    def test_headers_copy_is_unbound(self):
+        """Test that copy() returns an unbound dict that doesn't sync."""
+        client = httpr.Client(headers={"X-Custom": "value"})
+        headers_copy = client.headers.copy()
+        headers_copy["X-New"] = "new-value"
+        # Original client headers should not be affected
+        assert "x-new" not in client.headers
+        assert client.headers["x-custom"] == "value"
+        client.close()
 
 
 def test_invalid_url_exception():

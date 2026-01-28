@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterator, MutableMapping
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from typing import Any, Literal, TypedDict
 
@@ -11,6 +11,52 @@ else:
     from typing import Unpack
 
 HttpMethod = Literal["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]
+
+class CaseInsensitiveDict(MutableMapping[str, str]):
+    """Case-insensitive dict for HTTP headers. Keys stored as lowercase.
+
+    When bound to a client, mutations automatically sync back to the client.
+    """
+
+    _store: dict[str, str]
+    _client: RClient | None
+
+    def __init__(
+        self,
+        data: dict[str, str] | None = None,
+        *,
+        _client: RClient | None = None,
+        **kwargs: str,
+    ) -> None: ...
+    def __getitem__(self, key: str) -> str: ...
+    def __setitem__(self, key: str, value: str) -> None: ...
+    def __delitem__(self, key: str) -> None: ...
+    def __iter__(self) -> Iterator[str]: ...
+    def __len__(self) -> int: ...
+    def __contains__(self, key: object) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __repr__(self) -> str: ...
+    def copy(self) -> CaseInsensitiveDict:
+        """Return an unbound copy of this dict."""
+        ...
+    def lower_items(self) -> Iterator[tuple[str, str]]:
+        """Iterator of (lowercase_key, value) - requests compatibility."""
+        ...
+    def clear(self) -> None:
+        """Remove all items."""
+        ...
+    def pop(self, key: str, *args: str) -> str:  # type: ignore[override]
+        """Remove and return value for key."""
+        ...
+    def popitem(self) -> tuple[str, str]:
+        """Remove and return an arbitrary (key, value) pair."""
+        ...
+    def setdefault(self, key: str, default: str = "") -> str:
+        """Set key to default if not present, return value."""
+        ...
+    def update(self, other: dict[str, str] | None = None, /, **kwargs: str) -> None:  # type: ignore[override]
+        """Update from dict and/or kwargs."""
+        ...
 
 class RequestParams(TypedDict, total=False):
     auth: tuple[str, str | None] | None
@@ -353,13 +399,20 @@ class Client(RClient):
         ```
 
     Attributes:
-        headers: Default headers sent with all requests. Excludes Cookie header.
+        headers: Default headers sent with all requests (case-insensitive). Excludes Cookie header.
         cookies: Default cookies sent with all requests.
         auth: Basic auth credentials as (username, password) tuple.
         params: Default query parameters added to all requests.
         timeout: Default timeout in seconds.
         proxy: Proxy URL for requests.
     """
+
+    @property  # type: ignore[override]
+    def headers(self) -> CaseInsensitiveDict:
+        """Default headers (case-insensitive, mutations sync to client). Cookie header excluded."""
+        ...
+    @headers.setter
+    def headers(self, value: dict[str, str] | CaseInsensitiveDict | None) -> None: ...
     def __init__(
         self,
         auth: tuple[str, str | None] | None = None,
@@ -653,6 +706,7 @@ __all__ = [
     "Response",
     "StreamingResponse",
     "CaseInsensitiveHeaderMap",
+    "CaseInsensitiveDict",
     "TextIterator",
     "LineIterator",
     # Client classes

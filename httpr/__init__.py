@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from collections.abc import AsyncIterator, Generator
+from collections.abc import AsyncIterator, Generator, Iterator, MutableMapping
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial
 from typing import TYPE_CHECKING, TypedDict
@@ -41,6 +41,114 @@ else:
 
 
 from .httpr import CaseInsensitiveHeaderMap, RClient, Response, StreamingResponse
+
+
+class CaseInsensitiveDict(MutableMapping):
+    """Case-insensitive dict for HTTP headers. Keys stored as lowercase.
+
+    When bound to a client, mutations automatically sync back to the client.
+    """
+
+    __slots__ = ("_store", "_client")
+
+    def __init__(
+        self,
+        data: dict[str, str] | None = None,
+        *,
+        _client: RClient | None = None,
+        **kwargs: str,
+    ) -> None:
+        self._store: dict[str, str] = {}
+        self._client = _client
+        if data:
+            for key, value in data.items():
+                self._store[key.lower()] = value
+        for key, value in kwargs.items():
+            self._store[key.lower()] = value
+
+    def _sync_to_client(self) -> None:
+        """Push current state back to the bound client."""
+        if self._client is not None:
+            RClient.headers.__set__(self._client, dict(self._store))  # type: ignore[attr-defined]
+
+    def __getitem__(self, key: str) -> str:
+        return self._store[key.lower()]
+
+    def __setitem__(self, key: str, value: str) -> None:
+        self._store[key.lower()] = value
+        self._sync_to_client()
+
+    def __delitem__(self, key: str) -> None:
+        del self._store[key.lower()]
+        self._sync_to_client()
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._store)
+
+    def __len__(self) -> int:
+        return len(self._store)
+
+    def __contains__(self, key: object) -> bool:
+        return isinstance(key, str) and key.lower() in self._store
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, CaseInsensitiveDict):
+            return self._store == other._store
+        if isinstance(other, dict):
+            return self._store == {k.lower(): v for k, v in other.items()}
+        return NotImplemented
+
+    def __repr__(self) -> str:
+        return f"CaseInsensitiveDict({self._store!r})"
+
+    def copy(self) -> CaseInsensitiveDict:
+        """Return an unbound copy of this dict."""
+        return CaseInsensitiveDict(self._store.copy())
+
+    def lower_items(self) -> Iterator[tuple[str, str]]:
+        """Iterator of (lowercase_key, value) - requests compatibility."""
+        return iter(self._store.items())
+
+    def clear(self) -> None:
+        """Remove all items."""
+        self._store.clear()
+        self._sync_to_client()
+
+    def pop(self, key: str, *args: str) -> str:  # type: ignore[override]
+        """Remove and return value for key."""
+        result = self._store.pop(key.lower(), *args)
+        self._sync_to_client()
+        return result
+
+    def popitem(self) -> tuple[str, str]:
+        """Remove and return an arbitrary (key, value) pair."""
+        result = self._store.popitem()
+        self._sync_to_client()
+        return result
+
+    def setdefault(self, key: str, default: str = "") -> str:  # type: ignore[override]
+        """Set key to default if not present, return value."""
+        lowered = key.lower()
+        if lowered not in self._store:
+            self._store[lowered] = default
+            self._sync_to_client()
+        return self._store[lowered]
+
+    def update(  # type: ignore[override]
+        self, other: dict[str, str] | list[tuple[str, str]] | None = None, /, **kwargs: str
+    ) -> None:
+        """Update from dict and/or kwargs."""
+        if other is not None:
+            if hasattr(other, "items"):
+                for k, v in other.items():  # type: ignore[union-attr]
+                    self._store[k.lower()] = v
+            else:
+                for k, v in other:  # type: ignore[union-attr]
+                    self._store[k.lower()] = v
+        for k, v in kwargs.items():
+            self._store[k.lower()] = v
+        self._sync_to_client()
+
 
 if TYPE_CHECKING:
     from .httpr import ClientRequestParams, HttpMethod, RequestParams
@@ -183,6 +291,18 @@ class Client(RClient):
             ```
         """
         super().__init__()
+
+    @property  # type: ignore[override]
+    def headers(self) -> CaseInsensitiveDict:
+        """Default headers (case-insensitive, mutations sync to client). Cookie header excluded."""
+        return CaseInsensitiveDict(RClient.headers.__get__(self), _client=self)
+
+    @headers.setter
+    def headers(self, value: dict[str, str] | CaseInsensitiveDict | None) -> None:
+        if isinstance(value, CaseInsensitiveDict):
+            RClient.headers.__set__(self, dict(value._store))  # type: ignore[attr-defined]
+        else:
+            RClient.headers.__set__(self, value)  # type: ignore[attr-defined]
 
     def __enter__(self) -> Client:
         """Enter context manager."""
@@ -1031,6 +1151,7 @@ __all__ = [
     # Client and request functions
     "Client",
     "AsyncClient",
+    "CaseInsensitiveDict",
     "request",
     "get",
     "head",
