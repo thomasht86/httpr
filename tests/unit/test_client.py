@@ -288,6 +288,28 @@ class TestClientHeadersCaseInsensitive:
         client.close()
 
 
+class TestAsyncClientHeadersCaseInsensitive:
+    """Tests for AsyncClient.headers with CaseInsensitiveDict."""
+
+    def test_async_client_headers_returns_caseinsensitivedict(self):
+        """Test that AsyncClient.headers returns CaseInsensitiveDict."""
+        client = httpr.AsyncClient(headers={"X-Custom": "value"})
+        assert isinstance(client.headers, CaseInsensitiveDict)
+        assert client.headers["x-custom"] == "value"
+        client.close()
+
+    def test_async_client_headers_mutations_sync(self):
+        """Test that AsyncClient header mutations sync to client."""
+        client = httpr.AsyncClient(headers={"X-Custom": "value"})
+        client.headers["Authorization"] = "Bearer token"
+        client.headers.update({"Accept": "application/json"})
+        # Verify sync
+        assert client.headers["authorization"] == "Bearer token"
+        assert client.headers["accept"] == "application/json"
+        assert client.headers["x-custom"] == "value"
+        client.close()
+
+
 def test_invalid_url_exception():
     client = httpr.Client()
     # Should raise an exception for an invalid URL format.

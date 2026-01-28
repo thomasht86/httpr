@@ -116,8 +116,11 @@ class CaseInsensitiveDict(MutableMapping):
 
     def pop(self, key: str, *args: str) -> str:  # type: ignore[override]
         """Remove and return value for key."""
-        result = self._store.pop(key.lower(), *args)
-        self._sync_to_client()
+        lowered = key.lower()
+        had_key = lowered in self._store
+        result = self._store.pop(lowered, *args)
+        if had_key:
+            self._sync_to_client()
         return result
 
     def popitem(self) -> tuple[str, str]:
@@ -138,16 +141,21 @@ class CaseInsensitiveDict(MutableMapping):
         self, other: dict[str, str] | list[tuple[str, str]] | None = None, /, **kwargs: str
     ) -> None:
         """Update from dict and/or kwargs."""
+        changed = False
         if other is not None:
             if hasattr(other, "items"):
                 for k, v in other.items():  # type: ignore[union-attr]
                     self._store[k.lower()] = v
+                    changed = True
             else:
                 for k, v in other:  # type: ignore[union-attr]
                     self._store[k.lower()] = v
+                    changed = True
         for k, v in kwargs.items():
             self._store[k.lower()] = v
-        self._sync_to_client()
+            changed = True
+        if changed:
+            self._sync_to_client()
 
 
 if TYPE_CHECKING:
