@@ -131,6 +131,18 @@ class TestCaseInsensitiveDict:
         assert d["x-custom"] == "value"
         assert d.setdefault("x-CUSTOM", "other") == "value"  # Existing key
 
+    def test_non_string_key_setitem_raises_typeerror(self):
+        """Test that __setitem__ with non-string key raises TypeError."""
+        d = CaseInsensitiveDict()
+        with pytest.raises(TypeError, match="Header key must be str, not int"):
+            d[123] = "value"  # type: ignore[index]
+
+    def test_non_string_key_delitem_raises_typeerror(self):
+        """Test that __delitem__ with non-string key raises TypeError."""
+        d = CaseInsensitiveDict({"x-custom": "value"})
+        with pytest.raises(TypeError, match="Header key must be str, not int"):
+            del d[123]  # type: ignore[arg-type]
+
 
 class TestClientHeadersCaseInsensitive:
     """Integration tests for Client.headers with CaseInsensitiveDict."""
@@ -285,6 +297,18 @@ class TestClientHeadersCaseInsensitive:
         # Original client headers should not be affected
         assert "x-new" not in client.headers
         assert client.headers["x-custom"] == "value"
+        client.close()
+
+    def test_headers_setter_getter_case_interaction(self):
+        """Test that setting with one case and getting with another works."""
+        client = httpr.Client()
+        client.headers = {"X-Custom-Header": "value1"}
+        # Access with different cases
+        assert client.headers["x-custom-header"] == "value1"
+        assert client.headers["X-CUSTOM-HEADER"] == "value1"
+        # Update with different case
+        client.headers["x-custom-header"] = "value2"
+        assert client.headers["X-Custom-Header"] == "value2"
         client.close()
 
 

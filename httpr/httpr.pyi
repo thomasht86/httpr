@@ -13,9 +13,36 @@ else:
 HttpMethod = Literal["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]
 
 class CaseInsensitiveDict(MutableMapping[str, str]):
-    """Case-insensitive dict for HTTP headers. Keys stored as lowercase.
+    """Case-insensitive dictionary for HTTP headers.
 
-    When bound to a client, mutations automatically sync back to the client.
+    Keys are normalized to lowercase on storage, matching HTTP/2 requirements.
+    Lookups, membership tests, and deletions are all case-insensitive.
+
+    Mutation Behavior:
+        When bound to a Client (via the ``_client`` parameter), any mutation
+        (setitem, delitem, update, pop, clear, etc.) automatically syncs
+        the entire header state back to the Rust layer.
+
+    Instance Behavior:
+        Each access to ``client.headers`` creates a new CaseInsensitiveDict
+        with current data from the Rust layer. This ensures fresh data but
+        means ``client.headers is client.headers`` returns False.
+
+    Copy Behavior:
+        ``copy()`` returns an unbound dict - mutations won't affect any client.
+
+    Design Note:
+        This class exists separately from CaseInsensitiveHeaderMap (used for
+        Response.headers) because client headers require mutation with sync-back
+        to the Rust layer, while response headers are immutable.
+
+    Example:
+        >>> client = httpr.Client()
+        >>> client.headers["Content-Type"] = "application/json"
+        >>> client.headers["content-type"]  # Case-insensitive access
+        'application/json'
+        >>> "CONTENT-TYPE" in client.headers  # Case-insensitive membership
+        True
     """
 
     _store: dict[str, str]
