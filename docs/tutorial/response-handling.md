@@ -112,11 +112,7 @@ When the server returns `Content-Type: application/cbor`, the `json()` method au
 ```python
 import httpr
 
-# Request CBOR data by setting Accept header
-response = httpr.get(
-    "https://api.example.com/data",
-    headers={"Accept": "application/cbor"}
-)
+response = httpr.get("https://api.example.com/data")
 
 # json() automatically detects and deserializes CBOR based on Content-Type
 data = response.json()  # Works transparently with CBOR!
