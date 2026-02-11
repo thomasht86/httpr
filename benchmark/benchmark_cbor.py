@@ -1,6 +1,6 @@
 """CBOR vs JSON benchmark for httpr.
 
-This benchmark compares JSON and CBOR serialization/deserialization
+This benchmark compares JSON and CBOR response deserialization
 performance for large vector data using httpr only.
 """
 

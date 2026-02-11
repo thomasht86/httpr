@@ -12,7 +12,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pythonize::depythonize;
 use reqwest::{
-    header::{HeaderValue, ACCEPT, CONTENT_TYPE, COOKIE},
+    header::{HeaderValue, COOKIE},
     multipart,
     redirect::Policy,
     Body, Identity, Method,
@@ -452,27 +452,9 @@ impl RClient {
                 if let Some(form_data) = data_value {
                     request_builder = request_builder.form(&form_data);
                 }
-                // Json - check if we should use CBOR based on Accept header
+                // Json - always serialize as JSON regardless of Accept header
                 if let Some(json_data) = json_value {
-                    // Check if Accept header is set to application/cbor
-                    let use_cbor = combined_headers
-                        .get(&ACCEPT)
-                        .and_then(|v| v.to_str().ok())
-                        .map(|s| s.contains("application/cbor"))
-                        .unwrap_or(false);
-
-                    if use_cbor {
-                        // Serialize as CBOR
-                        let mut cbor_bytes = Vec::new();
-                        serde_cbor_2::to_writer(&mut cbor_bytes, &json_data)
-                            .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
-                        request_builder = request_builder
-                            .header(CONTENT_TYPE, "application/cbor")
-                            .body(cbor_bytes);
-                    } else {
-                        // Serialize as JSON (default)
-                        request_builder = request_builder.json(&json_data);
-                    }
+                    request_builder = request_builder.json(&json_data);
                 }
                 // Files
                 if let Some(files) = files {
@@ -643,27 +625,9 @@ impl RClient {
                 if let Some(form_data) = data_value {
                     request_builder = request_builder.form(&form_data);
                 }
-                // Json - check if we should use CBOR based on Accept header
+                // Json - always serialize as JSON regardless of Accept header
                 if let Some(json_data) = json_value {
-                    // Check if Accept header is set to application/cbor
-                    let use_cbor = combined_headers
-                        .get(&ACCEPT)
-                        .and_then(|v| v.to_str().ok())
-                        .map(|s| s.contains("application/cbor"))
-                        .unwrap_or(false);
-
-                    if use_cbor {
-                        // Serialize as CBOR
-                        let mut cbor_bytes = Vec::new();
-                        serde_cbor_2::to_writer(&mut cbor_bytes, &json_data)
-                            .map_err(|e| anyhow!("Failed to serialize CBOR: {}", e))?;
-                        request_builder = request_builder
-                            .header(CONTENT_TYPE, "application/cbor")
-                            .body(cbor_bytes);
-                    } else {
-                        // Serialize as JSON (default)
-                        request_builder = request_builder.json(&json_data);
-                    }
+                    request_builder = request_builder.json(&json_data);
                 }
                 // Files
                 if let Some(files) = files {
