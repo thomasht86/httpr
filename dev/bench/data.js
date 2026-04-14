@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774076346274,
+  "lastUpdate": 1776149150468,
   "repoUrl": "https://github.com/thomasht86/httpr",
   "entries": {
     "httpr Performance": [
@@ -1016,6 +1016,133 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0003697203938826492",
             "extra": "mean: 9.422951534884172 msec\nrounds: 86"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Thomas Hjelde Thoresen",
+            "username": "thomasht86",
+            "email": "thomas@vespa.ai"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "b84a0556b41e7cf68c8fdbe5151094b3481bdf96",
+          "message": "Merge pull request #60 from thomasht86/copilot/bump-dependencies-to-mitigate-vulnerabilities\n\nfix: bump dependencies to mitigate high-severity vulnerabilities",
+          "timestamp": "2026-04-14T06:38:21Z",
+          "url": "https://github.com/thomasht86/httpr/commit/b84a0556b41e7cf68c8fdbe5151094b3481bdf96"
+        },
+        "date": 1776149114579,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_single_request",
+            "value": 1711.655489354247,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000040544417784008374",
+            "extra": "mean: 584.2297157457007 usec\nrounds: 489"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_session_reuse",
+            "value": 1504.8872764862945,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00006892251267258699",
+            "extra": "mean: 664.5015979767355 usec\nrounds: 1582"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_json_parsing",
+            "value": 1978.3934969517445,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00007511668881792512",
+            "extra": "mean: 505.4606181938896 usec\nrounds: 1506"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_post_json",
+            "value": 1631.8916809849848,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000037921108472688194",
+            "extra": "mean: 612.7857698229183 usec\nrounds: 1299"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestAsyncClient::test_full_overhead",
+            "value": 721.4012482893063,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00009065704058052993",
+            "extra": "mean: 1.386191113990097 msec\nrounds: 386"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestResponseSizes::test_response_size[1KB]",
+            "value": 814.618965129624,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00003249120933720266",
+            "extra": "mean: 1.2275677866656072 msec\nrounds: 75"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestResponseSizes::test_response_size[10KB]",
+            "value": 192.79774244351339,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00006124210226403838",
+            "extra": "mean: 5.186782725388934 msec\nrounds: 193"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestResponseSizes::test_response_size[100KB]",
+            "value": 23.257202219160103,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0002668912476303",
+            "extra": "mean: 42.9974332499962 msec\nrounds: 24"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestHeaders::test_many_headers",
+            "value": 1310.425164402754,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0011004109433835495",
+            "extra": "mean: 763.1111086421827 usec\nrounds: 1215"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_cbor_request[1_array]",
+            "value": 1852.106376611191,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000020522231369515206",
+            "extra": "mean: 539.925790779742 usec\nrounds: 846"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_cbor_request[10_arrays]",
+            "value": 935.3803705785124,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000045379697994479706",
+            "extra": "mean: 1.0690837989058095 msec\nrounds: 731"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_cbor_request[100_arrays]",
+            "value": 128.38992635982365,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00018514320140009593",
+            "extra": "mean: 7.788773063062713 msec\nrounds: 111"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_json_request[1_array]",
+            "value": 1714.5733512056847,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000032760584028486764",
+            "extra": "mean: 583.2354733011579 usec\nrounds: 824"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_json_request[10_arrays]",
+            "value": 796.1302207539437,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00005813692448832706",
+            "extra": "mean: 1.2560759206615588 msec\nrounds: 605"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_json_request[100_arrays]",
+            "value": 95.31950376811223,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00024726042308657957",
+            "extra": "mean: 10.491032374997904 msec\nrounds: 88"
           }
         ]
       }
