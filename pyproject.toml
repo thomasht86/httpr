@@ -27,6 +27,14 @@ benchmark = [ "matplotlib", "pandas", "starlette", "uvicorn", "requests", "httpx
 [tool.maturin]
 features = [ "pyo3/extension-module",]
 
+[tool.maturin.sbom]
+# cargo-cyclonedx currently embeds build-path- and run-specific fields into the
+# generated SBOM, which makes otherwise identical wheels differ across hosts and
+# build directories. Re-enable once the upstream toolchain can emit
+# reproducible wheel-embedded SBOMs.
+rust = false
+auditwheel = false
+
 [tool.ruff]
 line-length = 120
 exclude = [ ".github",]
