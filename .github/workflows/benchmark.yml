@@ -37,14 +37,17 @@ jobs:
             rust-bench-${{ runner.os }}-
 
       - name: Install dependencies
-        run: uv sync --extra dev --extra benchmark
+        run: uv sync --extra dev
 
       - name: Build Rust extension (release mode)
         run: uv run maturin develop --release
 
       - name: Start benchmark server
+        env:
+          BENCHMARK_HOST: 127.0.0.1
+          BENCHMARK_PORT: "8000"
         run: |
-          uv run uvicorn benchmark.server:app --host 127.0.0.1 --port 8000 &
+          uv run --script benchmark/server.py &
           # Wait for server to be ready
           for i in $(seq 1 10); do
             if curl -sf http://127.0.0.1:8000/json/1 > /dev/null 2>&1; then

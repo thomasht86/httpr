@@ -1,3 +1,21 @@
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#     "aiohttp",
+#     "curl_cffi",
+#     "httpr",
+#     "httpx",
+#     "pandas",
+#     "pycurl",
+#     "requests",
+#     "tls-client",
+# ]
+# ///
+"""HTTP-client comparison benchmark. Run with: uv run --script benchmark/benchmark.py
+
+The httpr dependency resolves from the local working tree when invoked through
+`maturin develop`; CI installs the freshly-built wheel via `--with`.
+"""
 import argparse
 import asyncio
 import time
