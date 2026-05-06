@@ -1,7 +1,10 @@
+# /// script
+# requires-python = ">=3.9"
+# dependencies = ["httpr"]
+# ///
 """CBOR vs JSON benchmark for httpr.
 
-This benchmark compares JSON and CBOR response deserialization
-performance for large vector data using httpr only.
+Run with: uv run --script benchmark/benchmark_cbor.py
 """
 
 import asyncio

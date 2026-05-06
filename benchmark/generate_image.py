@@ -1,3 +1,14 @@
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#     "matplotlib",
+#     "numpy",
+# ]
+# ///
+"""Generate the benchmark.jpg figure from the CSVs produced by benchmark.py.
+
+Run with: uv run --script benchmark/generate_image.py
+"""
 import csv
 
 import matplotlib.pyplot as plt

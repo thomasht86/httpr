@@ -1,3 +1,12 @@
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#     "cbor2",
+#     "starlette",
+#     "uvicorn",
+# ]
+# ///
+"""Benchmark target server. Run with: uv run --script benchmark/server.py"""
 import base64
 import gzip
 import json
@@ -98,4 +107,9 @@ routes = [
 
 app = Starlette(routes=routes)
 
-# Run server: uvicorn server:app
+if __name__ == "__main__":
+    import uvicorn
+
+    host = os.environ.get("BENCHMARK_HOST", "127.0.0.1")
+    port = int(os.environ.get("BENCHMARK_PORT", "8000"))
+    uvicorn.run(app, host=host, port=port)
