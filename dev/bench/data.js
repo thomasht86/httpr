@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778057060531,
+  "lastUpdate": 1778060346266,
   "repoUrl": "https://github.com/thomasht86/httpr",
   "entries": {
     "httpr Performance": [
@@ -1524,6 +1524,133 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00033529810336047154",
             "extra": "mean: 9.887269130435442 msec\nrounds: 92"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Thomas Hjelde Thoresen",
+            "username": "thomasht86",
+            "email": "thomas@vespa.ai"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "04d05b109f9be871ca9b605ddbe197b4233cdc15",
+          "message": "Merge pull request #64 from thomasht86/claude/fix-ci-failure-OwPVI\n\nfix(deps): pin cbor2&lt;6 to restore Windows x86 wheel coverage",
+          "timestamp": "2026-05-06T09:31:19Z",
+          "url": "https://github.com/thomasht86/httpr/commit/04d05b109f9be871ca9b605ddbe197b4233cdc15"
+        },
+        "date": 1778060288861,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_single_request",
+            "value": 1502.6693850593147,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00008323422017600835",
+            "extra": "mean: 665.4823808502142 usec\nrounds: 470"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_session_reuse",
+            "value": 1573.3110928991755,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00007286548310088739",
+            "extra": "mean: 635.6022051285977 usec\nrounds: 1599"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_json_parsing",
+            "value": 1942.7897664905395,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00007282960477399413",
+            "extra": "mean: 514.7237324635505 usec\nrounds: 1839"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_post_json",
+            "value": 1500.7201779100508,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00007014639421725835",
+            "extra": "mean: 666.3467411977033 usec\nrounds: 1136"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestAsyncClient::test_full_overhead",
+            "value": 738.4142134280887,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000052006970783162445",
+            "extra": "mean: 1.3542534553303072 msec\nrounds: 347"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestResponseSizes::test_response_size[1KB]",
+            "value": 896.0204123883306,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000055892933406707476",
+            "extra": "mean: 1.1160460031647195 msec\nrounds: 316"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestResponseSizes::test_response_size[10KB]",
+            "value": 205.65163232248392,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00004653683787556086",
+            "extra": "mean: 4.862592086951648 msec\nrounds: 207"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestResponseSizes::test_response_size[100KB]",
+            "value": 23.27260818467647,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0004661432887690585",
+            "extra": "mean: 42.96896987499821 msec\nrounds: 24"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestHeaders::test_many_headers",
+            "value": 1368.6613797854714,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00010581428144918686",
+            "extra": "mean: 730.6409129164902 usec\nrounds: 1022"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_cbor_request[1_array]",
+            "value": 1710.249846106709,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0000383032513626095",
+            "extra": "mean: 584.709890356924 usec\nrounds: 757"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_cbor_request[10_arrays]",
+            "value": 916.3570256549436,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000029623717543735713",
+            "extra": "mean: 1.0912777138204126 msec\nrounds: 615"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_cbor_request[100_arrays]",
+            "value": 135.07581449679654,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0009146542533016897",
+            "extra": "mean: 7.40324982473984 msec\nrounds: 97"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_json_request[1_array]",
+            "value": 1621.265812189407,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00003584175826095385",
+            "extra": "mean: 616.8020027817458 usec\nrounds: 719"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_json_request[10_arrays]",
+            "value": 778.4544749821922,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0000644402765609131",
+            "extra": "mean: 1.2845966362039039 msec\nrounds: 569"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_json_request[100_arrays]",
+            "value": 118.46878619958869,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0006200792628474032",
+            "extra": "mean: 8.441042000002122 msec\nrounds: 90"
           }
         ]
       }
