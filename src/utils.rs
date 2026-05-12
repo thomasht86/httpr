@@ -165,7 +165,11 @@ Q29uc3VsdGF0aW9uczEiMCAGCSqGSIb3DQEJARYTcGVyc29uYWwtZW1haWwuY29t
         fs::remove_file(path).unwrap();
         env::remove_var("HTTPR_CA_BUNDLE");
 
-        assert!(result.is_err(), "expected error for malformed PEM, got {:?}", result);
+        assert!(
+            result.is_err(),
+            "expected error for malformed PEM, got {:?}",
+            result
+        );
     }
 
     #[test]
@@ -182,7 +186,11 @@ Q29uc3VsdGF0aW9uczEiMCAGCSqGSIb3DQEJARYTcGVyc29uYWwtZW1haWwuY29t
         fs::remove_file(path).unwrap();
         env::remove_var("HTTPR_CA_BUNDLE");
 
-        assert!(result.is_err(), "expected error for cert-less bundle, got {:?}", result);
+        assert!(
+            result.is_err(),
+            "expected error for cert-less bundle, got {:?}",
+            result
+        );
     }
 }
 
