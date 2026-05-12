@@ -202,22 +202,23 @@ impl RClient {
             for cert in load_ca_certs().map_err(map_anyhow_error)? {
                 client_builder = client_builder.add_root_certificate(cert);
             }
-            // Load client pem identity if provided
-            // Either from file path (client_pem) or direct data (client_pem_data)
-            let client_identity_pem = if let Some(pem_data) = &client_pem_data {
-                Some(pem_data.clone())
-            } else if let Some(pem_path) = &client_pem {
-                Some(fs::read(pem_path).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?)
-            } else {
-                None
-            };
-
-            if let Some(pem_bytes) = client_identity_pem {
-                let identity = Identity::from_pem(&pem_bytes).map_err(map_reqwest_error)?;
-                client_builder = client_builder.identity(identity);
-            }
         } else {
             client_builder = client_builder.danger_accept_invalid_certs(true);
+        }
+
+        // Client mTLS identity must be applied regardless of `verify`: disabling
+        // server verification doesn't imply disabling client authentication.
+        let client_identity_pem = if let Some(pem_data) = &client_pem_data {
+            Some(pem_data.clone())
+        } else if let Some(pem_path) = &client_pem {
+            Some(fs::read(pem_path).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?)
+        } else {
+            None
+        };
+
+        if let Some(pem_bytes) = client_identity_pem {
+            let identity = Identity::from_pem(&pem_bytes).map_err(map_reqwest_error)?;
+            client_builder = client_builder.identity(identity);
         }
 
         // Https_only
