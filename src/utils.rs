@@ -29,16 +29,25 @@ fn read_pem_certificates(path: &str) -> Result<Vec<Certificate>> {
     let cert_bytes = fs::read(path).context("Failed to read certificate file")?;
     let mut certificates = vec![];
     let mut cursor = std::io::Cursor::new(cert_bytes);
-    while let Ok(Some(cert)) = rustls_pemfile::read_one(&mut cursor) {
-        match cert {
-            rustls_pemfile::Item::X509Certificate(cert) => {
+    loop {
+        match rustls_pemfile::read_one(&mut cursor)
+            .context("Failed to parse PEM data from certificate file")?
+        {
+            None => break,
+            Some(rustls_pemfile::Item::X509Certificate(cert)) => {
                 let certificate = Certificate::from_der(&cert)?;
                 certificates.push(certificate);
             }
-            _ => {
+            Some(_) => {
                 tracing::warn!("Skipping non-certificate item");
             }
         }
+    }
+    if certificates.is_empty() {
+        anyhow::bail!(
+            "No X.509 certificates found in {}: refusing to silently fall back to built-in roots",
+            path
+        );
     }
     Ok(certificates)
 }
@@ -129,15 +138,59 @@ Q29uc3VsdGF0aW9uczEiMCAGCSqGSIb3DQEJARYTcGVyc29uYWwtZW1haWwuY29t
 
         // Clean up
         fs::remove_file(ca_cert_path).unwrap();
+        env::remove_var("HTTPR_CA_BUNDLE");
     }
 
     #[test]
     fn test_load_ca_certs_without_env_var() {
+        env::remove_var("HTTPR_CA_BUNDLE");
         // Call the function
         let result = load_ca_certs();
 
         // Check the result
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_load_ca_certs_malformed_bundle_errors() {
+        // A readable file whose contents are not a valid PEM bundle must error
+        // rather than silently returning an empty cert list (which would cause
+        // a silent fall-back to built-in roots).
+        let path = Path::new("test_ca_malformed.pem");
+        fs::write(path, b"this is not a PEM certificate at all").unwrap();
+        env::set_var("HTTPR_CA_BUNDLE", path);
+
+        let result = load_ca_certs();
+
+        fs::remove_file(path).unwrap();
+        env::remove_var("HTTPR_CA_BUNDLE");
+
+        assert!(
+            result.is_err(),
+            "expected error for malformed PEM, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_load_ca_certs_no_certs_errors() {
+        // A syntactically-valid PEM file containing only non-certificate items
+        // (e.g. an unrelated private key, or just comments) yields zero certs
+        // and must error rather than silently fall back to built-in roots.
+        let path = Path::new("test_ca_no_certs.pem");
+        fs::write(path, b"# only a comment, no certs here\n").unwrap();
+        env::set_var("HTTPR_CA_BUNDLE", path);
+
+        let result = load_ca_certs();
+
+        fs::remove_file(path).unwrap();
+        env::remove_var("HTTPR_CA_BUNDLE");
+
+        assert!(
+            result.is_err(),
+            "expected error for cert-less bundle, got {:?}",
+            result
+        );
     }
 }
 
