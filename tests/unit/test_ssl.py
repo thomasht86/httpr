@@ -184,6 +184,38 @@ class TestClientSSL(unittest.TestCase):
                 ca_cert_file=self.client_ca_path,
             )
 
+    def test_client_cert_sent_when_verify_disabled(self):
+        """Regression for issue #65: client cert must still be presented when verify=False.
+
+        Disabling server verification should not disable client authentication.
+        """
+        # client_pem (file path) + verify=False
+        with Client(client_pem=self.client_cert_path, verify=False) as client:
+            response = client.get(f"https://localhost:{self.server_port}")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.text, "OK")
+
+        # client_pem_data (bytes) + verify=False
+        with open(self.client_cert_path, "rb") as f:
+            cert_data = f.read()
+        with Client(client_pem_data=cert_data, verify=False) as client:
+            response = client.get(f"https://localhost:{self.server_port}")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.text, "OK")
+
+    def test_async_client_cert_sent_when_verify_disabled(self):
+        """Regression for issue #65 on the AsyncClient Python wrapper."""
+        with open(self.client_cert_path, "rb") as f:
+            cert_data = f.read()
+
+        async def make_request():
+            async with AsyncClient(client_pem_data=cert_data, verify=False) as client:
+                return await client.get(f"https://localhost:{self.server_port}")
+
+        response = asyncio.run(make_request())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, "OK")
+
     def test_async_client_pem_and_data_are_mutually_exclusive(self):
         """AsyncClient should also enforce mutual exclusivity."""
         with open(self.client_cert_path, "rb") as f:
