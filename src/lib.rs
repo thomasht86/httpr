@@ -199,10 +199,8 @@ impl RClient {
         // Verify
         if verify.unwrap_or(true) {
             client_builder = client_builder.tls_built_in_root_certs(true);
-            if let Ok(certs) = load_ca_certs() {
-                for cert in certs {
-                    client_builder = client_builder.add_root_certificate(cert);
-                }
+            for cert in load_ca_certs().map_err(map_anyhow_error)? {
+                client_builder = client_builder.add_root_certificate(cert);
             }
             // Load client pem identity if provided
             // Either from file path (client_pem) or direct data (client_pem_data)

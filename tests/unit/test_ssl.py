@@ -132,10 +132,45 @@ class TestClientSSL(unittest.TestCase):
                 client.get(f"https://localhost:{self.server_port}")
 
     def test_invalid_ca_cert_file(self):
-        """Using an invalid CA certificate file should cause a handshake failure."""
-        with Client(client_pem=self.client_cert_path, ca_cert_file="nonexistent_ca.pem") as client:
-            with self.assertRaises(Exception):
-                client.get(f"https://localhost:{self.server_port}")
+        """A non-existent ca_cert_file must fail loudly at client construction.
+
+        Previously load_ca_certs() errors were swallowed at the call site, so a
+        bad bundle silently fell back to the built-in Mozilla roots — the client
+        would then trust servers the user never intended to trust.
+        """
+        with self.assertRaises(httpr.RequestError):
+            Client(client_pem=self.client_cert_path, ca_cert_file="nonexistent_ca.pem")
+
+    def test_malformed_ca_cert_file(self):
+        """A readable but non-PEM ca_cert_file must also fail at construction.
+
+        The parse-error path was previously swallowed inside read_pem_certificates,
+        so a corrupt bundle silently produced zero certs and the client fell back
+        to built-in roots.
+        """
+        with tempfile.NamedTemporaryFile(
+            suffix=".pem", delete=False, mode="wb"
+        ) as f:
+            f.write(b"this is not a valid PEM bundle")
+            bad_path = f.name
+        try:
+            with self.assertRaises(httpr.RequestError):
+                Client(client_pem=self.client_cert_path, ca_cert_file=bad_path)
+        finally:
+            os.unlink(bad_path)
+
+    def test_empty_ca_cert_file(self):
+        """A PEM file with no X.509 certs (e.g. only comments) must also fail."""
+        with tempfile.NamedTemporaryFile(
+            suffix=".pem", delete=False, mode="wb"
+        ) as f:
+            f.write(b"# bundle with no certificates\n")
+            empty_path = f.name
+        try:
+            with self.assertRaises(httpr.RequestError):
+                Client(client_pem=self.client_cert_path, ca_cert_file=empty_path)
+        finally:
+            os.unlink(empty_path)
 
     def test_verify_disabled_with_valid_client_cert(self):
         """
