@@ -232,7 +232,7 @@ impl Response {
         has_redirect_location(self.status_code, &self.headers)
     }
 
-    fn raise_for_status(slf: PyRefMut<'_, Self>) -> PyResult<PyRefMut<'_, Self>> {
+    fn raise_for_status(slf: PyRef<'_, Self>) -> PyResult<PyRef<'_, Self>> {
         status_error(slf.status_code, &slf.url, &slf.headers)?;
         Ok(slf)
     }
@@ -459,7 +459,7 @@ impl StreamingResponse {
         has_redirect_location(self.status_code, &self.headers)
     }
 
-    fn raise_for_status(slf: PyRefMut<'_, Self>) -> PyResult<PyRefMut<'_, Self>> {
+    fn raise_for_status(slf: PyRef<'_, Self>) -> PyResult<PyRef<'_, Self>> {
         status_error(slf.status_code, &slf.url, &slf.headers)?;
         Ok(slf)
     }
