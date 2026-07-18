@@ -33,15 +33,33 @@ print(response.status_code)  # 200
 
 response = httpr.get("https://httpbin.org/status/404")
 print(response.status_code)  # 404
-
-# Check for success (2xx status codes)
-if 200 <= response.status_code < 300:
-    print("Success!")
-elif 400 <= response.status_code < 500:
-    print("Client error")
-elif 500 <= response.status_code < 600:
-    print("Server error")
+print(response.reason_phrase)  # "Not Found"
 ```
+
+Instead of comparing integers by hand, use the status-class helpers:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/status/404")
+
+if response.is_success:        # 2xx
+    print("Success!")
+elif response.is_redirect:     # 3xx
+    print("Redirect")
+elif response.is_client_error: # 4xx
+    print("Client error")
+elif response.is_server_error: # 5xx
+    print("Server error")
+
+# `is_error` is True for any 4xx or 5xx response
+print(response.is_error)  # True
+```
+
+Available helpers: `is_informational` (1xx), `is_success` (2xx),
+`is_redirect` (3xx), `is_client_error` (4xx), `is_server_error` (5xx),
+`is_error` (4xx/5xx), and `has_redirect_location` (3xx with a `Location`
+header).
 
 ## Response Body
 
@@ -319,21 +337,39 @@ print(f"Data: {result['data']}")
 
 ## Error Handling
 
-Handle potential errors when processing responses:
+The simplest way to turn a non-2xx response into an exception is
+`raise_for_status()`. It raises `HTTPStatusError` for any non-2xx status and
+otherwise returns the response, so it can be chained:
 
 ```python
 import httpr
 
 try:
     response = httpr.get("https://httpbin.org/status/500")
+    response.raise_for_status()
+    data = response.json()
+except httpr.HTTPStatusError as exc:
+    print(f"HTTP Error: {exc}")
+except httpr.HTTPError as exc:
+    print(f"Request failed: {exc}")
+```
 
-    if response.status_code >= 400:
-        print(f"HTTP Error: {response.status_code}")
-    else:
-        data = response.json()
+!!! note
+    Unlike `requests`, `raise_for_status()` treats **any** non-2xx response as
+    an error (including 1xx and 3xx), matching `httpx`. If you only want to act
+    on server/client errors, check `response.is_error` instead.
 
-except Exception as e:
-    print(f"Request failed: {e}")
+If you prefer to branch on the status yourself, use the status-class helpers:
+
+```python
+import httpr
+
+response = httpr.get("https://httpbin.org/status/500")
+
+if response.is_error:
+    print(f"HTTP Error: {response.status_code} {response.reason_phrase}")
+else:
+    data = response.json()
 ```
 
 ## Streaming Responses

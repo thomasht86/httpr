@@ -142,7 +142,7 @@ create_exception!(
     httpr,
     HTTPStatusError,
     HTTPError,
-    "The response had an error HTTP status of 4xx or 5xx."
+    "The response had a non-2xx HTTP status."
 );
 create_exception!(
     httpr,
