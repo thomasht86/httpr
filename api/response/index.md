@@ -51,6 +51,53 @@ print(response.status_code)  # 201
 
 ______________________________________________________________________
 
+### reason_phrase
+
+```python
+@property
+def reason_phrase(self) -> str
+```
+
+Canonical reason phrase for the status code (e.g., `"OK"`, `"Not Found"`).
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/status/404")
+print(response.reason_phrase)  # "Not Found"
+```
+
+______________________________________________________________________
+
+### Status classification
+
+A set of boolean properties for checking the status code class without comparing integers manually:
+
+| Property                | True when                                                       |
+| ----------------------- | --------------------------------------------------------------- |
+| `is_informational`      | 1xx status code                                                 |
+| `is_success`            | 2xx status code                                                 |
+| `is_redirect`           | 3xx status code                                                 |
+| `is_client_error`       | 4xx status code                                                 |
+| `is_server_error`       | 5xx status code                                                 |
+| `is_error`              | 4xx or 5xx status code                                          |
+| `has_redirect_location` | 3xx response with a `Location` header (301, 302, 303, 307, 308) |
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/status/200")
+
+if response.is_success:
+    print("Success!")
+elif response.is_client_error:
+    print("Client error")
+elif response.is_server_error:
+    print("Server error")
+```
+
+______________________________________________________________________
+
 ### text
 
 ```python
@@ -266,6 +313,38 @@ Note
 
 ______________________________________________________________________
 
+### raise_for_status
+
+```python
+def raise_for_status(self) -> Response
+```
+
+Raise [`HTTPStatusError`](https://thomasht86.github.io/httpr/api/functions/index.md) if the response has a non-2xx status code. Returns the response itself on success, so the call can be chained.
+
+**Returns:** The same `Response` object (when the status is 2xx)
+
+**Raises:** `HTTPStatusError` for any non-2xx status code
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/status/404")
+
+try:
+    response.raise_for_status()
+except httpr.HTTPStatusError as exc:
+    print(exc)  # Client error '404 Not Found' for url '...'
+
+# Chaining: raise on error, otherwise parse the body
+data = httpr.get("https://httpbin.org/json").raise_for_status().json()
+```
+
+Note
+
+Unlike `requests`, any non-2xx status raises — including 1xx and 3xx responses — matching `httpx` behavior. With redirects followed (the default), a 3xx is only seen when `follow_redirects=False`.
+
+______________________________________________________________________
+
 ## StreamingResponse
 
 For streaming large responses without buffering the entire response in memory, use the `Client.stream()` method which returns a `StreamingResponse`.
@@ -295,6 +374,26 @@ HTTP status code (e.g., 200, 404, 500).
 ```python
 with client.stream("GET", "https://httpbin.org/get") as response:
     print(response.status_code)  # 200
+```
+
+______________________________________________________________________
+
+#### Status helpers
+
+`StreamingResponse` exposes the same status API as `Response`, available immediately after the headers arrive (before the body is read):
+
+- `reason_phrase` — canonical reason phrase for the status code
+- `is_informational`, `is_success`, `is_redirect`, `is_client_error`, `is_server_error`, `is_error` — status-class booleans
+- `has_redirect_location` — 3xx response with a `Location` header
+- `raise_for_status()` — raise `HTTPStatusError` for a non-2xx status, otherwise return the streaming response itself
+
+**Example:**
+
+```python
+with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
+    response.raise_for_status()  # bail out early on a non-2xx status
+    for chunk in response.iter_bytes():
+        process(chunk)
 ```
 
 ______________________________________________________________________
