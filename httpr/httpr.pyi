@@ -127,6 +127,47 @@ class Response:
         """HTTP status code (e.g., 200, 404, 500)."""
         ...
     @property
+    def reason_phrase(self) -> str:
+        """Canonical reason phrase for the status code (e.g., "OK", "Not Found")."""
+        ...
+    @property
+    def is_informational(self) -> bool:
+        """True for 1xx status codes, False otherwise."""
+        ...
+    @property
+    def is_success(self) -> bool:
+        """True for 2xx status codes, False otherwise."""
+        ...
+    @property
+    def is_redirect(self) -> bool:
+        """True for 3xx status codes, False otherwise."""
+        ...
+    @property
+    def is_client_error(self) -> bool:
+        """True for 4xx status codes, False otherwise."""
+        ...
+    @property
+    def is_server_error(self) -> bool:
+        """True for 5xx status codes, False otherwise."""
+        ...
+    @property
+    def is_error(self) -> bool:
+        """True for 4xx and 5xx status codes, False otherwise."""
+        ...
+    @property
+    def has_redirect_location(self) -> bool:
+        """True for 3xx responses with a `Location` header (301, 302, 303, 307, 308)."""
+        ...
+    def raise_for_status(self) -> Response:
+        """
+        Raise `HTTPStatusError` if the response has a non-2xx status code.
+
+        Returns the response itself on success, so calls can be chained.
+        Note: unlike `requests`, any non-2xx status (including 1xx and 3xx)
+        raises, matching `httpx` behavior.
+        """
+        ...
+    @property
     def url(self) -> str:
         """Final URL after any redirects."""
         ...
@@ -217,6 +258,47 @@ class StreamingResponse:
     @property
     def status_code(self) -> int:
         """HTTP status code."""
+        ...
+    @property
+    def reason_phrase(self) -> str:
+        """Canonical reason phrase for the status code (e.g., "OK", "Not Found")."""
+        ...
+    @property
+    def is_informational(self) -> bool:
+        """True for 1xx status codes, False otherwise."""
+        ...
+    @property
+    def is_success(self) -> bool:
+        """True for 2xx status codes, False otherwise."""
+        ...
+    @property
+    def is_redirect(self) -> bool:
+        """True for 3xx status codes, False otherwise."""
+        ...
+    @property
+    def is_client_error(self) -> bool:
+        """True for 4xx status codes, False otherwise."""
+        ...
+    @property
+    def is_server_error(self) -> bool:
+        """True for 5xx status codes, False otherwise."""
+        ...
+    @property
+    def is_error(self) -> bool:
+        """True for 4xx and 5xx status codes, False otherwise."""
+        ...
+    @property
+    def has_redirect_location(self) -> bool:
+        """True for 3xx responses with a `Location` header (301, 302, 303, 307, 308)."""
+        ...
+    def raise_for_status(self) -> StreamingResponse:
+        """
+        Raise `HTTPStatusError` if the response has a non-2xx status code.
+
+        Returns the response itself on success, so calls can be chained.
+        Note: unlike `requests`, any non-2xx status (including 1xx and 3xx)
+        raises, matching `httpx` behavior.
+        """
         ...
     @property
     def url(self) -> str:
@@ -619,7 +701,7 @@ class TooManyRedirects(RequestError):
     """Too many redirects."""
 
 class HTTPStatusError(HTTPError):
-    """The response had an error HTTP status of 4xx or 5xx."""
+    """The response had a non-2xx HTTP status."""
 
 class DecodingError(RequestError):
     """Decoding of the response failed, due to a malformed encoding."""

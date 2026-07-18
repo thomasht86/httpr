@@ -165,12 +165,24 @@ resp.encoding
 resp.headers
 resp.json()
 resp.status_code
+resp.reason_phrase  # e.g. "OK", "Not Found"
+resp.raise_for_status()  # raise HTTPStatusError on non-2xx (returns self)
+resp.is_informational  # 1xx
+resp.is_success  # 2xx
+resp.is_redirect  # 3xx
+resp.is_client_error  # 4xx
+resp.is_server_error  # 5xx
+resp.is_error  # 4xx or 5xx
+resp.has_redirect_location  # 3xx with a Location header
 resp.text
 resp.text_markdown  # html is converted to markdown text using html2text-rs
 resp.text_plain  # html is converted to plain text
 resp.text_rich  # html is converted to rich text
 resp.url
 ```
+
+`raise_for_status()` follows `httpx` semantics: any non-2xx status raises
+`HTTPStatusError` (not just 4xx/5xx as in `requests`).
 
 #### Streaming responses
 
@@ -201,6 +213,9 @@ with client.stream("GET", url) as response:
 
 **StreamingResponse attributes:**
 - `status_code` - HTTP status code
+- `reason_phrase` - Canonical reason phrase (e.g. "OK")
+- `raise_for_status()` - Raise `HTTPStatusError` on a non-2xx status (returns self)
+- `is_success` / `is_error` / `is_redirect` / ... - Status-class helpers (same as `Response`)
 - `headers` - Response headers (case-insensitive)
 - `cookies` - Response cookies
 - `url` - Final URL after redirects

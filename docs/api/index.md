@@ -83,6 +83,10 @@ response = client.get("https://api.example.com")
 
 # Status
 response.status_code      # int: 200, 404, etc.
+response.reason_phrase    # str: "OK", "Not Found", etc.
+response.is_success       # bool: True for 2xx
+response.is_error         # bool: True for 4xx/5xx
+response.raise_for_status()  # raise HTTPStatusError on non-2xx (returns self)
 
 # Body
 response.text             # str: decoded text

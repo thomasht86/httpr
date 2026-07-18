@@ -2,7 +2,7 @@
 // and the MutexGuards are intentionally held across block_on calls
 #![allow(clippy::await_holding_lock)]
 
-use crate::exceptions::{StreamClosed, StreamConsumed};
+use crate::exceptions::{HTTPStatusError, StreamClosed, StreamConsumed};
 use crate::utils::{get_encoding_from_case_insensitive_headers, get_encoding_from_content};
 use crate::RUNTIME;
 use anyhow::{anyhow, Result};
@@ -17,6 +17,48 @@ use pyo3::{prelude::*, types::PyBytes, IntoPyObject};
 use pythonize::pythonize;
 use serde_json::from_slice;
 use std::sync::{Arc, Mutex};
+
+fn reason_phrase(status_code: u16) -> &'static str {
+    reqwest::StatusCode::from_u16(status_code)
+        .ok()
+        .and_then(|status| status.canonical_reason())
+        .unwrap_or("")
+}
+
+fn has_redirect_location(status_code: u16, headers: &CaseInsensitiveHeaderMap) -> bool {
+    matches!(status_code, 301 | 302 | 303 | 307 | 308) && headers.contains_key("location")
+}
+
+fn status_error(status_code: u16, url: &str, headers: &CaseInsensitiveHeaderMap) -> PyResult<()> {
+    if (200..300).contains(&status_code) {
+        return Ok(());
+    }
+
+    let error_type = match status_code / 100 {
+        1 => "Informational response",
+        3 => "Redirect response",
+        4 => "Client error",
+        5 => "Server error",
+        _ => "Invalid status code",
+    };
+    let mut message = format!(
+        "{} '{} {}' for url '{}'",
+        error_type,
+        status_code,
+        reason_phrase(status_code),
+        url
+    );
+    if has_redirect_location(status_code, headers) {
+        if let Some(location) = headers.get_value("location") {
+            message.push_str(&format!("\nRedirect location: '{}'", location));
+        }
+    }
+    message.push_str(&format!(
+        "\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/{}",
+        status_code
+    ));
+    Err(HTTPStatusError::new_err(message))
+}
 
 /// A struct representing an HTTP response.
 ///
@@ -150,6 +192,59 @@ pub struct Response {
 
 #[pymethods]
 impl Response {
+    #[getter]
+    fn reason_phrase(&self) -> &'static str {
+        reason_phrase(self.status_code)
+    }
+
+    #[getter]
+    fn is_informational(&self) -> bool {
+        (100..200).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn is_success(&self) -> bool {
+        (200..300).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn is_redirect(&self) -> bool {
+        (300..400).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn is_client_error(&self) -> bool {
+        (400..500).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn is_server_error(&self) -> bool {
+        (500..600).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn is_error(&self) -> bool {
+        (400..600).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn has_redirect_location(&self) -> bool {
+        has_redirect_location(self.status_code, &self.headers)
+    }
+
+    fn raise_for_status(slf: PyRef<'_, Self>) -> PyResult<PyRef<'_, Self>> {
+        status_error(slf.status_code, &slf.url, &slf.headers)?;
+        Ok(slf)
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "<Response [{} {}]>",
+            self.status_code,
+            reason_phrase(self.status_code)
+        )
+    }
+
     #[getter]
     fn get_encoding(&mut self, py: Python) -> Result<&String> {
         if !self.encoding.is_empty() {
@@ -324,6 +419,59 @@ impl StreamingResponse {
 
 #[pymethods]
 impl StreamingResponse {
+    #[getter]
+    fn reason_phrase(&self) -> &'static str {
+        reason_phrase(self.status_code)
+    }
+
+    #[getter]
+    fn is_informational(&self) -> bool {
+        (100..200).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn is_success(&self) -> bool {
+        (200..300).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn is_redirect(&self) -> bool {
+        (300..400).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn is_client_error(&self) -> bool {
+        (400..500).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn is_server_error(&self) -> bool {
+        (500..600).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn is_error(&self) -> bool {
+        (400..600).contains(&self.status_code)
+    }
+
+    #[getter]
+    fn has_redirect_location(&self) -> bool {
+        has_redirect_location(self.status_code, &self.headers)
+    }
+
+    fn raise_for_status(slf: PyRef<'_, Self>) -> PyResult<PyRef<'_, Self>> {
+        status_error(slf.status_code, &slf.url, &slf.headers)?;
+        Ok(slf)
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "<StreamingResponse [{} {}]>",
+            self.status_code,
+            reason_phrase(self.status_code)
+        )
+    }
+
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
