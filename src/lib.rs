@@ -263,12 +263,35 @@ impl RClient {
             .headers
             .lock()
             .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire headers lock: {}", e)))?;
+        let cookie = headers.get(COOKIE).cloned();
         headers.clear();
+        if let Some(cookie) = cookie {
+            headers.insert(COOKIE, cookie);
+        }
         if let Some(new_headers) = new_headers {
             for (k, v) in new_headers {
                 headers.insert_key_value(k, v).map_err(map_anyhow_error)?
             }
         }
+        Ok(())
+    }
+
+    pub fn set_header(&self, key: String, value: String) -> PyResult<()> {
+        let mut headers = self
+            .headers
+            .lock()
+            .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire headers lock: {}", e)))?;
+        headers
+            .insert_key_value(key, value)
+            .map_err(map_anyhow_error)
+    }
+
+    pub fn del_header(&self, key: String) -> PyResult<()> {
+        let mut headers = self
+            .headers
+            .lock()
+            .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire headers lock: {}", e)))?;
+        headers.remove(key.as_str());
         Ok(())
     }
 

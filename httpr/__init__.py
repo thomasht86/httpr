@@ -76,6 +76,56 @@ class CaseInsensitiveDict(dict[str, str]):
             super().update({k.lower(): v for k, v in kwargs.items()})
 
 
+class _ClientHeaders(CaseInsensitiveDict):
+    """Case-insensitive headers view that writes changes back to the client."""
+
+    def __init__(self, client: RClient, data: dict[str, str]) -> None:
+        self._client = client
+        super().__init__(data)
+
+    def __setitem__(self, key: str, value: str) -> None:
+        super().__setitem__(key, value)
+        self._client.set_header(key, value)
+
+    def __delitem__(self, key: str) -> None:
+        super().__delitem__(key)
+        self._client.del_header(key)
+
+    def pop(self, key: str, *args: str) -> str:  # type: ignore[override]
+        existed = key in self
+        result = super().pop(key, *args)
+        if existed:
+            self._client.del_header(key)
+        return result
+
+    def popitem(self) -> tuple[str, str]:
+        key, value = super().popitem()
+        self._client.del_header(key)
+        return key, value
+
+    def setdefault(self, key: str, default: str | None = None) -> str | None:  # type: ignore[override]
+        existed = key in self
+        result = super().setdefault(key, default)
+        if not existed and result is not None:
+            self._client.set_header(key, result)
+        return result
+
+    def update(self, other: dict[str, str] | None = None, **kwargs: str) -> None:  # type: ignore[override]
+        other = dict(other) if other is not None else None
+        super().update(other, **kwargs)
+        if other:
+            for k, v in other.items():
+                self._client.set_header(k, v)
+        for k, v in kwargs.items():
+            self._client.set_header(k, v)
+
+    def clear(self) -> None:
+        keys = list(self.keys())
+        super().clear()
+        for k in keys:
+            self._client.del_header(k)
+
+
 if TYPE_CHECKING:
     from .httpr import ClientRequestParams, HttpMethod, RequestParams
 else:
@@ -243,8 +293,12 @@ class Client(RClient):
 
     @property
     def headers(self) -> dict[str, str]:
-        """Headers configured for this client (case-insensitive access)."""
-        return CaseInsensitiveDict(super().headers)
+        """Headers configured for this client (case-insensitive, live view).
+
+        Mutating the returned mapping in place (e.g. ``client.headers["Accept"] =
+        "application/json"``) updates the client. Cookies are never affected.
+        """
+        return _ClientHeaders(self, super().headers)
 
     @headers.setter
     def headers(self, value: dict[str, str] | None) -> None:
