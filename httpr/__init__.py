@@ -293,7 +293,11 @@ class Client(RClient):
 
     @property
     def headers(self) -> dict[str, str]:
-        """Headers configured for this client (case-insensitive access)."""
+        """Headers configured for this client (case-insensitive, live view).
+
+        Mutating the returned mapping in place (e.g. ``client.headers["Accept"] =
+        "application/json"``) updates the client. Cookies are never affected.
+        """
         return _ClientHeaders(self, super().headers)
 
     @headers.setter

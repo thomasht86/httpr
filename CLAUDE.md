@@ -151,7 +151,8 @@ uv run python benchmark.py  # Terminal 2: Run benchmarks
 
 ### Headers Behavior
 - Headers are lowercased internally (HTTP/2 spec)
-- `client.headers` getter excludes `Cookie` header
+- `client.headers` getter returns a live `_ClientHeaders` view; in-place mutations (`__setitem__`, `del`, `update`, `pop`, `popitem`, `setdefault`, `clear`) mirror to the client via Rust `set_header`/`del_header`
+- `client.headers` getter excludes `Cookie` header; `set_headers` preserves the existing `Cookie` header so header mutation never clobbers cookies
 - `client.cookies` getter/setter extracts from `Cookie` header
 
 ### Request Body
