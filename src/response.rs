@@ -64,7 +64,7 @@ fn status_error(status_code: u16, url: &str, headers: &CaseInsensitiveHeaderMap)
 ///
 /// This struct provides methods to access various parts of an HTTP response, such as headers, cookies, status code, and the response body.
 /// It also supports decoding the response body as text or JSON, with the ability to specify the character encoding.
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 #[derive(Clone)]
 pub struct CaseInsensitiveHeaderMap {
     headers: IndexMap<String, String, RandomState>,
