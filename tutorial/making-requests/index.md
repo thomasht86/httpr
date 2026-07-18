@@ -121,23 +121,32 @@ response = client.get("https://api.example.com/data")
 
 ### Modifying Client Headers
 
-Update headers after client creation:
+`client.headers` is a live, mutable view — in-place changes are applied to the client and included in subsequent requests:
 
 ```python
 import httpr
 
 client = httpr.Client()
 
-# Set new headers
+# Replace all headers
 client.headers = {"X-Api-Key": "secret"}
 
+# Mutate in place
+client.headers["Accept"] = "application/json"
+client.headers.update({"X-Trace-Id": "abc123"})
+del client.headers["X-Api-Key"]
+
 # Read current headers
-print(client.headers)  # {"x-api-key": "secret"}
+print(client.headers)  # contains "accept" and "x-trace-id" (x-api-key removed)
 ```
 
 Header Case
 
 Headers are stored in lowercase internally (HTTP/2 requirement) but can be accessed case-insensitively.
+
+Cookies are preserved
+
+Modifying headers — including full replacement via `client.headers = {...}` — never affects cookies. Manage cookies via `client.cookies`.
 
 ## Request Body
 
