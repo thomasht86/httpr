@@ -295,6 +295,10 @@ jobs:
           name: wheels-windows-${{ matrix.platform.target }}
           path: dist
       - name: pytest
+        # Skip on x86: cryptography (a trustme transitive dep) dropped win32 wheels
+        # in v49+, so there is no pre-built wheel for 32-bit Windows with Python 3.10+.
+        # Tests are fully covered by the Windows x64, Linux, and macOS matrix entries.
+        if: matrix.platform.target == 'x64'
         shell: bash
         env:
           RUSTC_WRAPPER: ""
