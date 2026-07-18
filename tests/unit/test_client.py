@@ -31,6 +31,51 @@ def test_invalid_cookies_setter_exception():
         client.cookies = "not a dict"  # type: ignore[assignment]
 
 
+def test_headers_mutable_in_place():
+    client = httpr.Client(headers={"User-Agent": "httpr/latest"})
+
+    client.headers["accept"] = "application/json"
+    assert client.headers["accept"] == "application/json"
+
+    client.headers.update({"X-Custom": "yes"})
+    assert client.headers["x-custom"] == "yes"
+
+    del client.headers["accept"]
+    assert "accept" not in client.headers
+
+    assert client.headers.pop("x-custom") == "yes"
+    assert "x-custom" not in client.headers
+
+    client.headers.setdefault("X-Def", "d")
+    assert client.headers["x-def"] == "d"
+
+    key, value = client.headers.popitem()
+    assert key not in client.headers
+
+    client.headers.update([("X-Pairs", "p")])
+    assert client.headers["x-pairs"] == "p"
+
+    # setdefault without a value must not raise and must not create the header
+    assert client.headers.setdefault("X-Missing") is None
+    assert "x-missing" not in client.headers
+
+
+def test_headers_mutation_preserves_cookies():
+    client = httpr.Client()
+    client.cookies = {"session": "abc123"}
+    # Individual mutation, augmented assignment, and full replacement must all
+    # leave the Cookie header intact.
+    client.headers["accept"] = "application/json"
+    assert client.cookies == {"session": "abc123"}
+
+    client.headers |= {"X-Foo": "bar"}
+    assert client.cookies == {"session": "abc123"}
+    assert client.headers["x-foo"] == "bar"
+
+    client.headers = {"X-Only": "1"}
+    assert client.cookies == {"session": "abc123"}
+
+
 def test_invalid_file_path_exception(base_url_ssl, ca_bundle):
     client = httpr.Client(ca_cert_file=ca_bundle)
     # Passing a non-existent file path in files should raise an exception.
