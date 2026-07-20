@@ -50,10 +50,6 @@ jobs:
           if git show gh-pages:dev/bench/index.html > /tmp/bench-backup/index.html 2>/dev/null; then
             echo "Found existing benchmark index.html, will preserve it"
           fi
-          # Save benchmark image if it exists
-          if git show gh-pages:benchmark.jpg > /tmp/bench-backup/benchmark.jpg 2>/dev/null; then
-            echo "Found existing benchmark.jpg, will preserve it"
-          fi
 
           # Switch to gh-pages branch
           git checkout gh-pages || git checkout --orphan gh-pages
@@ -74,11 +70,6 @@ jobs:
             [ -f /tmp/bench-backup/data.js ] && cp /tmp/bench-backup/data.js dev/bench/
             [ -f /tmp/bench-backup/index.html ] && cp /tmp/bench-backup/index.html dev/bench/
             echo "Restored benchmark chart files"
-          fi
-          # Restore benchmark image if it existed
-          if [ -f /tmp/bench-backup/benchmark.jpg ]; then
-            cp /tmp/bench-backup/benchmark.jpg benchmark.jpg
-            echo "Restored benchmark.jpg"
           fi
 
           # Add all files and commit
