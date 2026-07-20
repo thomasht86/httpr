@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.9"
+# requires-python = ">=3.10"
 # dependencies = [
 #     "cbor2",
 #     "starlette",
@@ -7,6 +7,7 @@
 # ]
 # ///
 """Benchmark target server. Run with: uv run --script benchmark/server.py"""
+
 import base64
 import gzip
 import json
