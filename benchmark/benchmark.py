@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.9"
+# requires-python = ">=3.10"
 # dependencies = [
 #     "aiohttp",
 #     "curl_cffi",
@@ -16,6 +16,7 @@
 The httpr dependency resolves from the local working tree when invoked through
 `maturin develop`; CI installs the freshly-built wheel via `--with`.
 """
+
 import argparse
 import asyncio
 import time
@@ -23,7 +24,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from importlib.metadata import version
 from io import BytesIO
-from typing import Optional
 
 import aiohttp
 import curl_cffi.requests
@@ -89,7 +89,7 @@ AsyncPACKAGES = [
 ]
 
 # Optional override for httpr version (set via --httpr-version CLI arg)
-_httpr_version_override: Optional[str] = None
+_httpr_version_override: str | None = None
 
 
 def add_package_version(packages):
