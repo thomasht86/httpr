@@ -63,7 +63,11 @@ pip install -U httpr
 
 ## Benchmark
 
-![](https://thomasht86.github.io/httpr/benchmark.jpg)
+Performance is tracked continuously with [github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark): on every push to `main`, the benchmark suite (`tests/benchmark/`) runs in CI and the results are published as interactive charts.
+
+**📈 [View live benchmark results](https://thomasht86.github.io/httpr/dev/bench/)**
+
+To run the benchmarks locally, see [benchmark/README.md](benchmark/README.md).
 
 ## Usage
 
@@ -420,12 +424,11 @@ task httpbun:logs  # Show container logs
 | `docs` (build) | ✓ | | | |
 | `linux`, `musllinux`, `windows`, `macos`, `sdist` | | | ✓ | ✓ |
 | `release` (PyPI publish) | | | ✓ | ✓ |
-| `benchmark` | | | ✓ | ✓ |
 
 - **PRs**: Run lint, tests across Python 3.10-3.14 matrix, and verify docs build
-- **Push to main**: Run tests only
-- **Tags**: Run tests, build wheels, publish stable release to PyPI, run benchmarks
-- **Manual**: Full multi-platform wheel builds with release and benchmarks
+- **Push to main**: Run tests, then the separate `Benchmark` workflow runs the benchmark suite and publishes results to the [live benchmark charts](https://thomasht86.github.io/httpr/dev/bench/)
+- **Tags**: Run tests, build wheels, publish stable release to PyPI
+- **Manual**: Full multi-platform wheel builds with release
 
 ## Acknowledgements
 
