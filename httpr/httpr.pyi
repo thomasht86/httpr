@@ -542,7 +542,8 @@ class AsyncClient(Client):
     Note:
         AsyncClient runs synchronous Rust code in a thread executor.
         It provides concurrency benefits for I/O-bound tasks but is not
-        native async I/O.
+        native async I/O. `max_concurrency` sizes that executor and therefore
+        caps how many requests can be in flight at once.
     """
     def __init__(
         self,
@@ -563,9 +564,18 @@ class AsyncClient(Client):
         client_pem_data: bytes | None = None,
         https_only: bool | None = False,
         http2_only: bool | None = False,
+        max_concurrency: int | None = 64,
     ) -> None:
-        """Initialize an async HTTP client. Accepts the same parameters as Client."""
+        """Initialize an async HTTP client.
+
+        Accepts the same parameters as Client, plus `max_concurrency`: the maximum
+        number of requests in flight at once, i.e. the size of this client's thread
+        pool. Threads are created lazily. Pass ``None`` to use asyncio's default
+        executor instead, which is shared with `asyncio.to_thread` and sized
+        ``min(32, cpu_count + 4)``.
+        """
         ...
+    max_concurrency: int | None
     async def __aenter__(self) -> AsyncClient: ...
     async def __aexit__(self, *args: Any) -> None: ...
     async def aclose(self) -> None:
