@@ -30,6 +30,7 @@ from __future__ import annotations
 import asyncio
 import sys
 from collections.abc import AsyncIterator, Generator
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial
 from typing import TYPE_CHECKING, TypedDict
@@ -41,6 +42,10 @@ else:
 
 
 from .httpr import CaseInsensitiveHeaderMap, RClient, Response, StreamingResponse
+
+#: Default number of requests an :class:`AsyncClient` keeps in flight. Threads are
+#: created lazily, so an idle client costs nothing.
+DEFAULT_MAX_CONCURRENCY = 64
 
 
 class CaseInsensitiveDict(dict[str, str]):
@@ -641,16 +646,46 @@ class AsyncClient(Client):
     Note:
         AsyncClient runs synchronous Rust code in a thread executor.
         It provides concurrency benefits for I/O-bound tasks but is not
-        native async I/O.
+        native async I/O. `max_concurrency` sizes that executor and therefore
+        caps how many requests can be in flight at once.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __new__(cls, *args, max_concurrency: int | None = None, **kwargs):
+        # Client inherits from the Rust-backed RClient, whose __new__ consumes the
+        # constructor keyword arguments, so max_concurrency has to be stripped here
+        # as well as in __init__.
+        return super().__new__(cls, *args, **kwargs)
+
+    def __init__(
+        self,
+        *args,
+        max_concurrency: int | None = DEFAULT_MAX_CONCURRENCY,
+        **kwargs,
+    ):
         """
         Initialize an async HTTP client.
 
-        Accepts the same parameters as Client.
+        Accepts the same parameters as Client, plus:
+
+        Args:
+            max_concurrency: Maximum number of requests in flight at once, i.e. the
+                size of this client's thread pool. Defaults to 64. Threads are
+                created lazily, so an idle client costs nothing. Pass ``None`` to
+                dispatch on asyncio's default executor instead -- note that this
+                shares a pool with `asyncio.to_thread` and every other
+                ``run_in_executor(None)`` caller in the application, and that
+                CPython sizes it at ``min(32, cpu_count + 4)``.
         """
         super().__init__(*args, **kwargs)
+        self.max_concurrency = max_concurrency
+        # Threads are created on demand, and ThreadPoolExecutor retires them via a
+        # weakref callback once this client is collected, so there is nothing to
+        # release explicitly and `aclose` stays the no-op it has always been.
+        self._executor = (
+            None
+            if max_concurrency is None
+            else ThreadPoolExecutor(max_workers=max_concurrency, thread_name_prefix="httpr")
+        )
 
     async def __aenter__(self) -> AsyncClient:
         """Enter async context manager."""
@@ -677,9 +712,9 @@ class AsyncClient(Client):
         return
 
     async def _run_sync_asyncio(self, fn, *args, **kwargs):
-        """Run a synchronous function in an executor."""
+        """Run a synchronous function on this client's executor."""
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, partial(fn, *args, **kwargs))
+        return await loop.run_in_executor(self._executor, partial(fn, *args, **kwargs))
 
     async def request(  # type: ignore[override]
         self,

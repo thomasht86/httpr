@@ -16,12 +16,14 @@ import httpr
 def bench_server_url():
     """URL for the benchmark server (benchmark/server.py).
 
-    Set BENCHMARK_SERVER_URL env var to enable CBOR benchmarks.
-    The server provides /cbor/1, /cbor/10, /cbor/100 endpoints.
+    Set BENCHMARK_SERVER_URL env var to enable the benchmarks that need it: CBOR
+    and JSON decoding, and async concurrency. The server provides /cbor/{1,10,100}
+    and /json/{1,10,100} endpoints, and unlike the httpbin `base_url` fixture it
+    serves requests concurrently.
     """
     url = os.environ.get("BENCHMARK_SERVER_URL")
     if not url:
-        pytest.skip("BENCHMARK_SERVER_URL not set - start benchmark server for CBOR tests")
+        pytest.skip("BENCHMARK_SERVER_URL not set - start benchmark server for these tests")
     return url
 
 
@@ -80,6 +82,33 @@ class TestAsyncClient:
             async with httpr.AsyncClient() as client:
                 return await client.get(f"{base_url}/get")
 
+        benchmark(lambda: asyncio.run(run()))
+
+    @pytest.mark.parametrize("max_concurrency", [8, 32, 64], ids=["8", "32", "64"])
+    def test_concurrent_requests(self, benchmark, bench_server_url, max_concurrency):
+        """Benchmark 64 concurrent requests at a given `max_concurrency`.
+
+        AsyncClient dispatches onto a thread pool, so `max_concurrency` sets the
+        in-flight ceiling. This tracks per-request overhead under concurrency,
+        which the single-request benchmarks cannot see.
+
+        Deliberately uses the async benchmark server rather than the `base_url`
+        httpbin fixture: the latter is a single-threaded WSGI server, so 64
+        concurrent requests queue up on it and the numbers measure the *server*
+        serialising rather than anything about httpr.
+
+        This is overhead tracking, not a guard against a concurrency ceiling --
+        on localhost there is barely any latency for concurrency to hide. The
+        ceiling is asserted directly in tests/unit/test_asyncclient.py::
+        test_concurrency_is_not_capped_by_the_default_executor.
+        """
+        n_requests = 64
+
+        async def run():
+            async with httpr.AsyncClient(max_concurrency=max_concurrency) as client:
+                return await asyncio.gather(*[client.get(f"{bench_server_url}/json/1") for _ in range(n_requests)])
+
+        benchmark.group = "Async concurrency (64 requests)"
         benchmark(lambda: asyncio.run(run()))
 
 
