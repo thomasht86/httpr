@@ -124,6 +124,7 @@ uv run python benchmark.py  # Terminal 2: Run benchmarks
 - `__init__.py`: `Client` (sync) and `AsyncClient` classes with context manager support
   - `stream()` context manager wraps `_stream()` and handles cleanup
   - Both `Client` and `AsyncClient` support streaming
+  - `close()` / `__exit__` / `aclose()` / `__aexit__` really close the client (see "Client Lifecycle" below)
 - `AsyncClient` uses `asyncio.run_in_executor()` to wrap sync Rust calls - NOT native async
 - `httpr.pyi`: Type stubs for IDE support including `StreamingResponse`, `TextIterator`, `LineIterator`
 
@@ -163,6 +164,15 @@ uv run python benchmark.py  # Terminal 2: Run benchmarks
 ### Proxy
 - Set via `proxy` param or `HTTPR_PROXY` env var
 - Changing `client.proxy` rebuilds entire reqwest client (expensive)
+
+### Client Lifecycle (issue #88)
+- `RClient.client` is `Mutex<Option<reqwest::Client>>`; `RClient::close()` takes it (`None`) and dropping the `reqwest::Client` drops its connection pool
+- Connection tasks live on the single-threaded `RUNTIME` and only progress inside `block_on`, so dropping a pool does not close sockets by itself: `settle_dropped_pool()` runs a few `yield_now` turns so idle connection tasks observe the hang-up and send FIN (microseconds, deterministic). `close()` calls it; `request()` calls it after the response is buffered if the client was closed mid-flight
+- Overlapping requests make hyper race a fresh connect against the idle-pool checkout; a losing connect is finished in the background and holds the pool alive until it resolves, which needs real I/O. `RClient` tracks `in_flight`/`saw_concurrency` (atomics), and only a client that ever had overlapping requests makes `close()` additionally drive the I/O driver in 1 ms ticks until `RUNTIME.metrics().num_alive_tasks()` is stable (cap 8 ticks). Sequential clients, including the temporary one behind `httpr.get()`, never pay that wait. A connect still pending after the cap is torn down the next time the runtime is driven
+- `request()`/`_stream()` clone the `reqwest::Client` up front (`reqwest_client()`), so a request already in flight keeps the pool alive and finishes normally when the client is closed underneath it
+- Use after close raises `ClientClosed`, a `RuntimeError` subclass (httpx raises plain `RuntimeError` here). `set_proxy` on a closed client also raises; header/cookie getters keep working. `is_closed` getter mirrors httpx
+- Python: `Client.close()`/`__exit__` call the Rust `close()`; `AsyncClient.aclose()`/`__aexit__` additionally `shutdown(wait=False)` the client's own `ThreadPoolExecutor`. `_run_sync_asyncio` checks `is_closed` first so a closed `AsyncClient` raises `ClientClosed` rather than the executor's "cannot schedule new futures after shutdown"
+- Leaving a `with`/`async with` block closes the client; re-entering it afterwards raises `ClientClosed` on the next request. Downstream wrappers that scope a shared client (pyvespa's `VespaSync`/`VespaAsync` with an external session) never close it, so they are unaffected
 
 ### Streaming Responses
 - `_stream()` method returns `StreamingResponse` without calling `.bytes()` on reqwest response
