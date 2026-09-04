@@ -143,8 +143,8 @@ uv run python benchmark.py  # Terminal 2: Run benchmarks
 - Use `Unpack` for `**kwargs` typing (via typing_extensions for Python ≤3.11)
 
 ### SSL/TLS
-- CA certs loaded via `HTTPR_CA_BUNDLE` env var
-- `ca_cert_file` param sets `HTTPR_CA_BUNDLE` internally
+- CA bundle is resolved per client: the `ca_cert_file` param wins, otherwise the `HTTPR_CA_BUNDLE` env var is used as a default
+- The env var is only ever read, never written; `ca_cert_file` is scoped to the client that passed it (see issue #86)
 - mTLS via `client_pem` parameter (file path, PEM format) or `client_pem_data` (bytes, PEM format)
 - `client_pem_data` allows passing certificates without filesystem access (useful for containers/secrets managers)
 - `verify=False` enables `danger_accept_invalid_certs()`

@@ -191,15 +191,16 @@ impl RClient {
             client_builder = client_builder.redirect(Policy::none());
         }
 
-        // Ca_cert_file. BEFORE!!! verify (fn load_ca_certs() reads env var HTTPR_CA_BUNDLE)
-        if let Some(ca_bundle_path) = &ca_cert_file {
-            std::env::set_var("HTTPR_CA_BUNDLE", ca_bundle_path);
-        }
+        // CA bundle: the explicit `ca_cert_file` argument wins, otherwise fall back
+        // to the HTTPR_CA_BUNDLE environment variable. The environment is only
+        // ever read here, never written, so the setting stays scoped to this
+        // client (mirrors how `proxy` falls back to HTTPR_PROXY above).
+        let ca_cert_file = ca_cert_file.or_else(|| std::env::var("HTTPR_CA_BUNDLE").ok());
 
         // Verify
         if verify.unwrap_or(true) {
             client_builder = client_builder.tls_built_in_root_certs(true);
-            for cert in load_ca_certs().map_err(map_anyhow_error)? {
+            for cert in load_ca_certs(ca_cert_file.as_deref()).map_err(map_anyhow_error)? {
                 client_builder = client_builder.add_root_certificate(cert);
             }
         } else {
