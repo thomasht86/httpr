@@ -84,7 +84,7 @@ with client.stream("GET", url) as response:
 ## Critical Details
 
 - **Body types mutually exclusive:** `content` (bytes) | `data` (form) | `json` | `files` (multipart)
-- **SSL:** `ca_cert_file` sets `HTTPR_CA_BUNDLE` env var; `verify=False` for insecure
+- **SSL:** `ca_cert_file` param, else `HTTPR_CA_BUNDLE` env var as default (read-only, scoped per client); `verify=False` for insecure
 - **Proxy:** `proxy` param or `HTTPR_PROXY` env var; changing rebuilds entire client
 - **Python types:** `IndexMap<String, String, RandomState>` in Rust ↔ `dict[str, str]` in Python
 

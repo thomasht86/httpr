@@ -1,25 +1,26 @@
 use std::cmp::min;
 
 use reqwest::Certificate;
-use std::{env, fs};
+use std::fs;
 
 use anyhow::{Context, Result};
 
-/// Load CA certificates from a file specified by the environment variable `HTTPR_CA_BUNDLE`.
-pub fn load_ca_certs() -> Result<Vec<Certificate>> {
-    let ca_bundle_path = env::var("HTTPR_CA_BUNDLE").ok();
-
-    match ca_bundle_path {
+/// Load CA certificates from the PEM bundle at `path`.
+///
+/// The caller decides where the path comes from (the `ca_cert_file` argument or
+/// the `HTTPR_CA_BUNDLE` environment variable); this function never reads or
+/// writes the process environment. `None` yields an empty list so the built-in
+/// roots are used unchanged.
+pub fn load_ca_certs(path: Option<&str>) -> Result<Vec<Certificate>> {
+    match path {
         Some(path) => {
             tracing::info!("Loading CA certificates from {}", path);
-            let ca_certs = read_pem_certificates(&path)
+            let ca_certs = read_pem_certificates(path)
                 .with_context(|| format!("Failed to read CA certificates from {}", path))?;
             Ok(ca_certs)
         }
         None => {
-            tracing::debug!(
-                "HTTPR_CA_BUNDLE environment variable not set. Skipping loading CA certificates."
-            );
+            tracing::debug!("No CA bundle configured. Skipping loading CA certificates.");
             Ok(Vec::new())
         }
     }
@@ -105,12 +106,11 @@ pub fn get_encoding_from_content(raw_bytes: &[u8]) -> Option<String> {
 #[cfg(test)]
 mod load_ca_certs_tests {
     use super::*;
-    use std::env;
     use std::fs;
     use std::path::Path;
 
     #[test]
-    fn test_load_ca_certs_with_env_var() {
+    fn test_load_ca_certs_with_path() {
         // Create a temporary file with a CA certificate
         let ca_cert_path = Path::new("test_ca_cert.pem");
         let ca_cert = "-----BEGIN CERTIFICATE-----
@@ -127,28 +127,22 @@ Q29uc3VsdGF0aW9uczEiMCAGCSqGSIb3DQEJARYTcGVyc29uYWwtZW1haWwuY29t
 -----END CERTIFICATE-----";
         fs::write(ca_cert_path, ca_cert).unwrap();
 
-        // Set the environment variable
-        env::set_var("HTTPR_CA_BUNDLE", ca_cert_path);
-
         // Call the function
-        let result = load_ca_certs();
-
-        // Check the result
-        assert!(result.is_ok());
+        let result = load_ca_certs(ca_cert_path.to_str());
 
         // Clean up
         fs::remove_file(ca_cert_path).unwrap();
-        env::remove_var("HTTPR_CA_BUNDLE");
-    }
-
-    #[test]
-    fn test_load_ca_certs_without_env_var() {
-        env::remove_var("HTTPR_CA_BUNDLE");
-        // Call the function
-        let result = load_ca_certs();
 
         // Check the result
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_load_ca_certs_without_path() {
+        let result = load_ca_certs(None);
+
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
     }
 
     #[test]
@@ -158,12 +152,10 @@ Q29uc3VsdGF0aW9uczEiMCAGCSqGSIb3DQEJARYTcGVyc29uYWwtZW1haWwuY29t
         // a silent fall-back to built-in roots).
         let path = Path::new("test_ca_malformed.pem");
         fs::write(path, b"this is not a PEM certificate at all").unwrap();
-        env::set_var("HTTPR_CA_BUNDLE", path);
 
-        let result = load_ca_certs();
+        let result = load_ca_certs(path.to_str());
 
         fs::remove_file(path).unwrap();
-        env::remove_var("HTTPR_CA_BUNDLE");
 
         assert!(
             result.is_err(),
@@ -179,12 +171,10 @@ Q29uc3VsdGF0aW9uczEiMCAGCSqGSIb3DQEJARYTcGVyc29uYWwtZW1haWwuY29t
         // and must error rather than silently fall back to built-in roots.
         let path = Path::new("test_ca_no_certs.pem");
         fs::write(path, b"# only a comment, no certs here\n").unwrap();
-        env::set_var("HTTPR_CA_BUNDLE", path);
 
-        let result = load_ca_certs();
+        let result = load_ca_certs(path.to_str());
 
         fs::remove_file(path).unwrap();
-        env::remove_var("HTTPR_CA_BUNDLE");
 
         assert!(
             result.is_err(),

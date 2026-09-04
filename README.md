@@ -294,7 +294,8 @@ export HTTPR_PROXY="socks5://127.0.0.1:1080"
 resp = httpr.Client().get("https://tls.peet.ws/api/all")
 print(resp.json())
 
-# Using custom CA certificate store: env var HTTPR_CA_BUNDLE
+# Using custom CA certificate store: ca_cert_file param, or env var HTTPR_CA_BUNDLE as the default
+# (ca_cert_file applies only to the client it is passed to and never modifies the environment)
 resp = httpr.Client(ca_cert_file="/cert/cacert.pem").get("https://tls.peet.ws/api/all")
 print(resp.json())
 resp = httpr.Client(ca_cert_file=certifi.where()).get("https://tls.peet.ws/api/all")
