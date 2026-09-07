@@ -8,6 +8,7 @@ the tests can observe pooled sockets actually being released, not just that
 """
 
 import asyncio
+import gc
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -58,7 +59,15 @@ class KeepAliveServer:
                 self.send_header("Content-Length", str(len(body)))
                 self.send_header("Content-Type", "text/plain")
                 self.end_headers()
-                self.wfile.write(body)
+                if self.path.startswith("/drip/"):
+                    # /drip/<seconds>: send the body in two halves with a pause,
+                    # so a streaming response stays open for a while.
+                    self.wfile.write(body[:1])
+                    self.wfile.flush()
+                    time.sleep(float(self.path.rsplit("/", 1)[-1]))
+                    self.wfile.write(body[1:])
+                else:
+                    self.wfile.write(body)
                 with outer._lock:
                     outer.requests_served += 1
 
@@ -66,7 +75,9 @@ class KeepAliveServer:
                 pass
 
         self._server = _Server(("127.0.0.1", 0), Handler)
-        self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+        # serve_forever's default poll_interval (0.5 s) is how long shutdown()
+        # can take; every test tears a server down, so keep it short.
+        self._thread = threading.Thread(target=self._server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
         self._thread.start()
         self.url = f"http://127.0.0.1:{self._server.server_address[1]}"
 
@@ -198,6 +209,56 @@ def test_in_flight_request_completes_when_client_is_closed(server):
     thread.join(timeout=10)
 
     assert result == {"status": 200}
+    assert server.wait_for_open_connections(0)
+
+
+def test_close_during_open_stream_releases_connection_when_stream_closes(server):
+    """A stream keeps its request in flight; closing the client under it must not leak."""
+    client = httpr.Client()
+    with client.stream("GET", f"{server.url}/drip/0.2") as response:
+        assert next(response.iter_bytes()) == b"o"
+        client.close()
+        assert client.is_closed
+        assert server.open_connections == 1, "the open stream must keep its connection"
+    assert server.wait_for_open_connections(0), "leaving the stream must release it"
+
+
+def test_close_during_unread_stream_releases_connection(server):
+    client = httpr.Client()
+    with client.stream("GET", server.url):
+        client.close()
+    assert server.wait_for_open_connections(0)
+
+
+def test_stream_overlapping_with_requests_then_close(server):
+    """An open stream plus sequential get() calls overlap; close() must still drain the pool."""
+    client = httpr.Client()
+    with client.stream("GET", f"{server.url}/drip/0.3") as response:
+        for _ in range(3):
+            assert client.get(server.url).status_code == 200
+        assert response.read() == b"ok"
+    client.close()
+    assert server.wait_for_open_connections(0)
+
+
+def test_changing_proxy_releases_old_pool(server):
+    client = httpr.Client()
+    client.get(server.url)
+    assert server.wait_for_open_connections(1)
+
+    client.proxy = "http://127.0.0.1:9"
+
+    assert server.wait_for_open_connections(0), "the replaced pool's connection must be released"
+    client.close()
+
+
+def test_garbage_collected_client_releases_connections(server):
+    """A client dropped without close() must not leave its sockets behind."""
+    for _ in range(5):
+        client = httpr.Client()
+        client.get(server.url)
+        del client
+    gc.collect()
     assert server.wait_for_open_connections(0)
 
 

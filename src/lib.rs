@@ -1,5 +1,4 @@
 #![allow(clippy::too_many_arguments)]
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Duration;
 use std::{fs, str};
@@ -24,6 +23,7 @@ use tokio::{
     runtime::{self, Runtime},
 };
 use tokio_util::codec::{BytesCodec, FramedRead};
+use tokio_util::sync::CancellationToken;
 
 mod response;
 use response::{CaseInsensitiveHeaderMap, LineIterator, Response, StreamingResponse, TextIterator};
@@ -36,6 +36,9 @@ use utils::load_ca_certs;
 
 mod exceptions;
 use exceptions::{map_anyhow_error, map_reqwest_error, ClientClosed};
+
+mod lifecycle;
+use lifecycle::ClientState;
 
 type IndexMapSSR = IndexMap<String, String, RandomState>;
 
@@ -50,35 +53,14 @@ static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
 /// Error message for any operation on a client after `close()`; mirrors httpx.
 const CLIENT_CLOSED_MSG: &str = "Cannot send a request, as the client has been closed.";
 
-/// How many scheduler turns `close()` gives the runtime so the connection
-/// tasks belonging to the dropped pool can observe the hang-up and shut their
-/// sockets down. Each turn is a `yield_now`, so this is microseconds of work.
-const CLOSE_SCHEDULER_TURNS: usize = 16;
-
-/// Timer tick used when `close()` has to wait for I/O (see
-/// `settle_dropped_pool`). tokio's timer wheel has millisecond resolution, so
-/// this is the smallest useful value.
-const CLOSE_SETTLE_TICK: Duration = Duration::from_millis(1);
-
-/// Upper bound on those ticks, so a stalled remote handshake cannot make
-/// `close()` hang. Whatever is still pending afterwards is torn down the next
-/// time the runtime is driven.
-const CLOSE_MAX_SETTLE_ROUNDS: usize = 8;
-
 #[pyclass(subclass)]
 /// HTTP client that can impersonate web browsers.
 pub struct RClient {
-    /// `None` once `close()` has been called. Dropping the `reqwest::Client`
-    /// drops its connection pool, which is what actually releases the sockets.
-    client: Mutex<Option<reqwest::Client>>,
-    /// Requests currently inside `request()` / `_stream()`.
-    in_flight: AtomicUsize,
-    /// Set once two requests have overlapped on this client. That is the only
-    /// way hyper can end up racing a fresh connect against an idle-pool
-    /// checkout, which is the one case where `close()` has to wait on I/O; see
-    /// `settle_dropped_pool`. Sequential clients (including the temporary one
-    /// behind `httpr.get()`) never pay for that wait.
-    saw_concurrency: AtomicBool,
+    /// The `reqwest::Client`, its in-flight count and the cancellation token
+    /// for its pending connects; shared with the requests in flight so that
+    /// `close()` can release the pool no matter who drops it last. See
+    /// `lifecycle.rs`.
+    state: Arc<ClientState>,
     headers: Arc<Mutex<reqwest::header::HeaderMap>>,
     #[pyo3(get, set)]
     auth: Option<(String, Option<String>)>,
@@ -92,93 +74,23 @@ pub struct RClient {
     timeout: Option<f64>,
 }
 
-/// Drive the single-threaded RUNTIME so a just-dropped connection pool actually
-/// releases its sockets. Must be called with the GIL released.
-///
-/// Pooled connections live in tasks spawned on RUNTIME, which only makes
-/// progress inside `block_on`. Dropping a pool hands each idle connection task
-/// a hang-up, but the socket is not shut down until that task is polled again,
-/// so first give the scheduler a few turns instead of leaving the FIN for the
-/// next unrelated request. This part is deterministic and takes microseconds.
-///
-/// `wait_for_connects` covers the one case yielding cannot: when requests
-/// overlap, hyper races a fresh connect against the idle-pool checkout and, if
-/// the checkout wins, finishes the connect in the background so the socket is
-/// not wasted. That connect future holds the pool alive until it resolves, and
-/// resolving needs I/O readiness that `yield_now` never waits for. So drive the
-/// I/O driver a timer tick at a time until the runtime's task population has
-/// stopped changing, with a small cap. Anything still pending after the cap
-/// (e.g. a slow remote TLS handshake) is torn down the next time the runtime
-/// is driven.
-fn settle_dropped_pool(wait_for_connects: bool) {
-    RUNTIME.block_on(async {
-        for _ in 0..CLOSE_SCHEDULER_TURNS {
-            tokio::task::yield_now().await;
-        }
-        if !wait_for_connects {
-            return;
-        }
-        let metrics = RUNTIME.metrics();
-        let mut alive = metrics.num_alive_tasks();
-        let mut stable_rounds = 0;
-        for _ in 0..CLOSE_MAX_SETTLE_ROUNDS {
-            tokio::time::sleep(CLOSE_SETTLE_TICK).await;
-            let now = metrics.num_alive_tasks();
-            if now == alive {
-                // Two quiet ticks in a row: a connect completing and its pool
-                // going away take more than one tick to ripple through.
-                stable_rounds += 1;
-                if stable_rounds >= 2 {
-                    break;
-                }
-            } else {
-                stable_rounds = 0;
-                alive = now;
-            }
-        }
-    })
-}
-
-/// Decrements `RClient::in_flight` when the request it belongs to finishes.
-struct InFlightGuard<'a>(&'a AtomicUsize);
-
-impl Drop for InFlightGuard<'_> {
-    fn drop(&mut self) {
-        self.0.fetch_sub(1, Ordering::AcqRel);
-    }
-}
-
 impl RClient {
-    /// `true` once `close()` has taken the client. Does not raise; for use on
-    /// paths that only need to know whether pool cleanup is pending.
-    fn is_closed_unchecked(&self) -> bool {
-        self.client.lock().map(|c| c.is_none()).unwrap_or(false)
-    }
-
-    /// Count a request as in flight for the lifetime of the returned guard,
-    /// remembering whether it overlapped with another one.
-    fn track_in_flight(&self) -> InFlightGuard<'_> {
-        if self.in_flight.fetch_add(1, Ordering::AcqRel) > 0 {
-            self.saw_concurrency.store(true, Ordering::Relaxed);
-        }
-        InFlightGuard(&self.in_flight)
-    }
-
-    /// Release the sockets of a pool this client just dropped.
-    fn settle(&self) {
-        settle_dropped_pool(self.saw_concurrency.load(Ordering::Relaxed));
-    }
-
-    /// A handle to the underlying `reqwest::Client`, or `ClientClosed` if
-    /// `close()` has been called. Cloning is cheap (it is an `Arc` inside), and
-    /// taking the clone up front means a request that is already in flight keeps
-    /// the pool alive even if the client is closed underneath it.
-    fn reqwest_client(&self) -> PyResult<reqwest::Client> {
-        self.client
-            .lock()
-            .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire client lock: {}", e)))?
-            .clone()
+    /// A handle to the underlying `reqwest::Client` plus the in-flight guard
+    /// for one request, or `ClientClosed` if `close()` has been called.
+    fn begin_request(&self) -> PyResult<(reqwest::Client, lifecycle::InFlight)> {
+        self.state
+            .begin_request()
             .ok_or_else(|| ClientClosed::new_err(CLIENT_CLOSED_MSG))
+    }
+}
+
+impl Drop for RClient {
+    /// A client that is garbage-collected without `close()` still releases its
+    /// pool. Safe to drive the runtime from here: every `block_on` in this
+    /// crate runs with the GIL released, so the thread deallocating a Python
+    /// object is never inside one.
+    fn drop(&mut self) {
+        self.state.close();
     }
 }
 
@@ -261,7 +173,9 @@ impl RClient {
             ));
         }
         // Client builder
-        let mut client_builder = reqwest::Client::builder();
+        let connects = CancellationToken::new();
+        let mut client_builder = reqwest::Client::builder()
+            .connector_layer(lifecycle::CancelConnectsLayer::new(connects.clone()));
 
         // Headers || Cookies
         let headers_headermap = if headers.is_some() || cookies.is_some() {
@@ -350,13 +264,11 @@ impl RClient {
         if let Some(true) = http2_only {
             client_builder = client_builder.http2_prior_knowledge();
         }
-        let client = Mutex::new(Some(client_builder.build().map_err(map_reqwest_error)?));
+        let client = client_builder.build().map_err(map_reqwest_error)?;
         let headers = Arc::new(Mutex::new(headers_headermap));
 
         Ok(RClient {
-            client,
-            in_flight: AtomicUsize::new(0),
-            saw_concurrency: AtomicBool::new(false),
+            state: ClientState::new(client, connects),
             headers,
             auth,
             auth_bearer,
@@ -459,53 +371,43 @@ impl RClient {
         Ok(self.proxy.to_owned())
     }
 
+    /// Rebuilds the underlying `reqwest::Client` with the new proxy. The old
+    /// pool is dropped and its idle connections are released; a connect the
+    /// old pool still had pending in the background is left to resolve on its
+    /// own (it is torn down the next time the runtime is driven). Raises
+    /// `ClientClosed` on a closed client.
     #[setter]
-    pub fn set_proxy(&mut self, proxy: String) -> PyResult<()> {
+    pub fn set_proxy(&mut self, py: Python, proxy: String) -> PyResult<()> {
         let rproxy = reqwest::Proxy::all(proxy.clone()).map_err(map_reqwest_error)?;
         let new_client = reqwest::Client::builder()
             .proxy(rproxy)
+            .connector_layer(self.state.connector_layer())
             .build()
             .map_err(map_reqwest_error)?;
-        let mut client = self
-            .client
-            .lock()
-            .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire client lock: {}", e)))?;
-        if client.is_none() {
+        if !py.detach(|| self.state.replace(new_client)) {
             return Err(ClientClosed::new_err(CLIENT_CLOSED_MSG));
         }
-        *client = Some(new_client);
         self.proxy = Some(proxy);
         Ok(())
     }
 
     /// Whether `close()` has been called on this client.
     #[getter]
-    pub fn is_closed(&self) -> PyResult<bool> {
-        Ok(self
-            .client
-            .lock()
-            .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire client lock: {}", e)))?
-            .is_none())
+    pub fn is_closed(&self) -> bool {
+        self.state.is_closed()
     }
 
     /// Close the client and release its connection pool.
     ///
-    /// Drops the underlying `reqwest::Client`. Idle pooled connections are shut
-    /// down; requests already in flight hold their own handle to the pool and
-    /// finish normally. Any later request on this client raises `ClientClosed`.
-    /// Calling `close()` more than once is a no-op.
-    pub fn close(&self, py: Python) -> PyResult<()> {
-        let closed_client = self
-            .client
-            .lock()
-            .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire client lock: {}", e)))?
-            .take();
-        if closed_client.is_none() {
-            return Ok(());
-        }
-        drop(closed_client);
-        py.detach(|| self.settle());
-        Ok(())
+    /// Drops the underlying `reqwest::Client` and cancels any connect the pool
+    /// still had pending, so idle pooled connections are shut down before this
+    /// returns. Requests already in flight hold their own handle to the pool
+    /// and finish normally; while any of them is running the pool, including
+    /// its idle connections, stays alive, and the last one to finish releases
+    /// it. Any later request on this client raises `ClientClosed`. Calling
+    /// `close()` more than once is a no-op.
+    pub fn close(&self, py: Python) {
+        py.detach(|| self.state.close());
     }
 
     /// Constructs an HTTP request with the given method, URL, and optionally sets a timeout, headers, and query parameters.
@@ -562,8 +464,7 @@ impl RClient {
         auth_bearer: Option<String>,
         timeout: Option<f64>,
     ) -> PyResult<Response> {
-        let client = self.reqwest_client()?;
-        let _in_flight = self.track_in_flight();
+        let (client, in_flight) = self.begin_request()?;
         let method = Method::from_bytes(method.as_bytes())
             .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let is_post_put_patch = matches!(method, Method::POST | Method::PUT | Method::PATCH);
@@ -684,13 +585,9 @@ impl RClient {
             // The future owns our clone of the reqwest client, which kept the
             // pool alive for the duration of the request; `block_on` drops it.
             let result = RUNTIME.block_on(future);
-            // If `close()` ran in the meantime, that drop is what actually tore
-            // the pool down, so settle its connections now rather than leaving
-            // them until the runtime is next driven. (Streaming responses release
-            // their connection on the next runtime drive after being read/closed.)
-            if self.is_closed_unchecked() {
-                self.settle();
-            }
+            // If `close()` ran in the meantime, ending this request is what
+            // really tears the pool down, and the guard releases its sockets.
+            drop(in_flight);
             result
         });
         let (f_buf, f_cookies, f_headers, f_status_code, f_url) =
@@ -745,8 +642,7 @@ impl RClient {
         auth_bearer: Option<String>,
         timeout: Option<f64>,
     ) -> PyResult<StreamingResponse> {
-        let client = self.reqwest_client()?;
-        let _in_flight = self.track_in_flight();
+        let (client, in_flight) = self.begin_request()?;
         let method = Method::from_bytes(method.as_bytes())
             .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let is_post_put_patch = matches!(method, Method::POST | Method::PUT | Method::PATCH);
@@ -865,8 +761,11 @@ impl RClient {
         let (f_resp, f_cookies, f_headers, f_status_code, f_url) =
             result.map_err(map_anyhow_error)?;
 
+        // The response keeps the request in flight until it is closed: its
+        // connection stays busy, and a `close()` meanwhile must wait for it.
         Ok(StreamingResponse::new(
             f_resp,
+            in_flight,
             f_cookies,
             CaseInsensitiveHeaderMap::from_indexmap(f_headers),
             f_status_code,
@@ -885,6 +784,7 @@ fn httpr(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<CaseInsensitiveHeaderMap>()?;
     m.add_class::<TextIterator>()?;
     m.add_class::<LineIterator>()?;
+    m.add("_CLIENT_CLOSED_MSG", CLIENT_CLOSED_MSG)?;
 
     // Register all exception types
     exceptions::register_exceptions(m)?;

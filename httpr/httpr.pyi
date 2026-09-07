@@ -749,6 +749,8 @@ class StreamClosed(StreamError):
 class ClientClosed(RuntimeError):
     """Attempted to use a client after `close()` was called."""
 
+_CLIENT_CLOSED_MSG: str
+
 # Other exceptions
 class InvalidURL(Exception):
     """URL is improperly formed or cannot be parsed."""

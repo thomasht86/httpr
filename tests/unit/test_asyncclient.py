@@ -102,9 +102,11 @@ async def test_client_is_reusable_until_closed(base_url):
 
     This replaces a test that asserted the opposite -- that a client kept working
     after `aclose()` and across repeated `async with` blocks -- which only held
-    because `aclose()` used to be a no-op. Downstream users that scope a shared
-    client (pyvespa) wrap it in their own context manager and never close it, so
-    they are unaffected; see tests/unit/test_close.py for the full contract.
+    because `aclose()` used to be a no-op. Downstream wrappers that own their
+    httpr client and re-enter the same wrapper object (pyvespa's VespaSync /
+    VespaAsync without an external session) now see ClientClosed on the second
+    entry; wrappers given an external client never close it and are unaffected.
+    See tests/unit/test_close.py for the full contract.
     """
     client = httpr.AsyncClient(max_concurrency=2)
     assert (await client.get(f"{base_url}/anything")).status_code == 200

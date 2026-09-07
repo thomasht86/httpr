@@ -114,7 +114,7 @@ finally:
     client.close()  # idempotent
 ```
 
-Requests that are still in flight when `close()` is called finish normally. Any request made afterwards raises `httpr.ClientClosed` (a `RuntimeError`, as in httpx); `client.is_closed` tells you which state a client is in. `AsyncClient` offers the same via `aclose()` / `async with`, and additionally shuts down its own thread pool.
+Requests that are still in flight when `close()` is called (including open `stream()` responses) finish normally; the pool is released as soon as the last of them completes. Any request made afterwards, or assigning `client.proxy`, raises `httpr.ClientClosed` (a `RuntimeError`, as in httpx); `client.is_closed` tells you which state a client is in. `AsyncClient` offers the same via `aclose()` / `async with`, and additionally shuts down its own thread pool. A client that is garbage-collected without being closed releases its pool too, but only once the interpreter gets to it, so prefer closing explicitly.
 
 #### Client methods
 
