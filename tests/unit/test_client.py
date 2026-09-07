@@ -417,3 +417,46 @@ def test_graceful_invalid_header_handling(base_url_ssl, ca_bundle):
     json_data = response.json()
     assert json_data["headers"]["X-Valid-Header"] == "valid-value"
     assert json_data["headers"]["User-Agent"] == "test"
+
+
+# Regression tests for issue #83: bodies must be sent for any method, not only
+# POST/PUT/PATCH (RFC 9110; matches httpx and requests).
+@pytest.mark.parametrize("method", ["DELETE", "GET", "PATCH"])
+def test_client_json_body_any_method(base_url_ssl, ca_bundle, method):
+    client = httpr.Client(ca_cert_file=ca_bundle)
+    body = {"id": 1, "filter": {"stale": True}}
+    response = client.request(method, f"{base_url_ssl}/anything", json=body)
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["method"] == method
+    assert json_data["json"] == body
+    assert json_data["headers"]["Content-Type"] == "application/json"
+
+
+def test_client_delete_content(base_url_ssl, ca_bundle):
+    client = httpr.Client(ca_cert_file=ca_bundle)
+    response = client.delete(f"{base_url_ssl}/anything", content=b"raw-bytes")
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["method"] == "DELETE"
+    assert json_data["data"] == "raw-bytes"
+    assert json_data["headers"]["Content-Length"] == "9"
+
+
+def test_client_delete_form_data(base_url_ssl, ca_bundle):
+    client = httpr.Client(ca_cert_file=ca_bundle)
+    data = {"key1": "value1", "key2": "value2"}
+    response = client.delete(f"{base_url_ssl}/anything", data=data)
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["form"] == data
+    assert json_data["headers"]["Content-Type"] == "application/x-www-form-urlencoded"
+
+
+def test_client_delete_without_body_sends_no_body(base_url_ssl, ca_bundle):
+    client = httpr.Client(ca_cert_file=ca_bundle)
+    response = client.delete(f"{base_url_ssl}/anything")
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["data"] == ""
+    assert "Content-Type" not in json_data["headers"]
