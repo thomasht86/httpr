@@ -413,7 +413,6 @@ impl RClient {
         let client = Arc::clone(&self.client);
         let method = Method::from_bytes(method.as_bytes())
             .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let is_post_put_patch = matches!(method, Method::POST | Method::PUT | Method::PATCH);
         let params = params.or_else(|| self.params.clone());
         let data_value: Option<Value> = data
             .map(depythonize)
@@ -465,32 +464,30 @@ impl RClient {
                 );
             }
 
-            // Only if method POST || PUT || PATCH
-            if is_post_put_patch {
-                // Content
-                if let Some(content) = content {
-                    request_builder = request_builder.body(content);
+            // Body: sent for any method the caller supplies one for (RFC 9110, matches httpx)
+            // Content
+            if let Some(content) = content {
+                request_builder = request_builder.body(content);
+            }
+            // Data
+            if let Some(form_data) = data_value {
+                request_builder = request_builder.form(&form_data);
+            }
+            // Json - always serialize as JSON regardless of Accept header
+            if let Some(json_data) = json_value {
+                request_builder = request_builder.json(&json_data);
+            }
+            // Files
+            if let Some(files) = files {
+                let mut form = multipart::Form::new();
+                for (file_name, file_path) in files {
+                    let file = File::open(file_path).await.map_err(anyhow::Error::new)?;
+                    let stream = FramedRead::new(file, BytesCodec::new());
+                    let file_body = Body::wrap_stream(stream);
+                    let part = multipart::Part::stream(file_body).file_name(file_name.clone());
+                    form = form.part(file_name, part);
                 }
-                // Data
-                if let Some(form_data) = data_value {
-                    request_builder = request_builder.form(&form_data);
-                }
-                // Json - always serialize as JSON regardless of Accept header
-                if let Some(json_data) = json_value {
-                    request_builder = request_builder.json(&json_data);
-                }
-                // Files
-                if let Some(files) = files {
-                    let mut form = multipart::Form::new();
-                    for (file_name, file_path) in files {
-                        let file = File::open(file_path).await.map_err(anyhow::Error::new)?;
-                        let stream = FramedRead::new(file, BytesCodec::new());
-                        let file_body = Body::wrap_stream(stream);
-                        let part = multipart::Part::stream(file_body).file_name(file_name.clone());
-                        form = form.part(file_name, part);
-                    }
-                    request_builder = request_builder.multipart(form);
-                }
+                request_builder = request_builder.multipart(form);
             }
 
             // Auth
@@ -586,7 +583,6 @@ impl RClient {
         let client = Arc::clone(&self.client);
         let method = Method::from_bytes(method.as_bytes())
             .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let is_post_put_patch = matches!(method, Method::POST | Method::PUT | Method::PATCH);
         let params = params.or_else(|| self.params.clone());
         let data_value: Option<Value> = data
             .map(depythonize)
@@ -638,32 +634,30 @@ impl RClient {
                 );
             }
 
-            // Only if method POST || PUT || PATCH
-            if is_post_put_patch {
-                // Content
-                if let Some(content) = content {
-                    request_builder = request_builder.body(content);
+            // Body: sent for any method the caller supplies one for (RFC 9110, matches httpx)
+            // Content
+            if let Some(content) = content {
+                request_builder = request_builder.body(content);
+            }
+            // Data
+            if let Some(form_data) = data_value {
+                request_builder = request_builder.form(&form_data);
+            }
+            // Json - always serialize as JSON regardless of Accept header
+            if let Some(json_data) = json_value {
+                request_builder = request_builder.json(&json_data);
+            }
+            // Files
+            if let Some(files) = files {
+                let mut form = multipart::Form::new();
+                for (file_name, file_path) in files {
+                    let file = File::open(file_path).await.map_err(anyhow::Error::new)?;
+                    let stream = FramedRead::new(file, BytesCodec::new());
+                    let file_body = Body::wrap_stream(stream);
+                    let part = multipart::Part::stream(file_body).file_name(file_name.clone());
+                    form = form.part(file_name, part);
                 }
-                // Data
-                if let Some(form_data) = data_value {
-                    request_builder = request_builder.form(&form_data);
-                }
-                // Json - always serialize as JSON regardless of Accept header
-                if let Some(json_data) = json_value {
-                    request_builder = request_builder.json(&json_data);
-                }
-                // Files
-                if let Some(files) = files {
-                    let mut form = multipart::Form::new();
-                    for (file_name, file_path) in files {
-                        let file = File::open(file_path).await.map_err(anyhow::Error::new)?;
-                        let stream = FramedRead::new(file, BytesCodec::new());
-                        let file_body = Body::wrap_stream(stream);
-                        let part = multipart::Part::stream(file_body).file_name(file_name.clone());
-                        form = form.part(file_name, part);
-                    }
-                    request_builder = request_builder.multipart(form);
-                }
+                request_builder = request_builder.multipart(form);
             }
 
             // Auth
