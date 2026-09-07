@@ -2496,15 +2496,12 @@ the context manager.</p>
   </span>
 
 <a href="#httpr.AsyncClient.aclose" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">aclose</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">aclose</span><span class="p">()</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Close the async client.</p>
-<p>Releases the connection pool and shuts down this client's thread pool.
-Any request made after <code>aclose()</code> raises <code>httpr.ClientClosed</code>. Calling it
-more than once is a no-op.</p>
 
 
 <details class="example" open>

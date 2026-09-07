@@ -2914,13 +2914,7 @@ Always use this as a context manager to ensure proper cleanup.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Close the client and release its connection pool.</p>
-<p>Idle pooled connections are shut down before this returns. Requests
-that are already in flight (including open <code>stream()</code> responses) finish
-normally and keep the pool alive until the last of them completes, at
-which point it is released. Any request made after <code>close()</code> raises
-<code>httpr.ClientClosed</code> (a <code>RuntimeError</code>, as in httpx). Calling <code>close()</code>
-more than once is a no-op.</p>
+        <p>Close the client and release resources.</p>
 
 
 <details class="example" open>
