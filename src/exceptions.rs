@@ -1,5 +1,5 @@
 use pyo3::create_exception;
-use pyo3::exceptions::{PyException, PyRuntimeError};
+use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 
 // Base exception - HTTPError
@@ -175,14 +175,6 @@ create_exception!(
     StreamClosed,
     StreamError,
     "Attempted to read or stream response content, but the request has been closed."
-);
-
-// Client lifecycle exceptions
-create_exception!(
-    httpr,
-    ClientClosed,
-    PyRuntimeError,
-    "Attempted to use a client after `close()` was called. Subclasses RuntimeError, matching httpx."
 );
 
 // Other exceptions
@@ -395,9 +387,6 @@ pub fn register_exceptions(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("ResponseNotRead", m.py().get_type::<ResponseNotRead>())?;
     m.add("RequestNotRead", m.py().get_type::<RequestNotRead>())?;
     m.add("StreamClosed", m.py().get_type::<StreamClosed>())?;
-
-    // Client lifecycle exceptions
-    m.add("ClientClosed", m.py().get_type::<ClientClosed>())?;
 
     // Other exceptions
     m.add("InvalidURL", m.py().get_type::<InvalidURL>())?;

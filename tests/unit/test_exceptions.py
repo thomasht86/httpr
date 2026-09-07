@@ -42,7 +42,6 @@ def test_exception_imports():
     assert hasattr(httpr, "ResponseNotRead")
     assert hasattr(httpr, "RequestNotRead")
     assert hasattr(httpr, "StreamClosed")
-    assert hasattr(httpr, "ClientClosed")
     assert hasattr(httpr, "InvalidURL")
     assert hasattr(httpr, "CookieConflict")
 
@@ -86,9 +85,6 @@ def test_exception_hierarchy():
     assert issubclass(httpr.TooManyRedirects, httpr.RequestError)
     assert issubclass(httpr.HTTPStatusError, httpr.HTTPError)
     assert issubclass(httpr.DecodingError, httpr.RequestError)
-
-    # Use-after-close mirrors httpx, which raises a plain RuntimeError
-    assert issubclass(httpr.ClientClosed, RuntimeError)
 
 
 def test_invalid_url_raises_request_error():

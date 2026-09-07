@@ -403,9 +403,6 @@ class RClient:
     def timeout(self) -> float | None: ...
     @timeout.setter
     def timeout(self, timeout: float | None) -> None: ...
-    @property
-    def is_closed(self) -> bool: ...
-    def close(self) -> None: ...
     def request(self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> Response: ...
     def _stream(self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> StreamingResponse: ...
     def get(self, url: str, **kwargs: Unpack[RequestParams]) -> Response: ...
@@ -493,11 +490,7 @@ class Client(RClient):
     def __enter__(self) -> Client: ...
     def __exit__(self, *args: Any) -> None: ...
     def close(self) -> None:
-        """
-        Close the client and release its connection pool.
-
-        Requests made after `close()` raise `ClientClosed`. Idempotent.
-        """
+        """Close the client and release resources."""
         ...
     def stream(
         self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]
@@ -585,15 +578,8 @@ class AsyncClient(Client):
     max_concurrency: int | None
     async def __aenter__(self) -> AsyncClient: ...
     async def __aexit__(self, *args: Any) -> None: ...
-    def close(self) -> None:
-        """Close the client synchronously and shut down its thread pool."""
-        ...
     async def aclose(self) -> None:
-        """
-        Close the async client and shut down its thread pool.
-
-        Requests made after `aclose()` raise `ClientClosed`. Idempotent.
-        """
+        """Close the async client."""
         ...
     async def request(  # type: ignore[override]
         self, method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]
@@ -745,12 +731,6 @@ class RequestNotRead(StreamError):
 class StreamClosed(StreamError):
     """Attempted to read or stream response content, but the request has been closed."""
 
-# Client lifecycle exceptions
-class ClientClosed(RuntimeError):
-    """Attempted to use a client after `close()` was called."""
-
-_CLIENT_CLOSED_MSG: str
-
 # Other exceptions
 class InvalidURL(Exception):
     """URL is improperly formed or cannot be parsed."""
@@ -814,8 +794,6 @@ __all__ = [
     "ResponseNotRead",
     "RequestNotRead",
     "StreamClosed",
-    # Client lifecycle exceptions
-    "ClientClosed",
     # Other exceptions
     "InvalidURL",
     "CookieConflict",

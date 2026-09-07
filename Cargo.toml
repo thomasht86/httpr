@@ -40,8 +40,7 @@ encoding_rs = { version = "0.8.35" }
 foldhash = "0.1.4"
 indexmap = { version = "2.7.1", features = ["serde"] }
 tokio = { version = "1.43.0", features = ["full"] }
-tokio-util = { version = "0.7.13", features = ["codec"] } # for multipart; `sync` for CancellationToken
-tower = { version = "0.5", default-features = false } # Layer/Service traits for the connector layer
+tokio-util = { version = "0.7.13", features = ["codec"] } # for multipart
 html2text = "0.13.6"
 bytes = "1.10.0"
 pythonize = "0.29.0"

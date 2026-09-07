@@ -3,7 +3,6 @@
 #![allow(clippy::await_holding_lock)]
 
 use crate::exceptions::{HTTPStatusError, StreamClosed, StreamConsumed};
-use crate::lifecycle::InFlight;
 use crate::utils::{get_encoding_from_case_insensitive_headers, get_encoding_from_content};
 use crate::RUNTIME;
 use anyhow::{anyhow, Result};
@@ -355,17 +354,12 @@ pub struct StreamingResponse {
     closed: Arc<Mutex<bool>>,
     consumed: Arc<Mutex<bool>>,
     encoding: Arc<Mutex<Option<String>>>,
-    /// Keeps the request counted as in flight on its client until `close()`.
-    /// Declared last so that, if the response is dropped without `close()`,
-    /// the connection is released before the guard settles the pool.
-    in_flight: Mutex<Option<InFlight>>,
 }
 
 impl StreamingResponse {
     /// Create a new StreamingResponse from a reqwest::Response
     pub fn new(
         response: reqwest::Response,
-        in_flight: InFlight,
         cookies: IndexMap<String, String, RandomState>,
         headers: CaseInsensitiveHeaderMap,
         status_code: u16,
@@ -380,7 +374,6 @@ impl StreamingResponse {
             closed: Arc::new(Mutex::new(false)),
             consumed: Arc::new(Mutex::new(false)),
             encoding: Arc::new(Mutex::new(None)),
-            in_flight: Mutex::new(Some(in_flight)),
         }
     }
 
@@ -629,37 +622,21 @@ impl StreamingResponse {
         }
     }
 
-    /// Close the streaming response and release its connection.
+    /// Close the streaming response and release resources.
     ///
     /// After closing, no more data can be read from the stream.
     /// This is automatically called when using the stream as a context manager.
-    fn close(&self, py: Python) -> PyResult<()> {
+    fn close(&self) -> PyResult<()> {
         let mut closed = self.closed.lock().map_err(|e| {
             pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to acquire lock: {}", e))
         })?;
         *closed = true;
 
-        let response = self
-            .response
-            .lock()
-            .map_err(|e| {
-                pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to acquire lock: {}", e))
-            })?
-            .take();
-        let in_flight = self
-            .in_flight
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .take();
-
-        // Drop the response first so its connection is handed back (or hung
-        // up), then end the request: if the client was closed while this
-        // stream was open, that is what releases the pool's sockets, and it
-        // drives the runtime, so do it without the GIL.
-        py.detach(move || {
-            drop(response);
-            drop(in_flight);
-        });
+        // Drop the response to release resources
+        let mut response = self.response.lock().map_err(|e| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to acquire lock: {}", e))
+        })?;
+        *response = None;
 
         Ok(())
     }

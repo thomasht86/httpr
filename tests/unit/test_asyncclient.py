@@ -97,24 +97,15 @@ async def test_concurrency_is_not_capped_by_the_default_executor():
 
 
 @pytest.mark.asyncio
-async def test_client_is_reusable_until_closed(base_url):
-    """One client serves many requests; leaving `async with` closes it (issue #88).
-
-    This replaces a test that asserted the opposite -- that a client kept working
-    after `aclose()` and across repeated `async with` blocks -- which only held
-    because `aclose()` used to be a no-op. Downstream wrappers that own their
-    httpr client and re-enter the same wrapper object (pyvespa's VespaSync /
-    VespaAsync without an external session) now see ClientClosed on the second
-    entry; wrappers given an external client never close it and are unaffected.
-    See tests/unit/test_close.py for the full contract.
-    """
+async def test_client_stays_reusable_across_contexts(base_url):
+    """Reuse across several `async with` blocks must keep working -- downstream
+    users (pyvespa) hold one client and scope it with repeated `async with`."""
     client = httpr.AsyncClient(max_concurrency=2)
-    assert (await client.get(f"{base_url}/anything")).status_code == 200
-    assert (await client.get(f"{base_url}/anything")).status_code == 200
 
     async with client:
         assert (await client.get(f"{base_url}/anything")).status_code == 200
+    async with client:
+        assert (await client.get(f"{base_url}/anything")).status_code == 200
 
-    assert client.is_closed
-    with pytest.raises(httpr.ClientClosed):
-        await client.get(f"{base_url}/anything")
+    await client.aclose()
+    assert (await client.get(f"{base_url}/anything")).status_code == 200
