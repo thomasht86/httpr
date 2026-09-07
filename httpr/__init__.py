@@ -41,7 +41,14 @@ else:
     from typing import Unpack
 
 
-from .httpr import CaseInsensitiveHeaderMap, RClient, Response, StreamingResponse
+from .httpr import (
+    _CLIENT_CLOSED_MSG,
+    CaseInsensitiveHeaderMap,
+    ClientClosed,
+    RClient,
+    Response,
+    StreamingResponse,
+)
 
 #: Default number of requests an :class:`AsyncClient` keeps in flight. Threads are
 #: created lazily, so an idle client costs nothing.
@@ -279,11 +286,18 @@ class Client(RClient):
 
     def __exit__(self, *args):
         """Exit context manager and close client."""
-        del self
+        self.close()
 
     def close(self) -> None:
         """
-        Close the client and release resources.
+        Close the client and release its connection pool.
+
+        Idle pooled connections are shut down before this returns. Requests
+        that are already in flight (including open `stream()` responses) finish
+        normally and keep the pool alive until the last of them completes, at
+        which point it is released. Any request made after `close()` raises
+        `httpr.ClientClosed` (a `RuntimeError`, as in httpx). Calling `close()`
+        more than once is a no-op.
 
         Example:
             ```python
@@ -294,7 +308,7 @@ class Client(RClient):
                 client.close()
             ```
         """
-        del self
+        super().close()
 
     @property
     def headers(self) -> dict[str, str]:
@@ -678,9 +692,7 @@ class AsyncClient(Client):
         """
         super().__init__(*args, **kwargs)
         self.max_concurrency = max_concurrency
-        # Threads are created on demand, and ThreadPoolExecutor retires them via a
-        # weakref callback once this client is collected, so there is nothing to
-        # release explicitly and `aclose` stays the no-op it has always been.
+        # Threads are created on demand; `close()`/`aclose()` shut the pool down.
         self._executor = (
             None
             if max_concurrency is None
@@ -693,11 +705,30 @@ class AsyncClient(Client):
 
     async def __aexit__(self, *args):
         """Exit async context manager and close client."""
-        del self
+        await self.aclose()
 
-    async def aclose(self):
+    def close(self) -> None:
+        """
+        Close the client synchronously.
+
+        Releases the connection pool and shuts down this client's thread pool.
+        Prefer `aclose()` from async code; this exists so `AsyncClient` honours
+        the `Client` contract too.
+        """
+        super().close()
+        if self._executor is not None:
+            # Requests still running on the pool keep their handle to the reqwest
+            # client and finish normally; queued ones raise ClientClosed when they
+            # run. Not waiting keeps this safe to call from the event-loop thread.
+            self._executor.shutdown(wait=False)
+
+    async def aclose(self) -> None:
         """
         Close the async client.
+
+        Releases the connection pool and shuts down this client's thread pool.
+        Any request made after `aclose()` raises `httpr.ClientClosed`. Calling it
+        more than once is a no-op.
 
         Example:
             ```python
@@ -708,13 +739,30 @@ class AsyncClient(Client):
                 await client.aclose()
             ```
         """
-        del self
-        return
+        # Runs on the event-loop thread on purpose: closing never waits on I/O
+        # (pending connects are cancelled, not awaited) and takes well under a
+        # millisecond, less than a hop through the executor would cost.
+        self.close()
 
     async def _run_sync_asyncio(self, fn, *args, **kwargs):
         """Run a synchronous function on this client's executor."""
+        if self.is_closed:
+            # Checked here rather than left to the Rust side so a closed client
+            # raises ClientClosed instead of the executor's own "cannot schedule
+            # new futures after shutdown" RuntimeError.
+            raise ClientClosed(_CLIENT_CLOSED_MSG)
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(self._executor, partial(fn, *args, **kwargs))
+        try:
+            future = loop.run_in_executor(self._executor, partial(fn, *args, **kwargs))
+        except RuntimeError:
+            # The executor is only ever shut down by close()/aclose(), so if one
+            # landed between the check above and submit (from another thread),
+            # report it as the client being closed rather than leaking the
+            # executor's own error.
+            if self.is_closed:
+                raise ClientClosed(_CLIENT_CLOSED_MSG) from None
+            raise
+        return await future
 
     async def request(  # type: ignore[override]
         self,
@@ -1206,6 +1254,8 @@ __all__ = [
     "ResponseNotRead",
     "RequestNotRead",
     "StreamClosed",
+    # Client lifecycle exceptions
+    "ClientClosed",
     "InvalidURL",
     "CookieConflict",
 ]
