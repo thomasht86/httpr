@@ -290,10 +290,12 @@ Iteration over the response is synchronous (uses iter_bytes, iter_text, iter_lin
 ### aclose
 
 ```python
-aclose()
+aclose() -> None
 ```
 
 Close the async client.
+
+Releases the connection pool and shuts down this client's thread pool. Any request made after `aclose()` raises `httpr.ClientClosed`. Calling it more than once is a no-op.
 
 Example
 
