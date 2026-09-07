@@ -141,10 +141,6 @@ async def async_session_get_test(session_class, requests_number, json_response=F
         await asyncio.gather(*tasks)
 
 
-PACKAGES = add_package_version(PACKAGES)
-AsyncPACKAGES = add_package_version(AsyncPACKAGES)
-
-
 def run_standard_benchmarks():
     global results, url
 
@@ -305,6 +301,10 @@ if __name__ == "__main__":
 
     if args.httpr_version:
         _httpr_version_override = args.httpr_version
+
+    # Label packages after the override is known, so --httpr-version takes effect.
+    PACKAGES = add_package_version(PACKAGES)
+    AsyncPACKAGES = add_package_version(AsyncPACKAGES)
 
     if args.run_multithread:
         run_multithread_benchmarks()
