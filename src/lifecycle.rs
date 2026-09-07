@@ -43,7 +43,15 @@ type BoxError = Box<dyn std::error::Error + Send + Sync>;
 /// connect, the pool handle it releases, and the connection tasks that then
 /// shut their sockets down form a short wake-up chain; each turn advances
 /// every task that is ready, and the tokio I/O driver is polled between turns.
-const SETTLE_SCHEDULER_TURNS: usize = 32;
+///
+/// Every wake in that chain happens on this thread and lands in the run queue,
+/// so the first turn already drains the whole chain; a plain `shutdown()` on a
+/// TCP socket needs no I/O readiness. The remaining turns are margin for a
+/// shutdown that does (a TLS close_notify or HTTP/2 GOAWAY that hits a full
+/// send buffer). Keep this small: each turn costs a driver poll, which is a
+/// syscall (~13 µs on macOS), and this runs on every `close()`, `__exit__` and
+/// client drop. 32 turns made a create-request-close cycle twice as slow.
+const SETTLE_SCHEDULER_TURNS: usize = 4;
 
 /// Drive `RUNTIME` so a just-dropped connection pool actually releases its
 /// sockets. Call with the GIL released where possible; it never blocks on I/O.
