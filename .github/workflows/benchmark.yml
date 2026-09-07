@@ -8,6 +8,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      compare:
+        description: "Also run the HTTP-client comparison (benchmark/benchmark.py)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -76,3 +81,72 @@ jobs:
           comment-on-alert: true
           fail-on-alert: false
           benchmark-data-dir-path: dev/bench
+
+  compare:
+    name: HTTP-client comparison
+    runs-on: ubuntu-latest
+    # Manual only: it pulls in six other client libraries and takes a few minutes.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.compare }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+
+      - name: Cache Rust build
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-bench-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-bench-${{ runner.os }}-
+
+      - name: Build httpr wheel (release mode)
+        run: uv build --wheel --out-dir dist
+
+      - name: Start benchmark server
+        env:
+          BENCHMARK_HOST: 127.0.0.1
+          BENCHMARK_PORT: "8000"
+        run: |
+          uv run --script benchmark/server.py &
+          for i in $(seq 1 10); do
+            if curl -sf http://127.0.0.1:8000/json/1 > /dev/null 2>&1; then
+              echo "Benchmark server is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Benchmark server failed to start"
+          exit 1
+
+      - name: Run comparison
+        run: |
+          mkdir -p compare
+          cd compare
+          LABEL="${GITHUB_SHA::7}"
+          uv run --with ../dist/httpr-*.whl --script ../benchmark/benchmark.py \
+            --httpr-version "$LABEL" | tee standard.log
+          uv run --with ../dist/httpr-*.whl --script ../benchmark/benchmark.py \
+            --httpr-version "$LABEL" --run_multithread | tee multithread.log
+
+      - name: Write job summary
+        run: |
+          {
+            echo "## HTTP-client comparison (\`${GITHUB_SHA::7}\`, seconds for 400 requests, lower is better)"
+            echo '```'
+            grep -hE "^Threads=[0-9]+ session=" -A 9 compare/standard.log compare/multithread.log | grep -v "^--$"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        uses: actions/upload-artifact@v6
+        with:
+          name: client-comparison-${{ github.sha }}
+          path: |
+            compare/*.log
+            compare/*.csv

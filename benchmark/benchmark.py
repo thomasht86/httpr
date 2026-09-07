@@ -5,6 +5,7 @@
 #     "curl_cffi",
 #     "httpr",
 #     "httpx",
+#     "httpx2",
 #     "pandas",
 #     "pycurl",
 #     "requests",
@@ -28,6 +29,7 @@ from io import BytesIO
 import aiohttp
 import curl_cffi.requests
 import httpx
+import httpx2
 import pandas as pd
 import pycurl
 import requests
@@ -67,6 +69,7 @@ requests_number = 400
 PACKAGES = [
     ("requests", requests.Session),
     ("httpx", partial(httpx.Client, timeout=httpx.Timeout(10.0, pool=60.0))),
+    ("httpx2", partial(httpx2.Client, timeout=httpx2.Timeout(10.0, pool=60.0))),
     ("tls_client", tls_client.Session),
     ("curl_cffi", curl_cffi.requests.Session),
     ("pycurl", PycurlSession),
@@ -83,6 +86,7 @@ def aiohttp_session_factory():
 
 AsyncPACKAGES = [
     ("httpx", httpx.AsyncClient),
+    ("httpx2", httpx2.AsyncClient),
     ("curl_cffi", curl_cffi.requests.AsyncSession),
     ("httpr", httpr.AsyncClient),
     ("aiohttp", aiohttp_session_factory),
@@ -135,10 +139,6 @@ async def async_session_get_test(session_class, requests_number, json_response=F
     async with session_class() as s:
         tasks = [aget(s, url) for _ in range(requests_number)]
         await asyncio.gather(*tasks)
-
-
-PACKAGES = add_package_version(PACKAGES)
-AsyncPACKAGES = add_package_version(AsyncPACKAGES)
 
 
 def run_standard_benchmarks():
@@ -301,6 +301,10 @@ if __name__ == "__main__":
 
     if args.httpr_version:
         _httpr_version_override = args.httpr_version
+
+    # Label packages after the override is known, so --httpr-version takes effect.
+    PACKAGES = add_package_version(PACKAGES)
+    AsyncPACKAGES = add_package_version(AsyncPACKAGES)
 
     if args.run_multithread:
         run_multithread_benchmarks()
