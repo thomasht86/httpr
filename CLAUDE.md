@@ -158,6 +158,7 @@ uv run python benchmark.py  # Terminal 2: Run benchmarks
 
 ### Request Body
 - Mutually exclusive: `content` (bytes), `data` (form), `json` (JSON), `files` (multipart)
+- A body is sent for any method the caller supplies one for, including GET/DELETE/OPTIONS (RFC 9110, matches httpx; issue #83). Do not re-add a POST/PUT/PATCH guard
 - `data` and `json` use `pythonize::depythonize()` for Python → Rust conversion
 - `files` dict maps field names to file paths
 

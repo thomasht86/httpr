@@ -1,5 +1,7 @@
 """Tests for streaming response functionality."""
 
+import json
+
 import pytest
 
 import httpr  # type: ignore
@@ -251,3 +253,14 @@ class TestStreamingAsyncClient:
             with pytest.raises(ValueError, match="Unsupported HTTP method"):
                 async with client.stream("INVALID", f"{base_url_ssl}/get") as _:  # type: ignore[arg-type]
                     pass
+
+
+def test_stream_delete_json_body(base_url_ssl, ca_bundle):
+    """Issue #83: streaming requests also send bodies on non-POST methods."""
+    client = httpr.Client(ca_cert_file=ca_bundle)
+    body = {"id": 1}
+    with client.stream("DELETE", f"{base_url_ssl}/anything", json=body) as response:
+        assert response.status_code == 200
+        payload = json.loads(response.read())
+    assert payload["method"] == "DELETE"
+    assert payload["json"] == body
