@@ -23,6 +23,7 @@ use tokio::{
     runtime::{self, Runtime},
 };
 use tokio_util::codec::{BytesCodec, FramedRead};
+use tokio_util::sync::CancellationToken;
 
 mod response;
 use response::{CaseInsensitiveHeaderMap, LineIterator, Response, StreamingResponse, TextIterator};
@@ -34,7 +35,10 @@ mod utils;
 use utils::load_ca_certs;
 
 mod exceptions;
-use exceptions::{map_anyhow_error, map_reqwest_error};
+use exceptions::{map_anyhow_error, map_reqwest_error, ClientClosed};
+
+mod lifecycle;
+use lifecycle::ClientState;
 
 type IndexMapSSR = IndexMap<String, String, RandomState>;
 
@@ -46,10 +50,17 @@ static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
         .expect("Failed to initialize Tokio runtime")
 });
 
+/// Error message for any operation on a client after `close()`; mirrors httpx.
+const CLIENT_CLOSED_MSG: &str = "Cannot send a request, as the client has been closed.";
+
 #[pyclass(subclass)]
 /// HTTP client that can impersonate web browsers.
 pub struct RClient {
-    client: Arc<Mutex<reqwest::Client>>,
+    /// The `reqwest::Client`, its in-flight count and the cancellation token
+    /// for its pending connects; shared with the requests in flight so that
+    /// `close()` can release the pool no matter who drops it last. See
+    /// `lifecycle.rs`.
+    state: Arc<ClientState>,
     headers: Arc<Mutex<reqwest::header::HeaderMap>>,
     #[pyo3(get, set)]
     auth: Option<(String, Option<String>)>,
@@ -61,6 +72,26 @@ pub struct RClient {
     proxy: Option<String>,
     #[pyo3(get, set)]
     timeout: Option<f64>,
+}
+
+impl RClient {
+    /// A handle to the underlying `reqwest::Client` plus the in-flight guard
+    /// for one request, or `ClientClosed` if `close()` has been called.
+    fn begin_request(&self) -> PyResult<(reqwest::Client, lifecycle::InFlight)> {
+        self.state
+            .begin_request()
+            .ok_or_else(|| ClientClosed::new_err(CLIENT_CLOSED_MSG))
+    }
+}
+
+impl Drop for RClient {
+    /// A client that is garbage-collected without `close()` still releases its
+    /// pool. Safe to drive the runtime from here: every `block_on` in this
+    /// crate runs with the GIL released, so the thread deallocating a Python
+    /// object is never inside one.
+    fn drop(&mut self) {
+        self.state.close();
+    }
 }
 
 #[pymethods]
@@ -142,7 +173,9 @@ impl RClient {
             ));
         }
         // Client builder
-        let mut client_builder = reqwest::Client::builder();
+        let connects = CancellationToken::new();
+        let mut client_builder = reqwest::Client::builder()
+            .connector_layer(lifecycle::CancelConnectsLayer::new(connects.clone()));
 
         // Headers || Cookies
         let headers_headermap = if headers.is_some() || cookies.is_some() {
@@ -231,13 +264,11 @@ impl RClient {
         if let Some(true) = http2_only {
             client_builder = client_builder.http2_prior_knowledge();
         }
-        let client = Arc::new(Mutex::new(
-            client_builder.build().map_err(map_reqwest_error)?,
-        ));
+        let client = client_builder.build().map_err(map_reqwest_error)?;
         let headers = Arc::new(Mutex::new(headers_headermap));
 
         Ok(RClient {
-            client,
+            state: ClientState::new(client, connects),
             headers,
             auth,
             auth_bearer,
@@ -340,20 +371,43 @@ impl RClient {
         Ok(self.proxy.to_owned())
     }
 
+    /// Rebuilds the underlying `reqwest::Client` with the new proxy. The old
+    /// pool is dropped and its idle connections are released; a connect the
+    /// old pool still had pending in the background is left to resolve on its
+    /// own (it is torn down the next time the runtime is driven). Raises
+    /// `ClientClosed` on a closed client.
     #[setter]
-    pub fn set_proxy(&mut self, proxy: String) -> PyResult<()> {
+    pub fn set_proxy(&mut self, py: Python, proxy: String) -> PyResult<()> {
         let rproxy = reqwest::Proxy::all(proxy.clone()).map_err(map_reqwest_error)?;
         let new_client = reqwest::Client::builder()
             .proxy(rproxy)
+            .connector_layer(self.state.connector_layer())
             .build()
             .map_err(map_reqwest_error)?;
-        let mut client = self
-            .client
-            .lock()
-            .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire client lock: {}", e)))?;
-        *client = new_client;
+        if !py.detach(|| self.state.replace(new_client)) {
+            return Err(ClientClosed::new_err(CLIENT_CLOSED_MSG));
+        }
         self.proxy = Some(proxy);
         Ok(())
+    }
+
+    /// Whether `close()` has been called on this client.
+    #[getter]
+    pub fn is_closed(&self) -> bool {
+        self.state.is_closed()
+    }
+
+    /// Close the client and release its connection pool.
+    ///
+    /// Drops the underlying `reqwest::Client` and cancels any connect the pool
+    /// still had pending, so idle pooled connections are shut down before this
+    /// returns. Requests already in flight hold their own handle to the pool
+    /// and finish normally; while any of them is running the pool, including
+    /// its idle connections, stays alive, and the last one to finish releases
+    /// it. Any later request on this client raises `ClientClosed`. Calling
+    /// `close()` more than once is a no-op.
+    pub fn close(&self, py: Python) {
+        py.detach(|| self.state.close());
     }
 
     /// Constructs an HTTP request with the given method, URL, and optionally sets a timeout, headers, and query parameters.
@@ -410,7 +464,7 @@ impl RClient {
         auth_bearer: Option<String>,
         timeout: Option<f64>,
     ) -> PyResult<Response> {
-        let client = Arc::clone(&self.client);
+        let (client, in_flight) = self.begin_request()?;
         let method = Method::from_bytes(method.as_bytes())
             .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let is_post_put_patch = matches!(method, Method::POST | Method::PUT | Method::PATCH);
@@ -427,12 +481,9 @@ impl RClient {
         let auth_bearer = auth_bearer.or(self.auth_bearer.clone());
         let timeout: Option<f64> = timeout.or(self.timeout);
 
-        let future = async {
+        let future = async move {
             // Create request builder
-            let mut request_builder = client
-                .lock()
-                .map_err(|e| anyhow!("Failed to acquire client lock: {}", e))?
-                .request(method, url);
+            let mut request_builder = client.request(method, url);
 
             // Params
             if let Some(params) = params {
@@ -530,7 +581,15 @@ impl RClient {
 
         // Execute an async future, releasing the Python GIL for concurrency.
         // Use Tokio global runtime to block on the future.
-        let result = py.detach(|| RUNTIME.block_on(future));
+        let result = py.detach(|| {
+            // The future owns our clone of the reqwest client, which kept the
+            // pool alive for the duration of the request; `block_on` drops it.
+            let result = RUNTIME.block_on(future);
+            // If `close()` ran in the meantime, ending this request is what
+            // really tears the pool down, and the guard releases its sockets.
+            drop(in_flight);
+            result
+        });
         let (f_buf, f_cookies, f_headers, f_status_code, f_url) =
             result.map_err(map_anyhow_error)?;
 
@@ -583,7 +642,7 @@ impl RClient {
         auth_bearer: Option<String>,
         timeout: Option<f64>,
     ) -> PyResult<StreamingResponse> {
-        let client = Arc::clone(&self.client);
+        let (client, in_flight) = self.begin_request()?;
         let method = Method::from_bytes(method.as_bytes())
             .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let is_post_put_patch = matches!(method, Method::POST | Method::PUT | Method::PATCH);
@@ -602,10 +661,7 @@ impl RClient {
 
         let future = async {
             // Create request builder
-            let mut request_builder = client
-                .lock()
-                .map_err(|e| anyhow!("Failed to acquire client lock: {}", e))?
-                .request(method, url);
+            let mut request_builder = client.request(method, url);
 
             // Params
             if let Some(params) = params {
@@ -705,8 +761,11 @@ impl RClient {
         let (f_resp, f_cookies, f_headers, f_status_code, f_url) =
             result.map_err(map_anyhow_error)?;
 
+        // The response keeps the request in flight until it is closed: its
+        // connection stays busy, and a `close()` meanwhile must wait for it.
         Ok(StreamingResponse::new(
             f_resp,
+            in_flight,
             f_cookies,
             CaseInsensitiveHeaderMap::from_indexmap(f_headers),
             f_status_code,
@@ -725,6 +784,7 @@ fn httpr(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<CaseInsensitiveHeaderMap>()?;
     m.add_class::<TextIterator>()?;
     m.add_class::<LineIterator>()?;
+    m.add("_CLIENT_CLOSED_MSG", CLIENT_CLOSED_MSG)?;
 
     // Register all exception types
     exceptions::register_exceptions(m)?;

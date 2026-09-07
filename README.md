@@ -98,6 +98,24 @@ class Client:
     """
 ```
 
+#### Client lifecycle
+
+A `Client` owns a connection pool. Use it as a context manager, or call `close()` when you are done, to release the pooled connections back to the OS:
+
+```python
+with httpr.Client() as client:
+    client.get("https://httpbin.org/get")
+# pool released here
+
+client = httpr.Client()
+try:
+    client.get("https://httpbin.org/get")
+finally:
+    client.close()  # idempotent
+```
+
+Requests that are still in flight when `close()` is called (including open `stream()` responses) finish normally; the pool is released as soon as the last of them completes. Any request made afterwards, or assigning `client.proxy`, raises `httpr.ClientClosed` (a `RuntimeError`, as in httpx); `client.is_closed` tells you which state a client is in. `AsyncClient` offers the same via `aclose()` / `async with`, and additionally shuts down its own thread pool. A client that is garbage-collected without being closed releases its pool too, but only once the interpreter gets to it, so prefer closing explicitly.
+
 #### Client methods
 
 The `Client` class provides a set of methods for making HTTP requests: `get`, `head`, `options`, `delete`, `post`, `put`, `patch`, each of which internally utilizes the `request()` method for execution. The parameters for these methods closely resemble those in `httpx`.
