@@ -100,7 +100,8 @@ Key files:
 
 ### Benchmarking
 
-Comparison against other HTTP clients:
+Comparison against other HTTP clients (published weekly by `.github/workflows/compare.yml` to
+gh-pages `dev/bench/compare/`, rendered by `benchmark/render_comparison.py`, embedded in README and docs):
 
 ```bash
 cd benchmark/

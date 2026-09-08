@@ -42,7 +42,7 @@ with httpr.Client() as client:
     ---
 
     Built on Rust's `reqwest` - one of the fastest HTTP clients available.
-    See the [benchmarks](https://github.com/thomasht86/httpr#benchmark).
+    See the [benchmarks](benchmark.md).
 
 -   :material-swap-horizontal:{ .lg .middle } **Sync & Async**
 

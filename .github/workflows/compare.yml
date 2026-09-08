@@ -1,0 +1,153 @@
+name: Client comparison
+
+# Weekly comparison of httpr against the latest release of every other HTTP
+# client in benchmark/benchmark.py. Results are published to gh-pages at
+# dev/bench/compare/ (chart, tables, CSVs) and embedded in the README and docs.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      httpr_source:
+        description: "Which httpr to benchmark"
+        type: choice
+        default: pypi
+        options:
+          - pypi # latest release, what `pip install httpr` gives (the scheduled default)
+          - main # a wheel built from the checked-out commit
+      publish:
+        description: "Publish the results to gh-pages"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages-compare
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    name: HTTP-client comparison
+    runs-on: ubuntu-latest
+    env:
+      HTTPR_SOURCE: ${{ github.event_name == 'workflow_dispatch' && inputs.httpr_source || 'pypi' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+
+      - name: Cache Rust build
+        if: env.HTTPR_SOURCE == 'main'
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-bench-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-bench-${{ runner.os }}-
+
+      - name: Build httpr wheel (release mode)
+        if: env.HTTPR_SOURCE == 'main'
+        run: uv build --wheel --out-dir dist
+
+      - name: Start benchmark server
+        env:
+          BENCHMARK_HOST: 127.0.0.1
+          BENCHMARK_PORT: "8000"
+        run: |
+          uv run --script benchmark/server.py &
+          for i in $(seq 1 10); do
+            if curl -sf http://127.0.0.1:8000/json/1 > /dev/null 2>&1; then
+              echo "Benchmark server is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Benchmark server failed to start"
+          exit 1
+
+      - name: Run comparison
+        run: |
+          mkdir -p compare
+          cd compare
+          # --refresh: re-check the index so every library resolves to its newest release.
+          # The script has no lockfile, so unpinned dependencies float on purpose.
+          UV_ARGS=(--refresh)
+          BENCH_ARGS=()
+          if [ "$HTTPR_SOURCE" = "main" ]; then
+            UV_ARGS+=(--with ../dist/httpr-*.whl)
+            BENCH_ARGS+=(--httpr-version "${GITHUB_SHA::7}")
+          fi
+          uv run "${UV_ARGS[@]}" --script ../benchmark/benchmark.py "${BENCH_ARGS[@]}" | tee standard.log
+          uv run "${UV_ARGS[@]}" --script ../benchmark/benchmark.py "${BENCH_ARGS[@]}" --run_multithread | tee multithread.log
+
+      - name: Render chart and tables
+        run: |
+          uv run --script benchmark/render_comparison.py \
+            --results compare --out compare/site \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+      - name: Write job summary
+        run: |
+          {
+            echo "## HTTP-client comparison (httpr from ${HTTPR_SOURCE})"
+            echo
+            echo "The chart is in the run artifact; the published copy is at https://thomasht86.github.io/httpr/dev/bench/compare/"
+            sed '1d' compare/site/comparison.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        uses: actions/upload-artifact@v6
+        with:
+          name: client-comparison-${{ github.run_id }}
+          path: |
+            compare/*.log
+            compare/site/
+
+      - name: Publish to gh-pages
+        if: ${{ github.event_name == 'schedule' || inputs.publish }}
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch gh-pages \
+            "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+          STAMP="$(date -u +%Y-%m-%d)"
+          publish() {
+            DEST=gh-pages/dev/bench/compare
+            mkdir -p "$DEST/history/$STAMP"
+            cp compare/site/* "$DEST/"
+            # Keep a dated copy of the raw numbers so trends can be plotted later.
+            cp compare/site/*.csv compare/site/comparison.md "$DEST/history/$STAMP/"
+            git -C gh-pages add -A dev/bench/compare
+            if git -C gh-pages diff --cached --quiet; then
+              echo "No changes to publish"
+              return 0
+            fi
+            git -C gh-pages commit -q -m "Client comparison ${STAMP} (httpr from ${HTTPR_SOURCE})"
+            git -C gh-pages push origin gh-pages
+          }
+          # The docs deploy and the benchmark action also push to gh-pages. On a
+          # rejected push, start over from the new tip rather than rebasing a
+          # shallow clone.
+          for attempt in 1 2 3 4 5; do
+            if publish; then
+              exit 0
+            fi
+            echo "push rejected, retrying from the current gh-pages tip (attempt $attempt)"
+            sleep 10
+            git -C gh-pages fetch --depth 1 origin gh-pages
+            git -C gh-pages reset -q --hard FETCH_HEAD
+          done
+          echo "Could not push to gh-pages after 5 attempts"
+          exit 1

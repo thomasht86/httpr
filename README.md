@@ -72,6 +72,10 @@ Performance is tracked continuously in two complementary ways:
 
 **📈 [View live benchmark results](https://thomasht86.github.io/httpr/dev/bench/)**
 
+Against other clients, `benchmark/benchmark.py` is run every Monday against the latest release of each library (requests, httpx, httpx2, aiohttp, curl_cffi, pycurl, tls_client) and published at **[thomasht86.github.io/httpr/dev/bench/compare](https://thomasht86.github.io/httpr/dev/bench/compare/)**, with the full tables and raw CSVs. Seconds for 400 requests against a local server, lower is better:
+
+[![HTTP client comparison](https://thomasht86.github.io/httpr/dev/bench/compare/comparison.png)](https://thomasht86.github.io/httpr/dev/bench/compare/)
+
 To run the benchmarks locally, see [benchmark/README.md](benchmark/README.md).
 
 ## Usage
@@ -456,6 +460,7 @@ task httpbun:logs  # Show container logs
 
 - **PRs**: Run lint, tests across Python 3.10-3.14 matrix, verify docs build, and report the CPU cost of the CodSpeed benchmark suite
 - **Push to main**: Run tests and the CodSpeed benchmarks, then the separate `Benchmark` workflow runs the wall-clock suite and publishes results to the [live benchmark charts](https://thomasht86.github.io/httpr/dev/bench/)
+- **Weekly (Monday 06:00 UTC)**: The `Client comparison` workflow benchmarks httpr against the latest release of each other client and publishes the [comparison page](https://thomasht86.github.io/httpr/dev/bench/compare/)
 - **Tags**: Run tests, build wheels, publish stable release to PyPI
 - **Manual**: Full multi-platform wheel builds with release
 
