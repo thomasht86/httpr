@@ -76,6 +76,7 @@ nav:
     - AsyncClient: api/async-client.md
     - Response: api/response.md
     - Module Functions: api/functions.md
+  - Benchmarks: benchmark.md
   - Blog: writings/index.md
 
 theme:

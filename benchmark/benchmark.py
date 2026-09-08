@@ -281,6 +281,8 @@ def run_multithread_benchmarks():
         thread_df = pivot_df[pivot_df["threads"] == thread]
         print(f"\nThreads={thread} session=True")
         print(thread_df.to_string(index=False))
+    # Same shape as the standard-mode CSVs, consumed by render_comparison.py
+    pivot_df.to_csv("threads.csv", index=False)
 
 
 if __name__ == "__main__":
