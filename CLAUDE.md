@@ -185,8 +185,8 @@ builds in debug mode and the numbers are meaningless.
 - `files` dict maps field names to file paths
 
 ### Proxy
-- Set via `proxy` param or `HTTPR_PROXY` env var
-- Changing `client.proxy` rebuilds entire reqwest client (expensive)
+- Set via `proxy` param or `HTTPR_PROXY` env var; the env var is read once in `new()`, never in the setter
+- Changing `client.proxy` rebuilds the entire reqwest client (expensive). `RClient.config: ClientConfig` keeps the construction settings (loaded root certs, mTLS `Identity`, redirects, verify, https_only, http2_only, cookie_store, referer) and `ClientConfig::build()` is the single place a `reqwest::Client` is built, used by `new()` and `set_proxy()`; add any new builder setting there, not inline (issue #84). The setter takes `Option<String>`; `None` removes the proxy. The rebuilt client starts with an empty cookie store
 
 ### Client Lifecycle (issue #88)
 - All lifecycle state lives in `src/lifecycle.rs`: `ClientState` (`Arc`-shared between an `RClient` and its in-flight requests) holds `client: Mutex<Option<reqwest::Client>>`, an `in_flight` counter and a `CancellationToken` for pending connects. `RClient::close()` takes the client (`None`); dropping the `reqwest::Client` drops the client's handle to its connection pool

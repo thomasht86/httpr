@@ -56,6 +56,73 @@ static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
 /// Error message for any operation on a client after `close()`; mirrors httpx.
 const CLIENT_CLOSED_MSG: &str = "Cannot send a request, as the client has been closed.";
 
+/// The constructor settings a rebuilt `reqwest::Client` has to carry over, so
+/// that assigning `client.proxy` keeps TLS verification, the CA bundle, the
+/// mTLS identity, redirects, `https_only` and the HTTP version (issue #84).
+/// Certificates and the identity are kept in their loaded form; a rebuild never
+/// touches the filesystem again.
+struct ClientConfig {
+    cookie_store: bool,
+    referer: bool,
+    /// `Some(max)` follows up to `max` redirects, `None` follows none.
+    max_redirects: Option<usize>,
+    verify: bool,
+    root_certs: Vec<reqwest::Certificate>,
+    identity: Option<Identity>,
+    https_only: bool,
+    http2_only: bool,
+}
+
+impl ClientConfig {
+    /// Builds a client from these settings plus the state that lives on the
+    /// `RClient` and may have changed since construction: the default headers,
+    /// the proxy and the timeout. `layer` must come from the `ClientState` the
+    /// client will live in, so `close()` can cancel its pending connects.
+    fn build(
+        &self,
+        layer: lifecycle::CancelConnectsLayer,
+        default_headers: reqwest::header::HeaderMap,
+        proxy: Option<&str>,
+        timeout: Option<f64>,
+    ) -> PyResult<reqwest::Client> {
+        let mut builder = reqwest::Client::builder()
+            .connector_layer(layer)
+            .cookie_store(self.cookie_store)
+            .referer(self.referer)
+            .redirect(match self.max_redirects {
+                Some(max) => Policy::limited(max),
+                None => Policy::none(),
+            })
+            .https_only(self.https_only);
+        if !default_headers.is_empty() {
+            builder = builder.default_headers(default_headers);
+        }
+        if let Some(proxy) = proxy {
+            builder = builder.proxy(reqwest::Proxy::all(proxy).map_err(map_reqwest_error)?);
+        }
+        if let Some(seconds) = timeout {
+            builder = builder.timeout(Duration::from_secs_f64(seconds));
+        }
+        if self.verify {
+            builder = builder.tls_built_in_root_certs(true);
+            for cert in &self.root_certs {
+                builder = builder.add_root_certificate(cert.clone());
+            }
+        } else {
+            builder = builder.danger_accept_invalid_certs(true);
+        }
+        // The mTLS identity applies regardless of `verify`: disabling server
+        // verification doesn't imply disabling client authentication.
+        if let Some(identity) = &self.identity {
+            builder = builder.identity(identity.clone());
+        }
+        if self.http2_only {
+            builder = builder.http2_prior_knowledge();
+        }
+        builder.build().map_err(map_reqwest_error)
+    }
+}
+
 #[pyclass(subclass)]
 /// HTTP client that can impersonate web browsers.
 pub struct RClient {
@@ -64,6 +131,8 @@ pub struct RClient {
     /// `close()` can release the pool no matter who drops it last. See
     /// `lifecycle.rs`.
     state: Arc<ClientState>,
+    /// What `set_proxy` rebuilds the client from.
+    config: ClientConfig,
     headers: Arc<Mutex<reqwest::header::HeaderMap>>,
     #[pyo3(get, set)]
     auth: Option<(String, Option<String>)>,
@@ -315,10 +384,6 @@ impl RClient {
             ));
         }
         let params = params.map(|p| normalize_params(p, "params")).transpose()?;
-        // Client builder
-        let connects = CancellationToken::new();
-        let mut client_builder = reqwest::Client::builder()
-            .connector_layer(lifecycle::CancelConnectsLayer::new(connects.clone()));
 
         // Headers || Cookies
         let headers_headermap = if headers.is_some() || cookies.is_some() {
@@ -332,86 +397,64 @@ impl RClient {
                         .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?,
                 );
             }
-            client_builder = client_builder.default_headers(headers_headermap.clone());
             headers_headermap
         } else {
             reqwest::header::HeaderMap::new()
         };
 
-        // Cookie_store
-        if cookie_store.unwrap_or(true) {
-            client_builder = client_builder.cookie_store(true);
-        }
-
-        // Referer
-        if referer.unwrap_or(true) {
-            client_builder = client_builder.referer(true);
-        }
-
-        // Proxy
+        // Proxy: the argument wins, otherwise HTTPR_PROXY. Read once, here;
+        // `set_proxy` never consults the environment again.
         let proxy = proxy.or_else(|| std::env::var("HTTPR_PROXY").ok());
-        if let Some(proxy) = &proxy {
-            client_builder =
-                client_builder.proxy(reqwest::Proxy::all(proxy).map_err(map_reqwest_error)?);
-        }
-
-        // Timeout
-        if let Some(seconds) = timeout {
-            client_builder = client_builder.timeout(Duration::from_secs_f64(seconds));
-        }
-
-        // Redirects
-        if follow_redirects.unwrap_or(true) {
-            client_builder = client_builder.redirect(Policy::limited(max_redirects.unwrap_or(20)));
-        } else {
-            client_builder = client_builder.redirect(Policy::none());
-        }
 
         // CA bundle: the explicit `ca_cert_file` argument wins, otherwise fall back
         // to the HTTPR_CA_BUNDLE environment variable. The environment is only
         // ever read here, never written, so the setting stays scoped to this
         // client (mirrors how `proxy` falls back to HTTPR_PROXY above).
         let ca_cert_file = ca_cert_file.or_else(|| std::env::var("HTTPR_CA_BUNDLE").ok());
-
-        // Verify
-        if verify.unwrap_or(true) {
-            client_builder = client_builder.tls_built_in_root_certs(true);
-            for cert in load_ca_certs(ca_cert_file.as_deref()).map_err(map_anyhow_error)? {
-                client_builder = client_builder.add_root_certificate(cert);
-            }
+        let verify = verify.unwrap_or(true);
+        let root_certs = if verify {
+            load_ca_certs(ca_cert_file.as_deref()).map_err(map_anyhow_error)?
         } else {
-            client_builder = client_builder.danger_accept_invalid_certs(true);
-        }
+            Vec::new()
+        };
 
-        // Client mTLS identity must be applied regardless of `verify`: disabling
-        // server verification doesn't imply disabling client authentication.
-        let client_identity_pem = if let Some(pem_data) = &client_pem_data {
-            Some(pem_data.clone())
+        // Client mTLS identity, from bytes or from a file read once here.
+        let identity_pem = if let Some(pem_data) = client_pem_data {
+            Some(pem_data)
         } else if let Some(pem_path) = &client_pem {
             Some(fs::read(pem_path).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?)
         } else {
             None
         };
+        let identity = identity_pem
+            .map(|pem| Identity::from_pem(&pem).map_err(map_reqwest_error))
+            .transpose()?;
 
-        if let Some(pem_bytes) = client_identity_pem {
-            let identity = Identity::from_pem(&pem_bytes).map_err(map_reqwest_error)?;
-            client_builder = client_builder.identity(identity);
-        }
+        let config = ClientConfig {
+            cookie_store: cookie_store.unwrap_or(true),
+            referer: referer.unwrap_or(true),
+            max_redirects: follow_redirects
+                .unwrap_or(true)
+                .then(|| max_redirects.unwrap_or(20)),
+            verify,
+            root_certs,
+            identity,
+            https_only: https_only.unwrap_or(false),
+            http2_only: http2_only.unwrap_or(false),
+        };
 
-        // Https_only
-        if let Some(true) = https_only {
-            client_builder = client_builder.https_only(true);
-        }
-
-        // Http2_only
-        if let Some(true) = http2_only {
-            client_builder = client_builder.http2_prior_knowledge();
-        }
-        let client = client_builder.build().map_err(map_reqwest_error)?;
+        let connects = CancellationToken::new();
+        let client = config.build(
+            lifecycle::CancelConnectsLayer::new(connects.clone()),
+            headers_headermap.clone(),
+            proxy.as_deref(),
+            timeout,
+        )?;
         let headers = Arc::new(Mutex::new(headers_headermap));
 
         Ok(RClient {
             state: ClientState::new(client, connects),
+            config,
             headers,
             auth,
             auth_bearer,
@@ -526,23 +569,31 @@ impl RClient {
         Ok(self.proxy.to_owned())
     }
 
-    /// Rebuilds the underlying `reqwest::Client` with the new proxy. The old
-    /// pool is dropped and its idle connections are released; a connect the
-    /// old pool still had pending in the background is left to resolve on its
-    /// own (it is torn down the next time the runtime is driven). Raises
+    /// Rebuilds the underlying `reqwest::Client` with the new proxy (`None`
+    /// removes it; `HTTPR_PROXY` is not consulted again). Every other setting
+    /// from construction is carried over, along with the current default
+    /// headers and timeout; a `cookie_store` starts empty again. The old pool
+    /// is dropped and its idle connections are released; a connect the old
+    /// pool still had pending in the background is left to resolve on its own
+    /// (it is torn down the next time the runtime is driven). Raises
     /// `ClientClosed` on a closed client.
     #[setter]
-    pub fn set_proxy(&mut self, py: Python, proxy: String) -> PyResult<()> {
-        let rproxy = reqwest::Proxy::all(proxy.clone()).map_err(map_reqwest_error)?;
-        let new_client = reqwest::Client::builder()
-            .proxy(rproxy)
-            .connector_layer(self.state.connector_layer())
-            .build()
-            .map_err(map_reqwest_error)?;
+    pub fn set_proxy(&mut self, py: Python, proxy: Option<String>) -> PyResult<()> {
+        let default_headers = self
+            .headers
+            .lock()
+            .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire headers lock: {}", e)))?
+            .clone();
+        let new_client = self.config.build(
+            self.state.connector_layer(),
+            default_headers,
+            proxy.as_deref(),
+            self.timeout,
+        )?;
         if !py.detach(|| self.state.replace(new_client)) {
             return Err(ClientClosed::new_err(CLIENT_CLOSED_MSG));
         }
-        self.proxy = Some(proxy);
+        self.proxy = proxy;
         Ok(())
     }
 
