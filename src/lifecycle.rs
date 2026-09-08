@@ -24,11 +24,15 @@
 //! own `reqwest::Client` clone and finish normally when the client is closed
 //! underneath them; the last one to finish is the one that really drops the
 //! pool, so it performs the release.
+//!
+//! A client that never started a request has nothing to release: its pool
+//! holds no connection and its connector has no connect pending, so closing
+//! or dropping it skips the whole procedure.
 
 use std::fmt;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::{Context, Poll};
 
@@ -50,7 +54,8 @@ type BoxError = Box<dyn std::error::Error + Send + Sync>;
 /// shutdown that does (a TLS close_notify or HTTP/2 GOAWAY that hits a full
 /// send buffer). Keep this small: each turn costs a driver poll, which is a
 /// syscall (~13 µs on macOS), and this runs on every `close()`, `__exit__` and
-/// client drop. 32 turns made a create-request-close cycle twice as slow.
+/// drop of a client that has sent at least one request. 32 turns made a
+/// create-request-close cycle twice as slow.
 const SETTLE_SCHEDULER_TURNS: usize = 4;
 
 /// Drive `RUNTIME` so a just-dropped connection pool actually releases its
@@ -75,6 +80,9 @@ pub struct ClientState {
     /// Requests currently running: inside `request()`, or a `StreamingResponse`
     /// that has not been closed yet.
     in_flight: AtomicUsize,
+    /// Whether any request was ever started. Until then the pool cannot hold a
+    /// connection or a pending connect, so there is nothing to release.
+    used: AtomicBool,
     /// Cancels every connect still pending in the pool's connector.
     connects: CancellationToken,
 }
@@ -86,6 +94,7 @@ impl ClientState {
         Arc::new(ClientState {
             client: Mutex::new(Some(client)),
             in_flight: AtomicUsize::new(0),
+            used: AtomicBool::new(false),
             connects,
         })
     }
@@ -118,6 +127,7 @@ impl ClientState {
         // has emptied the slot, so either it sees this request and leaves the
         // release to the guard, or this request finds the slot empty.
         self.in_flight.fetch_add(1, Ordering::SeqCst);
+        self.used.store(true, Ordering::SeqCst);
         let guard = InFlight(Arc::clone(self));
         let client = self.slot().clone()?;
         Some((client, guard))
@@ -135,7 +145,9 @@ impl ClientState {
             slot.replace(new)
         };
         drop(old);
-        settle_dropped_pool();
+        if self.used.load(Ordering::SeqCst) {
+            settle_dropped_pool();
+        }
         true
     }
 
@@ -151,6 +163,11 @@ impl ClientState {
 
     /// The client's handle to the pool is gone; make sure the pool is too.
     fn release_pool(&self) {
+        if !self.used.load(Ordering::SeqCst) {
+            // No request ever ran: the pool has no connection and the connector
+            // has nothing pending, so dropping the handle was the whole release.
+            return;
+        }
         if self.in_flight.load(Ordering::SeqCst) == 0 {
             // Nothing legitimate can still be connecting, so whatever the
             // connector has pending is a background connect holding the pool
