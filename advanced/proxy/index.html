@@ -1783,6 +1783,15 @@
 </span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="c1"># Remove proxy</span>
 </span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">client</span><span class="o">.</span><span class="n">proxy</span> <span class="o">=</span> <span class="kc">None</span>
 </span></code></pre></div>
+<p>Every other setting from construction is carried over: <code>verify</code>, <code>ca_cert_file</code>,
+the mTLS identity, <code>follow_redirects</code>/<code>max_redirects</code>, <code>https_only</code>, <code>http2_only</code>,
+the current headers and the timeout. Two things to know:</p>
+<ul>
+<li>Assigning <code>None</code> removes the proxy; the <code>HTTPR_PROXY</code> environment variable is
+  only consulted when the client is constructed.</li>
+<li>With <code>cookie_store=True</code>, cookies collected from responses so far are
+  discarded, because the store belongs to the rebuilt client.</li>
+</ul>
 <div class="admonition warning">
 <p class="admonition-title">Performance Note</p>
 <p>Changing the <code>proxy</code> property <strong>rebuilds the entire internal HTTP client</strong>.
