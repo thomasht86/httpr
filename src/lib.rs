@@ -489,21 +489,15 @@ impl RClient {
                 request_builder = request_builder.query(&params);
             }
 
-            // Headers from client
+            // Headers from client, then per-request headers: `headers()` replaces
+            // same-named entries, so the request's values take precedence.
             let client_headers = self
                 .headers
                 .lock()
                 .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
                 .clone();
-            request_builder = request_builder.headers(client_headers.clone());
-
-            // Headers
-            let mut combined_headers = client_headers;
+            request_builder = request_builder.headers(client_headers);
             if let Some(ref headers) = headers {
-                let header_map = headers.to_headermap();
-                for (key, value) in header_map.iter() {
-                    combined_headers.insert(key.clone(), value.clone());
-                }
                 request_builder = request_builder.headers(headers.to_headermap());
             }
 
@@ -664,21 +658,15 @@ impl RClient {
                 request_builder = request_builder.query(&params);
             }
 
-            // Headers from client
+            // Headers from client, then per-request headers: `headers()` replaces
+            // same-named entries, so the request's values take precedence.
             let client_headers = self
                 .headers
                 .lock()
                 .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
                 .clone();
-            request_builder = request_builder.headers(client_headers.clone());
-
-            // Headers
-            let mut combined_headers = client_headers;
+            request_builder = request_builder.headers(client_headers);
             if let Some(ref headers) = headers {
-                let header_map = headers.to_headermap();
-                for (key, value) in header_map.iter() {
-                    combined_headers.insert(key.clone(), value.clone());
-                }
                 request_builder = request_builder.headers(headers.to_headermap());
             }
 
