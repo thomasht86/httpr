@@ -5,7 +5,7 @@ The synchronous HTTP client with connection pooling.
 ## Client
 
 ```python
-Client(auth: tuple[str, str | None] | None = None, auth_bearer: str | None = None, params: dict[str, str] | None = None, headers: dict[str, str] | None = None, cookies: dict[str, str] | None = None, cookie_store: bool | None = True, referer: bool | None = True, proxy: str | None = None, timeout: float | None = 30, follow_redirects: bool | None = True, max_redirects: int | None = 20, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, client_pem_data: bytes | None = None, https_only: bool | None = False, http2_only: bool | None = False)
+Client(auth: tuple[str, str | None] | None = None, auth_bearer: str | None = None, params: QueryParamTypes | None = None, headers: dict[str, str] | None = None, cookies: dict[str, str] | None = None, cookie_store: bool | None = True, referer: bool | None = True, proxy: str | None = None, timeout: float | None = 30, follow_redirects: bool | None = True, max_redirects: int | None = 20, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, client_pem_data: bytes | None = None, https_only: bool | None = False, http2_only: bool | None = False)
 ```
 
 A synchronous HTTP client with connection pooling.
@@ -49,7 +49,7 @@ Attributes:
 | `headers` | `dict[str, str]`  | Default headers sent with all requests. Excludes Cookie header. |
 | `cookies` | `dict[str, str]`  | Default cookies sent with all requests.                         |
 | `auth`    | \`tuple\[str, str | None\]                                                          |
-| `params`  | \`dict[str, str]  | None\`                                                          |
+| `params`  | \`dict\[str, str  | list[str]\]                                                     |
 | `timeout` | \`float           | None\`                                                          |
 | `proxy`   | \`str             | None\`                                                          |
 
@@ -59,7 +59,10 @@ Attributes:
     Args:
         auth: Basic auth credentials as (username, password). Password can be None.
         auth_bearer: Bearer token for Authorization header.
-        params: Default query parameters to include in all requests.
+        params: Default query parameters to include in all requests. Merged with
+            each request's own `params`; a key the request supplies wins. Values
+            may be str, int, float, bool (sent as `true`/`false`), None (sent
+            empty) or a list/tuple of those (the key is repeated).
         headers: Default headers to send with all requests.
         cookies: Default cookies to send with all requests.
         cookie_store: Enable persistent cookie store. Cookies from responses will be
@@ -132,18 +135,18 @@ Parameters:
 
 Other Parameters:
 
-| Name          | Type                                  | Description                                                          |
-| ------------- | ------------------------------------- | -------------------------------------------------------------------- |
-| `params`      | `Optional[dict[str, str]]`            | Query parameters to append to URL.                                   |
-| `headers`     | `Optional[dict[str, str]]`            | Request headers (merged with client defaults).                       |
-| `cookies`     | `Optional[dict[str, str]]`            | Request cookies (merged with client defaults).                       |
-| `auth`        | `Optional[tuple[str, Optional[str]]]` | Basic auth credentials (overrides client default).                   |
-| `auth_bearer` | `Optional[str]`                       | Bearer token (overrides client default).                             |
-| `timeout`     | `Optional[float]`                     | Request timeout in seconds (overrides client default).               |
-| `content`     | `Optional[bytes]`                     | Raw bytes for request body.                                          |
-| `data`        | `Optional[dict[str, Any]]`            | Form data for request body (application/x-www-form-urlencoded).      |
-| `json`        | `Optional[Any]`                       | JSON data for request body (application/json).                       |
-| `files`       | `Optional[dict[str, str]]`            | Files for multipart upload (dict mapping field names to file paths). |
+| Name          | Type                                  | Description                                                                                                                                                                                                                            |
+| ------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `params`      | `Optional[QueryParamTypes]`           | Query parameters to append to the URL, merged with the client's (the request wins for a key both supply). Values may be str, int, float, bool (sent as true/false), None (sent empty) or a list/tuple of those, which repeats the key. |
+| `headers`     | `Optional[dict[str, str]]`            | Request headers (merged with client defaults).                                                                                                                                                                                         |
+| `cookies`     | `Optional[dict[str, str]]`            | Request cookies, merged with the client's into a single Cookie header (the request wins for a name both supply).                                                                                                                       |
+| `auth`        | `Optional[tuple[str, Optional[str]]]` | Basic auth credentials (overrides client default).                                                                                                                                                                                     |
+| `auth_bearer` | `Optional[str]`                       | Bearer token (overrides client default).                                                                                                                                                                                               |
+| `timeout`     | `Optional[float]`                     | Request timeout in seconds (overrides client default).                                                                                                                                                                                 |
+| `content`     | `Optional[bytes]`                     | Raw bytes for request body.                                                                                                                                                                                                            |
+| `data`        | `Optional[dict[str, Any]]`            | Form data for request body (application/x-www-form-urlencoded). Values are converted like params; a list/tuple repeats the field.                                                                                                      |
+| `json`        | `Optional[Any]`                       | JSON data for request body (application/json).                                                                                                                                                                                         |
+| `files`       | `Optional[dict[str, str]]`            | Files for multipart upload (dict mapping field names to file paths).                                                                                                                                                                   |
 
 Returns:
 
