@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788870216054,
+  "lastUpdate": 1788870363721,
   "repoUrl": "https://github.com/thomasht86/httpr",
   "entries": {
     "httpr Performance": [
@@ -4845,6 +4845,154 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00022591533187328608",
             "extra": "mean: 9.663192076088045 msec\nrounds: 92"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Thomas Hjelde Thoresen",
+            "username": "thomasht86",
+            "email": "thomas@vespa.ai"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "4c601a5038589021f520d0a6f4beb7f7bbad5bcd",
+          "message": "Merge pull request #99 from thomasht86/deps/dependabot-cryptography-mkdocs-material\n\nbuild(deps): bump cryptography to 50.0.1 and mkdocs-material to 9.7.7",
+          "timestamp": "2026-09-08T12:24:45Z",
+          "url": "https://github.com/thomasht86/httpr/commit/4c601a5038589021f520d0a6f4beb7f7bbad5bcd"
+        },
+        "date": 1788870338951,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_single_request",
+            "value": 2578.5494031474386,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000048434946104182205",
+            "extra": "mean: 387.8149469540418 usec\nrounds: 509"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_session_reuse",
+            "value": 2608.2817777034847,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00005734454837446573",
+            "extra": "mean: 383.3941595376519 usec\nrounds: 2081"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_json_parsing",
+            "value": 2829.3135409581414,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00004946564271148563",
+            "extra": "mean: 353.4426232807524 usec\nrounds: 2036"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestSyncClient::test_post_json",
+            "value": 2401.5408128089125,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0000823972212072924",
+            "extra": "mean: 416.39933607056656 usec\nrounds: 1461"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestAsyncClient::test_full_overhead",
+            "value": 1034.450079899069,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0000894256126432276",
+            "extra": "mean: 966.6972040811962 usec\nrounds: 637"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestAsyncClient::test_concurrent_requests[8]",
+            "value": 49.20258017937849,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0027297608014008484",
+            "extra": "mean: 20.324137399995834 msec\nrounds: 40"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestAsyncClient::test_concurrent_requests[32]",
+            "value": 44.61781423269423,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0029514174505660524",
+            "extra": "mean: 22.412572583334622 msec\nrounds: 48"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestAsyncClient::test_concurrent_requests[64]",
+            "value": 41.458491049999495,
+            "unit": "iter/sec",
+            "range": "stddev: 0.003080207631761266",
+            "extra": "mean: 24.120511255317677 msec\nrounds: 47"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestResponseSizes::test_response_size[1KB]",
+            "value": 1252.3628877036804,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000027541674590927924",
+            "extra": "mean: 798.490605094175 usec\nrounds: 157"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestResponseSizes::test_response_size[10KB]",
+            "value": 341.86137991012333,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00006666868295836676",
+            "extra": "mean: 2.9251622405049202 msec\nrounds: 316"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestResponseSizes::test_response_size[100KB]",
+            "value": 37.47256765846601,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0017360103969306555",
+            "extra": "mean: 26.686188390244308 msec\nrounds: 41"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestHeaders::test_many_headers",
+            "value": 2118.5227651229634,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00046507326583684146",
+            "extra": "mean: 472.0270258422066 usec\nrounds: 1277"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_cbor_request[1_array]",
+            "value": 2706.822825640456,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00003135720770651083",
+            "extra": "mean: 369.43681371660966 usec\nrounds: 977"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_cbor_request[10_arrays]",
+            "value": 1388.113442749611,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00004621217923155936",
+            "extra": "mean: 720.4022158442425 usec\nrounds: 871"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_cbor_request[100_arrays]",
+            "value": 198.6918070533571,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00016001757934227422",
+            "extra": "mean: 5.032920153227344 msec\nrounds: 124"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_json_request[1_array]",
+            "value": 2632.124500777301,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00003813399616920588",
+            "extra": "mean: 379.921238415845 usec\nrounds: 1338"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_json_request[10_arrays]",
+            "value": 1230.124060311197,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00003765206723825132",
+            "extra": "mean: 812.9261366914651 usec\nrounds: 695"
+          },
+          {
+            "name": "tests/benchmark/test_performance.py::TestCBORDecoding::test_json_request[100_arrays]",
+            "value": 161.09357869603082,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00026024542224040056",
+            "extra": "mean: 6.207572071428809 msec\nrounds: 112"
           }
         ]
       }
