@@ -99,6 +99,15 @@ print(client.proxy)  # "http://proxy.example.com:8080"
 client.proxy = None
 ```
 
+Every other setting from construction is carried over: `verify`, `ca_cert_file`,
+the mTLS identity, `follow_redirects`/`max_redirects`, `https_only`, `http2_only`,
+the current headers and the timeout. Two things to know:
+
+- Assigning `None` removes the proxy; the `HTTPR_PROXY` environment variable is
+  only consulted when the client is constructed.
+- With `cookie_store=True`, cookies collected from responses so far are
+  discarded, because the store belongs to the rebuilt client.
+
 !!! warning "Performance Note"
     Changing the `proxy` property **rebuilds the entire internal HTTP client**.
     This is an expensive operation. For best performance, create separate clients
