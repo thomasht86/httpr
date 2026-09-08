@@ -89,7 +89,8 @@ class Client:
     Args:
         auth (tuple[str, str| None] | None): Username and password for basic authentication. Default is None.
         auth_bearer (str | None): Bearer token for authentication. Default is None.
-        params (dict[str, str] | None): Default query parameters to include in all requests. Default is None.
+        params (QueryParamTypes | None): Default query parameters to include in all requests, merged with
+            each request's own `params` (the request wins per key). Default is None.
         headers (dict[str, str] | None): Default headers to send with requests. 
         cookies (dict[str, str] | None): - Map of cookies to send with requests as the `Cookie` header.
         timeout (float | None): HTTP request timeout in seconds. Default is 30.
@@ -131,7 +132,7 @@ The `Client` class provides a set of methods for making HTTP requests: `get`, `h
 ```python
 def get(
     url: str,
-    params: dict[str, str] | None = None,
+    params: QueryParamTypes | None = None,
     headers: dict[str, str] | None = None,
     cookies: dict[str, str] | None = None,
     auth: tuple[str, str| None] | None = None,
@@ -142,9 +143,12 @@ def get(
 
     Args:
         url (str): The URL to which the request will be made.
-        params (dict[str, str] | None): A map of query parameters to append to the URL. Default is None.
+        params (QueryParamTypes | None): Query parameters to append to the URL, merged with the client's.
+            Values may be str, int, float, bool (sent as `true`/`false`), None (sent empty) or a
+            list/tuple of those, which repeats the key. Default is None.
         headers (dict[str, str] | None): A map of HTTP headers to send with the request. Default is None.
-        cookies (dict[str, str] | None): - An optional map of cookies to send with requests as the `Cookie` header.
+        cookies (dict[str, str] | None): Cookies to send with the request, merged with the client's into
+            a single `Cookie` header.
         auth (tuple[str, str| None] | None): A tuple containing the username and an optional password
             for basic authentication. Default is None.
         auth_bearer (str | None): A string representing the bearer token for bearer token authentication. Default is None.
@@ -155,7 +159,7 @@ def get(
 ```python
 def post(
     url: str,
-    params: dict[str, str] | None = None,
+    params: QueryParamTypes | None = None,
     headers: dict[str, str] | None = None,
     cookies: dict[str, str] | None = None,
     content: bytes | None = None,
@@ -170,11 +174,15 @@ def post(
 
     Args:
         url (str): The URL to which the request will be made.
-        params (dict[str, str] | None): A map of query parameters to append to the URL. Default is None.
+        params (QueryParamTypes | None): Query parameters to append to the URL, merged with the client's.
+            Values may be str, int, float, bool (sent as `true`/`false`), None (sent empty) or a
+            list/tuple of those, which repeats the key. Default is None.
         headers (dict[str, str] | None): A map of HTTP headers to send with the request. Default is None.
-        cookies (dict[str, str] | None): - An optional map of cookies to send with requests as the `Cookie` header.
+        cookies (dict[str, str] | None): Cookies to send with the request, merged with the client's into
+            a single `Cookie` header.
         content (bytes | None): The content to send in the request body as bytes. Default is None.
-        data (dict[str, Any] | None): The form data to send in the request body. Default is None.
+        data (dict[str, Any] | None): The form data to send in the request body; values are converted
+            like `params`, so a list repeats the field. Default is None.
         json (Any | None): A JSON serializable object to send in the request body. Default is None.
         files (dict[str, str] | None): A map of file fields to file paths to be sent as multipart/form-data. Default is None.
         auth (tuple[str, str| None] | None): A tuple containing the username and an optional password

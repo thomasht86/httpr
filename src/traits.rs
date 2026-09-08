@@ -81,6 +81,18 @@ pub trait CookiesTraits {
     fn to_string(&self) -> String;
 }
 
+/// Splits a `Cookie` header value (`a=1; b=2`) into its pairs, in order.
+/// Parts without an `=` are skipped.
+pub fn parse_cookie_header(header: &str) -> IndexMapSSR {
+    let mut cookies = IndexMapSSR::with_hasher(RandomState::default());
+    for part in header.split(';') {
+        if let Some((key, value)) = part.trim().split_once('=') {
+            cookies.insert(key.to_string(), value.to_string());
+        }
+    }
+    cookies
+}
+
 impl CookiesTraits for IndexMapSSR {
     fn to_string(&self) -> String {
         let mut result = String::with_capacity(self.len() * 40);

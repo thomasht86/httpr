@@ -139,7 +139,7 @@ class _ClientHeaders(CaseInsensitiveDict):
 
 
 if TYPE_CHECKING:
-    from .httpr import ClientRequestParams, HttpMethod, RequestParams
+    from .httpr import ClientRequestParams, HttpMethod, QueryParamTypes, RequestParams
 else:
 
     class _Unpack:
@@ -149,6 +149,7 @@ else:
 
     Unpack = _Unpack()
     RequestParams = ClientRequestParams = TypedDict
+    QueryParamTypes = dict
 
 
 class Client(RClient):
@@ -192,7 +193,8 @@ class Client(RClient):
         headers: Default headers sent with all requests. Excludes Cookie header.
         cookies: Default cookies sent with all requests.
         auth: Basic auth credentials as (username, password) tuple.
-        params: Default query parameters added to all requests.
+        params: Default query parameters added to all requests, as a dict; a key
+            given more than once maps to a list of values.
         timeout: Default timeout in seconds.
         proxy: Proxy URL for requests.
     """
@@ -201,7 +203,7 @@ class Client(RClient):
         self,
         auth: tuple[str, str | None] | None = None,
         auth_bearer: str | None = None,
-        params: dict[str, str] | None = None,
+        params: QueryParamTypes | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
         cookie_store: bool | None = True,
@@ -223,7 +225,10 @@ class Client(RClient):
         Args:
             auth: Basic auth credentials as (username, password). Password can be None.
             auth_bearer: Bearer token for Authorization header.
-            params: Default query parameters to include in all requests.
+            params: Default query parameters to include in all requests. Merged with
+                each request's own `params`; a key the request supplies wins. Values
+                may be str, int, float, bool (sent as `true`/`false`), None (sent
+                empty) or a list/tuple of those (the key is repeated).
             headers: Default headers to send with all requests.
             cookies: Default cookies to send with all requests.
             cookie_store: Enable persistent cookie store. Cookies from responses will be
@@ -338,14 +343,19 @@ class Client(RClient):
             **kwargs: Request parameters (see below).
 
         Keyword Args:
-            params (Optional[dict[str, str]]): Query parameters to append to URL.
+            params (Optional[QueryParamTypes]): Query parameters to append to the URL, merged
+                with the client's (the request wins for a key both supply). Values may be
+                str, int, float, bool (sent as `true`/`false`), None (sent empty) or a
+                list/tuple of those, which repeats the key.
             headers (Optional[dict[str, str]]): Request headers (merged with client defaults).
-            cookies (Optional[dict[str, str]]): Request cookies (merged with client defaults).
+            cookies (Optional[dict[str, str]]): Request cookies, merged with the client's into a
+                single `Cookie` header (the request wins for a name both supply).
             auth (Optional[tuple[str, Optional[str]]]): Basic auth credentials (overrides client default).
             auth_bearer (Optional[str]): Bearer token (overrides client default).
             timeout (Optional[float]): Request timeout in seconds (overrides client default).
             content (Optional[bytes]): Raw bytes for request body.
             data (Optional[dict[str, Any]]): Form data for request body (application/x-www-form-urlencoded).
+                Values are converted like `params`; a list/tuple repeats the field.
             json (Optional[Any]): JSON data for request body (application/json).
             files (Optional[dict[str, str]]): Files for multipart upload (dict mapping field names to file paths).
 
@@ -367,9 +377,6 @@ class Client(RClient):
         """
         if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
             raise ValueError(f"Unsupported HTTP method: {method}")
-        if "params" in kwargs and kwargs["params"] is not None:
-            kwargs["params"] = {k: str(v) for k, v in kwargs["params"].items()}
-
         return super().request(method=method, url=url, **kwargs)
 
     def get(self, url: str, **kwargs: Unpack[RequestParams]) -> Response:
@@ -605,9 +612,6 @@ class Client(RClient):
         """
         if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
             raise ValueError(f"Unsupported HTTP method: {method}")
-        if "params" in kwargs and kwargs["params"] is not None:
-            kwargs["params"] = {k: str(v) for k, v in kwargs["params"].items()}
-
         response = super()._stream(method=method, url=url, **kwargs)
         try:
             yield response
@@ -788,9 +792,6 @@ class AsyncClient(Client):
         """
         if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
             raise ValueError(f"Unsupported HTTP method: {method}")
-        if "params" in kwargs and kwargs["params"] is not None:
-            kwargs["params"] = {k: str(v) for k, v in kwargs["params"].items()}
-
         return await self._run_sync_asyncio(super().request, method=method, url=url, **kwargs)
 
     async def get(  # type: ignore[override]
@@ -960,9 +961,6 @@ class AsyncClient(Client):
         """
         if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
             raise ValueError(f"Unsupported HTTP method: {method}")
-        if "params" in kwargs and kwargs["params"] is not None:
-            kwargs["params"] = {k: str(v) for k, v in kwargs["params"].items()}
-
         # Run the sync _stream in executor
         response = await self._run_sync_asyncio(super(Client, self)._stream, method=method, url=url, **kwargs)
         try:
