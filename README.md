@@ -1,5 +1,7 @@
 # httpr
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/thomasht86/httpr?utm_source=badge)
+
 **Blazing fast http-client** for Python in Rust 🦀 that can be used as drop-in replacement for `httpx` and `requests` in most cases.
 
 - **Fast**: `httpr` is built on top of `reqwests`, which is a blazing fast http client in Rust. Check out the [benchmark](#benchmark).
@@ -63,7 +65,10 @@ pip install -U httpr
 
 ## Benchmark
 
-Performance is tracked continuously with [github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark): on every push to `main`, the benchmark suite (`tests/benchmark/`) runs in CI and the results are published as interactive charts.
+Performance is tracked continuously in two complementary ways:
+
+- **CPU cost per pull request** with [CodSpeed](https://app.codspeed.io/thomasht86/httpr): `tests/benchmark/codspeed/` runs under CodSpeed's CPU simulation instrument on every PR and every push to `main`, so a regression in decoding, request building or transfer handling is reported on the PR that introduces it. See [tests/benchmark/codspeed/README.md](tests/benchmark/codspeed/README.md).
+- **Wall-clock trend over time** with [github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark): on every push to `main`, `tests/benchmark/test_performance.py` runs in CI and the results are published as interactive charts.
 
 **📈 [View live benchmark results](https://thomasht86.github.io/httpr/dev/bench/)**
 
@@ -417,6 +422,8 @@ task test
 ```bash
 task dev           # Build Rust extension
 task check         # Run all checks (lint + test) - use before committing
+task test:benchmark    # Wall-clock benchmarks
+task test:codspeed     # CodSpeed CPU-simulation benchmarks (requires the codspeed CLI)
 task lint          # Run Python linters (ruff + mypy)
 task lint:rust     # Run Rust linters (fmt + clippy)
 task lint:all      # Run all linters (Python + Rust)
@@ -433,6 +440,8 @@ task httpbun:logs  # Show container logs
 
 - `tests/unit/` - Unit tests using pytest-httpbin (fast, no Docker required)
 - `tests/e2e/` - E2E tests using httpbun Docker container with SSL
+- `tests/benchmark/test_performance.py` - Wall-clock benchmarks published to the live charts
+- `tests/benchmark/codspeed/` - CPU benchmarks measured by CodSpeed on every PR
 
 ## CI
 
@@ -441,11 +450,12 @@ task httpbun:logs  # Show container logs
 | `lint` | ✓ | | | |
 | `test` (Python 3.10-3.14) | ✓ | ✓ | ✓ | |
 | `docs` (build) | ✓ | | | |
+| `benchmarks` (CodSpeed) | ✓ | ✓ | | ✓ |
 | `linux`, `musllinux`, `windows`, `macos`, `sdist` | | | ✓ | ✓ |
 | `release` (PyPI publish) | | | ✓ | ✓ |
 
-- **PRs**: Run lint, tests across Python 3.10-3.14 matrix, and verify docs build
-- **Push to main**: Run tests, then the separate `Benchmark` workflow runs the benchmark suite and publishes results to the [live benchmark charts](https://thomasht86.github.io/httpr/dev/bench/)
+- **PRs**: Run lint, tests across Python 3.10-3.14 matrix, verify docs build, and report the CPU cost of the CodSpeed benchmark suite
+- **Push to main**: Run tests and the CodSpeed benchmarks, then the separate `Benchmark` workflow runs the wall-clock suite and publishes results to the [live benchmark charts](https://thomasht86.github.io/httpr/dev/bench/)
 - **Tags**: Run tests, build wheels, publish stable release to PyPI
 - **Manual**: Full multi-platform wheel builds with release
 

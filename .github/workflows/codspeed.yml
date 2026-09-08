@@ -1,0 +1,50 @@
+name: CodSpeed
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  # Lets CodSpeed trigger a backtest run to generate the initial baseline data.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # OpenID Connect authentication with CodSpeed
+
+jobs:
+  benchmarks:
+    name: Run benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+
+      - name: Cache Rust build
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-codspeed-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-codspeed-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      # Benchmarks must run against an optimised build, otherwise they measure
+      # debug assertions and unoptimised Rust rather than shipped code.
+      - name: Build Rust extension (release mode)
+        run: uv run maturin develop --release
+
+      - name: Run benchmarks
+        uses: CodSpeedHQ/action@v5
+        with:
+          mode: simulation
+          # --no-sync keeps uv from replacing the release build made above.
+          run: uv run --no-sync pytest tests/benchmark/codspeed --codspeed
