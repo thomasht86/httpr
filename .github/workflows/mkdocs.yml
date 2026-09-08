@@ -42,14 +42,18 @@ jobs:
           # Fetch gh-pages branch
           git fetch origin gh-pages:gh-pages || true
 
-          # Save benchmark data if it exists
+          # Save everything under dev/bench (httpr trend chart, client comparison)
           mkdir -p /tmp/bench-backup
-          if git show gh-pages:dev/bench/data.js > /tmp/bench-backup/data.js 2>/dev/null; then
-            echo "Found existing benchmark data.js, will preserve it"
+          if git rev-parse --verify --quiet gh-pages:dev/bench > /dev/null; then
+            git archive gh-pages dev/bench | tar -x -C /tmp/bench-backup
+            echo "Preserving dev/bench from gh-pages"
           fi
-          if git show gh-pages:dev/bench/index.html > /tmp/bench-backup/index.html 2>/dev/null; then
-            echo "Found existing benchmark index.html, will preserve it"
-          fi
+
+          # Drop everything untracked before switching branches: the docs build
+          # leaves the compiled extension, __pycache__, .venv and site/ in the
+          # tree, and `git add -A` below would otherwise commit them to gh-pages
+          # (site/ is already saved in /tmp/site-backup).
+          git clean -fdxq
 
           # Switch to gh-pages branch
           git checkout gh-pages || git checkout --orphan gh-pages
@@ -64,12 +68,11 @@ jobs:
           fi
           cp -r /tmp/site-backup/* .
 
-          # Restore benchmark data if it existed
-          if [ -f /tmp/bench-backup/data.js ] || [ -f /tmp/bench-backup/index.html ]; then
-            mkdir -p dev/bench
-            [ -f /tmp/bench-backup/data.js ] && cp /tmp/bench-backup/data.js dev/bench/
-            [ -f /tmp/bench-backup/index.html ] && cp /tmp/bench-backup/index.html dev/bench/
-            echo "Restored benchmark chart files"
+          # Restore dev/bench
+          if [ -d /tmp/bench-backup/dev/bench ]; then
+            mkdir -p dev
+            cp -r /tmp/bench-backup/dev/bench dev/
+            echo "Restored dev/bench"
           fi
 
           # Add all files and commit
