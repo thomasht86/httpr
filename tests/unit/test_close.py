@@ -175,6 +175,9 @@ def test_close_never_used_client():
     client = httpr.Client()
     client.close()
     assert client.is_closed
+    client.close()  # still a no-op
+    with pytest.raises(httpr.ClientClosed):
+        client.get("http://127.0.0.1:9/")
 
 
 def test_proxy_setter_after_close_raises():
@@ -324,6 +327,15 @@ async def test_aclose_is_idempotent():
     await client.aclose()
     await client.aclose()
     assert client.is_closed
+
+
+@pytest.mark.asyncio
+async def test_aclose_never_used_client():
+    client = httpr.AsyncClient()
+    await client.aclose()
+    assert client.is_closed
+    with pytest.raises(httpr.ClientClosed):
+        await client.get("http://127.0.0.1:9/")
 
 
 @pytest.mark.asyncio
