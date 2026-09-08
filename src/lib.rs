@@ -9,7 +9,7 @@ use foldhash::fast::RandomState;
 use indexmap::IndexMap;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use pyo3::types::{PyBytes, PyDict};
 use pythonize::depythonize;
 use reqwest::{
     header::{HeaderValue, COOKIE},
@@ -28,8 +28,11 @@ use tokio_util::sync::CancellationToken;
 mod response;
 use response::{CaseInsensitiveHeaderMap, LineIterator, Response, StreamingResponse, TextIterator};
 
+mod params;
+use params::{merge_params, normalize_params, params_to_py, Pairs};
+
 mod traits;
-use traits::{CookiesTraits, HeadersTraits};
+use traits::{parse_cookie_header, CookiesTraits, HeadersTraits};
 
 mod utils;
 use utils::load_ca_certs;
@@ -66,8 +69,8 @@ pub struct RClient {
     auth: Option<(String, Option<String>)>,
     #[pyo3(get, set)]
     auth_bearer: Option<String>,
-    #[pyo3(get, set)]
-    params: Option<IndexMapSSR>,
+    /// Client-level query parameters, merged into every request (see `params.rs`).
+    params: Option<Pairs>,
     #[pyo3(get, set)]
     proxy: Option<String>,
     #[pyo3(get, set)]
@@ -92,6 +95,145 @@ impl Drop for RClient {
     fn drop(&mut self) {
         self.state.close();
     }
+}
+
+impl RClient {
+    /// Everything about a request that is settled before it is sent: the
+    /// builder with query, headers, cookies, body, auth and timeout applied.
+    /// `files` are attached by `send_request`, since opening them is async.
+    /// Shared by `request()` and `_stream()`.
+    ///
+    /// `client` is consumed so that the only remaining handle to the pool is
+    /// the one inside the returned builder, which the caller's future drops
+    /// before its `InFlight` guard (see `lifecycle.rs`).
+    fn build_request(
+        &self,
+        client: reqwest::Client,
+        method: &str,
+        url: &str,
+        params: Option<&Bound<'_, PyAny>>,
+        headers: Option<IndexMapSSR>,
+        cookies: Option<IndexMapSSR>,
+        content: Option<Vec<u8>>,
+        data: Option<&Bound<'_, PyAny>>,
+        json: Option<&Bound<'_, PyAny>>,
+        auth: Option<(String, Option<String>)>,
+        auth_bearer: Option<String>,
+        timeout: Option<f64>,
+    ) -> PyResult<reqwest::RequestBuilder> {
+        let method = Method::from_bytes(method.as_bytes())
+            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+        let mut builder = client.request(method, url);
+
+        // Query: client-level params first, then the request's own; a key the
+        // request supplies replaces the client's values for it (issue #82).
+        let request_params = params
+            .map(|p| normalize_params(p, "params"))
+            .transpose()?
+            .unwrap_or_default();
+        let params = merge_params(self.params.as_deref().unwrap_or(&[]), request_params);
+        if !params.is_empty() {
+            builder = builder.query(&params);
+        }
+
+        // Headers from client, then per-request headers replacing same-named
+        // entries, so the request's values take precedence.
+        let mut header_map = self
+            .headers
+            .lock()
+            .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire headers lock: {}", e)))?
+            .clone();
+        if let Some(headers) = headers {
+            for (name, value) in headers.to_headermap().iter() {
+                header_map.insert(name.clone(), value.clone());
+            }
+        }
+
+        // Cookies: per-request cookies are merged into the client's `Cookie`
+        // header (request wins per name) so exactly one header goes out
+        // (RFC 6265 §5.4, issue #82).
+        if let Some(cookies) = cookies {
+            let mut merged = match header_map.get(COOKIE) {
+                Some(existing) => parse_cookie_header(
+                    existing
+                        .to_str()
+                        .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?,
+                ),
+                None => IndexMap::with_hasher(RandomState::default()),
+            };
+            merged.extend(cookies);
+            header_map.insert(
+                COOKIE,
+                HeaderValue::from_str(&merged.to_string())
+                    .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?,
+            );
+        }
+        builder = builder.headers(header_map);
+
+        // Body: sent for any method the caller supplies one for (RFC 9110, matches httpx)
+        if let Some(content) = content {
+            builder = builder.body(content);
+        }
+        // Form data goes through the same normalisation as query params, so
+        // list values become repeated fields and insertion order is kept.
+        if let Some(data) = data {
+            builder = builder.form(&normalize_params(data, "data")?);
+        }
+        // Json - always serialize as JSON regardless of Accept header
+        if let Some(json) = json {
+            let json_value: Value =
+                depythonize(json).map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
+            builder = builder.json(&json_value);
+        }
+
+        // Auth
+        if let Some((username, password)) = auth.or_else(|| self.auth.clone()) {
+            builder = builder.basic_auth(username, password);
+        } else if let Some(token) = auth_bearer.or_else(|| self.auth_bearer.clone()) {
+            builder = builder.bearer_auth(token);
+        }
+
+        // Timeout
+        if let Some(seconds) = timeout.or(self.timeout) {
+            builder = builder.timeout(Duration::from_secs_f64(seconds));
+        }
+
+        Ok(builder)
+    }
+}
+
+/// Attaches `files` as a multipart form, if any, and sends the request.
+async fn send_request(
+    mut builder: reqwest::RequestBuilder,
+    files: Option<IndexMap<String, String>>,
+) -> anyhow::Result<reqwest::Response> {
+    if let Some(files) = files {
+        let mut form = multipart::Form::new();
+        for (file_name, file_path) in files {
+            let file = File::open(file_path).await.map_err(anyhow::Error::new)?;
+            let stream = FramedRead::new(file, BytesCodec::new());
+            let file_body = Body::wrap_stream(stream);
+            let part = multipart::Part::stream(file_body).file_name(file_name.clone());
+            form = form.part(file_name, part);
+        }
+        builder = builder.multipart(form);
+    }
+    builder.send().await.map_err(anyhow::Error::new)
+}
+
+/// Cookies, headers, status and final URL of a response.
+fn response_meta(resp: &reqwest::Response) -> (IndexMapSSR, IndexMapSSR, u16, String) {
+    let cookies: IndexMapSSR = resp
+        .cookies()
+        .map(|cookie| (cookie.name().to_string(), cookie.value().to_string()))
+        .collect();
+    let headers: IndexMapSSR = resp.headers().to_indexmap();
+    (
+        cookies,
+        headers,
+        resp.status().as_u16(),
+        resp.url().to_string(),
+    )
 }
 
 #[pymethods]
@@ -151,7 +293,7 @@ impl RClient {
     fn new(
         auth: Option<(String, Option<String>)>,
         auth_bearer: Option<String>,
-        params: Option<IndexMapSSR>,
+        params: Option<&Bound<'_, PyAny>>,
         headers: Option<IndexMapSSR>,
         cookies: Option<IndexMapSSR>,
         cookie_store: Option<bool>,
@@ -172,6 +314,7 @@ impl RClient {
                 "Only one of client_pem or client_pem_data may be set.",
             ));
         }
+        let params = params.map(|p| normalize_params(p, "params")).transpose()?;
         // Client builder
         let connects = CancellationToken::new();
         let mut client_builder = reqwest::Client::builder()
@@ -333,19 +476,14 @@ impl RClient {
             .headers
             .lock()
             .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire headers lock: {}", e)))?;
-        let mut cookies: IndexMapSSR = IndexMap::with_hasher(RandomState::default());
-        if let Some(cookie_header) = headers.get(COOKIE) {
-            for part in cookie_header
-                .to_str()
-                .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?
-                .split(';')
-            {
-                if let Some((key, value)) = part.trim().split_once('=') {
-                    cookies.insert(key.to_string(), value.to_string());
-                }
-            }
+        match headers.get(COOKIE) {
+            Some(cookie_header) => Ok(parse_cookie_header(
+                cookie_header
+                    .to_str()
+                    .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?,
+            )),
+            None => Ok(IndexMap::with_hasher(RandomState::default())),
         }
-        Ok(cookies)
     }
 
     #[setter]
@@ -363,6 +501,23 @@ impl RClient {
         } else {
             headers.remove(COOKIE);
         }
+        Ok(())
+    }
+
+    /// Client-level query parameters as a dict; a key given more than once
+    /// maps to a `list[str]`. Assigning the result back reproduces the same
+    /// parameters.
+    #[getter]
+    pub fn get_params<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyDict>>> {
+        self.params
+            .as_deref()
+            .map(|pairs| params_to_py(py, pairs))
+            .transpose()
+    }
+
+    #[setter]
+    pub fn set_params(&mut self, params: Option<&Bound<'_, PyAny>>) -> PyResult<()> {
+        self.params = params.map(|p| normalize_params(p, "params")).transpose()?;
         Ok(())
     }
 
@@ -453,7 +608,7 @@ impl RClient {
         py: Python,
         method: &str,
         url: &str,
-        params: Option<IndexMapSSR>,
+        params: Option<&Bound<'_, PyAny>>,
         headers: Option<IndexMapSSR>,
         cookies: Option<IndexMapSSR>,
         content: Option<Vec<u8>>,
@@ -465,99 +620,24 @@ impl RClient {
         timeout: Option<f64>,
     ) -> PyResult<Response> {
         let (client, in_flight) = self.begin_request()?;
-        let method = Method::from_bytes(method.as_bytes())
-            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let params = params.or_else(|| self.params.clone());
-        let data_value: Option<Value> = data
-            .map(depythonize)
-            .transpose()
-            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let json_value: Option<Value> = json
-            .map(depythonize)
-            .transpose()
-            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let auth = auth.or(self.auth.clone());
-        let auth_bearer = auth_bearer.or(self.auth_bearer.clone());
-        let timeout: Option<f64> = timeout.or(self.timeout);
+        let builder = self.build_request(
+            client,
+            method,
+            url,
+            params,
+            headers,
+            cookies,
+            content,
+            data,
+            json,
+            auth,
+            auth_bearer,
+            timeout,
+        )?;
 
         let future = async move {
-            // Create request builder
-            let mut request_builder = client.request(method, url);
-
-            // Params
-            if let Some(params) = params {
-                request_builder = request_builder.query(&params);
-            }
-
-            // Headers from client, then per-request headers: `headers()` replaces
-            // same-named entries, so the request's values take precedence.
-            let client_headers = self
-                .headers
-                .lock()
-                .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
-                .clone();
-            request_builder = request_builder.headers(client_headers);
-            if let Some(ref headers) = headers {
-                request_builder = request_builder.headers(headers.to_headermap());
-            }
-
-            // Cookies
-            if let Some(cookies) = cookies {
-                request_builder = request_builder.header(
-                    COOKIE,
-                    HeaderValue::from_str(&cookies.to_string()).map_err(anyhow::Error::new)?,
-                );
-            }
-
-            // Body: sent for any method the caller supplies one for (RFC 9110, matches httpx)
-            // Content
-            if let Some(content) = content {
-                request_builder = request_builder.body(content);
-            }
-            // Data
-            if let Some(form_data) = data_value {
-                request_builder = request_builder.form(&form_data);
-            }
-            // Json - always serialize as JSON regardless of Accept header
-            if let Some(json_data) = json_value {
-                request_builder = request_builder.json(&json_data);
-            }
-            // Files
-            if let Some(files) = files {
-                let mut form = multipart::Form::new();
-                for (file_name, file_path) in files {
-                    let file = File::open(file_path).await.map_err(anyhow::Error::new)?;
-                    let stream = FramedRead::new(file, BytesCodec::new());
-                    let file_body = Body::wrap_stream(stream);
-                    let part = multipart::Part::stream(file_body).file_name(file_name.clone());
-                    form = form.part(file_name, part);
-                }
-                request_builder = request_builder.multipart(form);
-            }
-
-            // Auth
-            if let Some((username, password)) = auth {
-                request_builder = request_builder.basic_auth(username, password);
-            } else if let Some(token) = auth_bearer {
-                request_builder = request_builder.bearer_auth(token);
-            }
-
-            // Timeout
-            if let Some(seconds) = timeout {
-                request_builder = request_builder.timeout(Duration::from_secs_f64(seconds));
-            }
-
-            // Send the request and await the response
-            let resp = request_builder.send().await.map_err(anyhow::Error::new)?;
-
-            // Response items
-            let cookies: IndexMapSSR = resp
-                .cookies()
-                .map(|cookie| (cookie.name().to_string(), cookie.value().to_string()))
-                .collect();
-            let headers: IndexMapSSR = resp.headers().to_indexmap();
-            let status_code = resp.status().as_u16();
-            let url = resp.url().to_string();
+            let resp = send_request(builder, files).await?;
+            let (cookies, headers, status_code, url) = response_meta(&resp);
             let buf = resp.bytes().await.map_err(anyhow::Error::new)?;
 
             tracing::info!("response: {} {} {}", url, status_code, buf.len());
@@ -573,8 +653,9 @@ impl RClient {
         // Execute an async future, releasing the Python GIL for concurrency.
         // Use Tokio global runtime to block on the future.
         let result = py.detach(|| {
-            // The future owns our clone of the reqwest client, which kept the
-            // pool alive for the duration of the request; `block_on` drops it.
+            // The future owns the request builder and with it our clone of the
+            // reqwest client, which kept the pool alive for the duration of the
+            // request; `block_on` drops both.
             let result = RUNTIME.block_on(future);
             // If `close()` ran in the meantime, ending this request is what
             // really tears the pool down, and the guard releases its sockets.
@@ -622,7 +703,7 @@ impl RClient {
         py: Python,
         method: &str,
         url: &str,
-        params: Option<IndexMapSSR>,
+        params: Option<&Bound<'_, PyAny>>,
         headers: Option<IndexMapSSR>,
         cookies: Option<IndexMapSSR>,
         content: Option<Vec<u8>>,
@@ -634,99 +715,25 @@ impl RClient {
         timeout: Option<f64>,
     ) -> PyResult<StreamingResponse> {
         let (client, in_flight) = self.begin_request()?;
-        let method = Method::from_bytes(method.as_bytes())
-            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let params = params.or_else(|| self.params.clone());
-        let data_value: Option<Value> = data
-            .map(depythonize)
-            .transpose()
-            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let json_value: Option<Value> = json
-            .map(depythonize)
-            .transpose()
-            .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
-        let auth = auth.or(self.auth.clone());
-        let auth_bearer = auth_bearer.or(self.auth_bearer.clone());
-        let timeout: Option<f64> = timeout.or(self.timeout);
+        let builder = self.build_request(
+            client,
+            method,
+            url,
+            params,
+            headers,
+            cookies,
+            content,
+            data,
+            json,
+            auth,
+            auth_bearer,
+            timeout,
+        )?;
 
-        let future = async {
-            // Create request builder
-            let mut request_builder = client.request(method, url);
-
-            // Params
-            if let Some(params) = params {
-                request_builder = request_builder.query(&params);
-            }
-
-            // Headers from client, then per-request headers: `headers()` replaces
-            // same-named entries, so the request's values take precedence.
-            let client_headers = self
-                .headers
-                .lock()
-                .map_err(|e| anyhow!("Failed to acquire headers lock: {}", e))?
-                .clone();
-            request_builder = request_builder.headers(client_headers);
-            if let Some(ref headers) = headers {
-                request_builder = request_builder.headers(headers.to_headermap());
-            }
-
-            // Cookies
-            if let Some(cookies) = cookies {
-                request_builder = request_builder.header(
-                    COOKIE,
-                    HeaderValue::from_str(&cookies.to_string()).map_err(anyhow::Error::new)?,
-                );
-            }
-
-            // Body: sent for any method the caller supplies one for (RFC 9110, matches httpx)
-            // Content
-            if let Some(content) = content {
-                request_builder = request_builder.body(content);
-            }
-            // Data
-            if let Some(form_data) = data_value {
-                request_builder = request_builder.form(&form_data);
-            }
-            // Json - always serialize as JSON regardless of Accept header
-            if let Some(json_data) = json_value {
-                request_builder = request_builder.json(&json_data);
-            }
-            // Files
-            if let Some(files) = files {
-                let mut form = multipart::Form::new();
-                for (file_name, file_path) in files {
-                    let file = File::open(file_path).await.map_err(anyhow::Error::new)?;
-                    let stream = FramedRead::new(file, BytesCodec::new());
-                    let file_body = Body::wrap_stream(stream);
-                    let part = multipart::Part::stream(file_body).file_name(file_name.clone());
-                    form = form.part(file_name, part);
-                }
-                request_builder = request_builder.multipart(form);
-            }
-
-            // Auth
-            if let Some((username, password)) = auth {
-                request_builder = request_builder.basic_auth(username, password);
-            } else if let Some(token) = auth_bearer {
-                request_builder = request_builder.bearer_auth(token);
-            }
-
-            // Timeout
-            if let Some(seconds) = timeout {
-                request_builder = request_builder.timeout(Duration::from_secs_f64(seconds));
-            }
-
+        let future = async move {
             // Send the request and await the response (but don't read body)
-            let resp = request_builder.send().await.map_err(anyhow::Error::new)?;
-
-            // Response items (extract before we move resp)
-            let cookies: IndexMapSSR = resp
-                .cookies()
-                .map(|cookie| (cookie.name().to_string(), cookie.value().to_string()))
-                .collect();
-            let headers: IndexMapSSR = resp.headers().to_indexmap();
-            let status_code = resp.status().as_u16();
-            let url = resp.url().to_string();
+            let resp = send_request(builder, files).await?;
+            let (cookies, headers, status_code, url) = response_meta(&resp);
 
             tracing::info!("streaming response: {} {}", url, status_code);
             Ok::<(reqwest::Response, IndexMapSSR, IndexMapSSR, u16, String), anyhow::Error>((

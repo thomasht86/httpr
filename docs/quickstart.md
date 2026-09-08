@@ -100,13 +100,29 @@ response = httpr.get("https://httpbin.org/get", params={"name": "httpr", "versio
 print(response.json()["args"])  # {"name": "httpr", "version": "1"}
 ```
 
-Numeric parameters are automatically converted to strings:
+Values are converted the same way as in httpx: numbers through `str()`, booleans
+to `true`/`false`, `None` to an empty value, and a list or tuple repeats the key:
 
 ```python
 import httpr
 
 response = httpr.get("https://httpbin.org/get", params={"page": 1, "limit": 10})
 print(response.json()["args"])  # {"page": "1", "limit": "10"}
+
+response = httpr.get("https://httpbin.org/get", params={"tag": ["a", "b"], "flag": True})
+# GET /get?tag=a&tag=b&flag=true
+print(response.json()["args"])  # {"tag": ["a", "b"], "flag": "true"}
+```
+
+Parameters set on a client are merged with each request's own; when both supply
+the same key, the request's value is used:
+
+```python
+import httpr
+
+client = httpr.Client(params={"api_key": "secret"})
+client.get("https://httpbin.org/get", params={"q": "httpr"})
+# GET /get?api_key=secret&q=httpr
 ```
 
 ## Request Headers

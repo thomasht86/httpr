@@ -171,11 +171,17 @@ builds in debug mode and the numbers are meaningless.
 - `client.headers` getter returns a live `_ClientHeaders` view; in-place mutations (`__setitem__`, `del`, `update`, `pop`, `popitem`, `setdefault`, `clear`) mirror to the client via Rust `set_header`/`del_header`
 - `client.headers` getter excludes `Cookie` header; `set_headers` preserves the existing `Cookie` header so header mutation never clobbers cookies
 - `client.cookies` getter/setter extracts from `Cookie` header
+- Per-request `cookies` are merged into the client's `Cookie` header (request wins per name) so exactly one `Cookie` header is sent (RFC 6265 §5.4; issue #82). Do not append a second header
+
+### Query Parameters (issues #82, #87)
+- `params` (client-level and per-request) and form `data` are normalised in Rust (`src/params.rs`) into ordered `(key, value)` pairs with httpx rules: `True`/`False` → `true`/`false`, `None` → empty, list/tuple → repeated key, else `str()`. Accepts a mapping or a sequence of pairs. There is no Python-side `str(v)` coercion any more; do not re-add one
+- Client params are merged with request params: client pairs first, then the request's; a key the request supplies replaces the client's values for it. `client.params` returns a dict whose values are `str` or `list[str]` for repeated keys and round-trips through the setter
+- Request building (`build_request`, `send_request`, `response_meta` in `src/lib.rs`) is shared by `request()` and `_stream()`; change it once
 
 ### Request Body
 - Mutually exclusive: `content` (bytes), `data` (form), `json` (JSON), `files` (multipart)
 - A body is sent for any method the caller supplies one for, including GET/DELETE/OPTIONS (RFC 9110, matches httpx; issue #83). Do not re-add a POST/PUT/PATCH guard
-- `data` and `json` use `pythonize::depythonize()` for Python → Rust conversion
+- `json` uses `pythonize::depythonize()`; `data` goes through `normalize_params` so list values become repeated fields and insertion order is preserved (serde_json would alphabetise)
 - `files` dict maps field names to file paths
 
 ### Proxy

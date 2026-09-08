@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from typing import Any, Literal, TypedDict
 
@@ -12,15 +12,24 @@ else:
 
 HttpMethod = Literal["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]
 
+#: A single query-string or form value. `bool` is sent as `true`/`false`,
+#: `None` as the empty string, everything else through `str()`.
+PrimitiveData = str | int | float | bool | None
+#: Query parameters: a mapping, or a sequence of `(key, value)` pairs. A list or
+#: tuple value repeats the key once per element.
+QueryParamTypes = Mapping[str, PrimitiveData | Sequence[PrimitiveData]] | Sequence[tuple[str, PrimitiveData]]
+#: Form data (`application/x-www-form-urlencoded`), same shapes as `QueryParamTypes`.
+RequestData = Mapping[str, Any] | Sequence[tuple[str, Any]]
+
 class RequestParams(TypedDict, total=False):
     auth: tuple[str, str | None] | None
     auth_bearer: str | None
-    params: dict[str, str] | None
+    params: QueryParamTypes | None
     headers: dict[str, str] | None
     cookies: dict[str, str] | None
     timeout: float | None
     content: bytes | None
-    data: dict[str, Any] | None
+    data: RequestData | None
     json: Any | None
     files: dict[str, str] | None
 
@@ -357,7 +366,7 @@ class RClient:
         self,
         auth: tuple[str, str | None] | None = None,
         auth_bearer: str | None = None,
-        params: dict[str, str] | None = None,
+        params: QueryParamTypes | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
         timeout: float | None = None,
@@ -396,9 +405,11 @@ class RClient:
     @auth_bearer.setter
     def auth_bearer(self, auth_bearer: str | None) -> None: ...
     @property
-    def params(self) -> dict[str, str] | None: ...
+    def params(self) -> dict[str, str | list[str]] | None:
+        """Client-level query parameters; a key given more than once maps to a list."""
+        ...
     @params.setter
-    def params(self, params: dict[str, str] | None) -> None: ...
+    def params(self, params: QueryParamTypes | None) -> None: ...
     @property
     def timeout(self) -> float | None: ...
     @timeout.setter
@@ -451,7 +462,7 @@ class Client(RClient):
         self,
         auth: tuple[str, str | None] | None = None,
         auth_bearer: str | None = None,
-        params: dict[str, str] | None = None,
+        params: QueryParamTypes | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
         cookie_store: bool | None = True,
@@ -556,7 +567,7 @@ class AsyncClient(Client):
         self,
         auth: tuple[str, str | None] | None = None,
         auth_bearer: str | None = None,
-        params: dict[str, str] | None = None,
+        params: QueryParamTypes | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
         cookie_store: bool | None = True,
