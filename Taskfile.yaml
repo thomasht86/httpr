@@ -85,14 +85,24 @@ tasks:
       - uv run pytest tests/e2e/ -v {{.CLI_ARGS}}
 
   test:benchmark:
-    desc: Run performance benchmarks
+    desc: Run wall-clock performance benchmarks
     cmds:
-      - uv run pytest tests/benchmark/ --benchmark-only -v {{.CLI_ARGS}}
+      - uv run pytest tests/benchmark/test_performance.py --benchmark-only -v {{.CLI_ARGS}}
 
   test:benchmark:json:
     desc: Run benchmarks and output JSON (for CI)
     cmds:
-      - uv run pytest tests/benchmark/ --benchmark-only --benchmark-json=benchmark-results.json {{.CLI_ARGS}}
+      - uv run pytest tests/benchmark/test_performance.py --benchmark-only --benchmark-json=benchmark-results.json {{.CLI_ARGS}}
+
+  test:codspeed:
+    desc: Run the CodSpeed benchmark suite under the CPU simulation instrument
+    cmds:
+      - codspeed run --mode simulation -- uv run pytest tests/benchmark/codspeed --codspeed {{.CLI_ARGS}}
+
+  test:codspeed:wall:
+    desc: Run the CodSpeed benchmark suite locally with wall-clock timings (no CodSpeed CLI needed)
+    cmds:
+      - uv run pytest tests/benchmark/codspeed --benchmark-only {{.CLI_ARGS}}
 
   test:
     desc: Run all tests (unit + e2e)

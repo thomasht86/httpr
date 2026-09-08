@@ -100,11 +100,26 @@ Key files:
 
 ### Benchmarking
 
+Comparison against other HTTP clients:
+
 ```bash
 cd benchmark/
 uv run uvicorn server:app  # Terminal 1: Start test server
 uv run python benchmark.py  # Terminal 2: Run benchmarks
 ```
+
+Regression tracking:
+
+```bash
+task test:benchmark        # Wall-clock suite (tests/benchmark/test_performance.py),
+                           # charted by github-action-benchmark on pushes to main
+task test:codspeed         # CodSpeed CPU-simulation suite (tests/benchmark/codspeed/),
+                           # reported on every PR by .github/workflows/codspeed.yml
+task test:codspeed:wall    # Same suite with plain wall-clock timings, no CodSpeed CLI
+```
+
+Always benchmark a release build (`uv run maturin develop --release`); `task dev`
+builds in debug mode and the numbers are meaningless.
 
 ## Architecture
 

@@ -67,7 +67,7 @@ jobs:
       - name: Run benchmarks
         env:
           BENCHMARK_SERVER_URL: "http://127.0.0.1:8000"
-        run: uv run pytest tests/benchmark/ --benchmark-only --benchmark-json=benchmark-results.json
+        run: uv run pytest tests/benchmark/test_performance.py --benchmark-only --benchmark-json=benchmark-results.json
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
