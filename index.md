@@ -25,7 +25,7 @@ ______________________________________________________________________
 
   ______________________________________________________________________
 
-  Built on Rust's `reqwest` - one of the fastest HTTP clients available. See the [benchmarks](https://github.com/thomasht86/httpr#benchmark).
+  Built on Rust's `reqwest` - one of the fastest HTTP clients available. See the [benchmarks](https://thomasht86.github.io/httpr/benchmark/index.md).
 
 - **Sync & Async**
 
