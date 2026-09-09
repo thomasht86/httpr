@@ -139,7 +139,7 @@ builds in debug mode and the numbers are meaningless.
 ### Python Wrapper (`httpr/`)
 - `__init__.py`: `Client` (sync) and `AsyncClient` classes with context manager support
   - `stream()` context manager wraps `_stream()` and handles cleanup
-  - Both `Client` and `AsyncClient` support streaming
+  - Both `Client` and `AsyncClient` support streaming; `AsyncClient.stream()` yields an `AsyncStreamingResponse` wrapper with `async for` iteration
   - `close()` / `__exit__` / `aclose()` / `__aexit__` really close the client (see "Client Lifecycle" below)
 - `AsyncClient` uses `asyncio.run_in_executor()` to wrap sync Rust calls - NOT native async
 - `httpr.pyi`: Type stubs for IDE support including `StreamingResponse`, `TextIterator`, `LineIterator`
@@ -210,7 +210,7 @@ builds in debug mode and the numbers are meaningless.
 - `read()` method consumes remaining response body and marks as consumed
 - `close()` method sets closed flag and drops the response
 - Python wrapper uses `@contextmanager` to ensure `close()` is called on exit
-- AsyncClient streaming: Context manager is async, but iteration is sync (same as sync Client)
+- AsyncClient streaming (issue #85): `AsyncClient.stream()` yields `AsyncStreamingResponse` (pure Python, `httpr/__init__.py`), which wraps the Rust `StreamingResponse` and adds `aiter_bytes()`/`aiter_text()`/`aiter_lines()`/`aread()`/`__aiter__`. Each step runs `next()` on the underlying sync iterator via `_run_sync_asyncio` on the client's executor so the event loop is never blocked; after `aclose()` the next step raises `ClientClosed`. The sync `iter_*`/`read()`/`__iter__` are kept on the wrapper and delegate directly (they block the loop). The Rust `StreamingResponse` is not subclassable, hence the wrapper rather than a subclass
 
 ## What NOT to Do
 

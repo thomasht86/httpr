@@ -372,16 +372,20 @@ if __name__ == "__main__":
 
 **Streaming with AsyncClient:**
 
-The `AsyncClient` also supports streaming responses with the same API:
+`AsyncClient.stream()` yields an `AsyncStreamingResponse` with `async for` iteration. `aiter_bytes()`, `aiter_text()`, `aiter_lines()` and `aread()` read each chunk on the client's thread pool, so the event loop keeps serving other tasks while the server is producing data (useful for Server-Sent Events and LLM token streams that stay open for a long time):
 
 ```python
 async with httpr.AsyncClient() as client:
     async with client.stream("GET", "https://example.com/large-file") as response:
-        for chunk in response.iter_bytes():
+        async for chunk in response.aiter_bytes():
             process(chunk)
+
+    async with client.stream("GET", "https://example.com/events") as response:
+        async for line in response.aiter_lines():
+            handle(line)
 ```
 
-Note: While the context manager is async, the iteration over chunks (`iter_bytes()`, `iter_text()`, `iter_lines()`) is synchronous.
+The synchronous `iter_bytes()`, `iter_text()`, `iter_lines()` and `read()` are still available on the async response, but each step blocks the event loop until the next chunk arrives, so prefer the `a`-prefixed variants in async code.
 
 ## Precompiled wheels
 
