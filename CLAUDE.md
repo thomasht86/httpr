@@ -198,6 +198,12 @@ builds in debug mode and the numbers are meaningless.
 - Python: `Client.close()`/`__exit__` call the Rust `close()`; `AsyncClient.aclose()`/`__aexit__` additionally `shutdown(wait=False)` the client's own `ThreadPoolExecutor`, and run on the event-loop thread on purpose (sub-millisecond, no I/O wait). `_run_sync_asyncio` checks `is_closed` first and also maps the executor's "cannot schedule new futures after shutdown" `RuntimeError` to `ClientClosed`, which covers a `close()` racing in from another OS thread
 - Leaving a `with`/`async with` block closes the client; re-entering it afterwards raises `ClientClosed` on the next request. pyvespa's `VespaSync`/`VespaAsync` given an external session never close it and are unaffected; with an owned client they close but never null it, so re-entering the same wrapper object raises `ClientClosed` (see memory note; needs a pyvespa-side fix)
 
+### Timeouts (issue #81)
+- Default `timeout` is 30 s and lives in the PyO3 `#[new]` signature in `src/lib.rs`; `Client.__init__` in Python only documents the parameters and forwards nothing, so its defaults must match Rust's (`test_python_signature_matches_rust_defaults` enforces this). `None` disables the timeout
+- The timeout is an inactivity bound, not a total deadline: `src/timeout.rs` wraps the wait for the response headers (`send_request`) and the wait for each body chunk (`read_body` for buffered responses, `next_chunk` for `StreamingResponse` and its iterators) in `tokio::time::timeout`. A stream that keeps delivering data is never cut off, matching httpx's read timeout. Both phases raise `ReadTimeout` (via the `TimedOut` error type, mapped first in `map_anyhow_error`)
+- Do not use `reqwest::ClientBuilder::timeout` or `RequestBuilder::timeout`: the former is baked into the built client so `client.timeout = ...` could not change it, and both are total deadlines that also kill a live streaming body. `RClient.timeout` is a plain field read at request time in `build_request`
+- `StreamingResponse`, `TextIterator` and `LineIterator` carry the `Option<Duration>` they were created with
+
 ### Streaming Responses
 - `_stream()` method returns `StreamingResponse` without calling `.bytes()` on reqwest response
 - `StreamingResponse` holds `Arc<Mutex<Option<reqwest::Response>>>` to allow chunk reading across Python GIL boundaries

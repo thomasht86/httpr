@@ -93,7 +93,9 @@ class Client:
             each request's own `params` (the request wins per key). Default is None.
         headers (dict[str, str] | None): Default headers to send with requests. 
         cookies (dict[str, str] | None): - Map of cookies to send with requests as the `Cookie` header.
-        timeout (float | None): HTTP request timeout in seconds. Default is 30.
+        timeout (float | None): Timeout in seconds for waiting on the server: for the response headers,
+            then for each chunk of the body, so a response that keeps arriving is never cut off. Default is 30;
+            `None` disables it.
         cookie_store (bool | None): Enable a persistent cookie store. Received cookies will be preserved and included
             in additional requests. Default is True.
         referer (bool | None): Enable or disable automatic setting of the `Referer` header. Default is True.
