@@ -387,20 +387,35 @@ class TestStreamingAsyncClient:
         assert [line.rstrip("\n") for line in lines if line.strip()] == [f"data: {i}" for i in range(5)]
 
     async def test_concurrent_async_streams_overlap(self, drip_url):
-        """Two async streams consumed concurrently overlap instead of running back to back."""
+        """Two async streams consumed concurrently overlap instead of running back to back.
 
-        async def consume(client):
+        Asserted on the chunk arrival times, not on a wall-clock budget: on the
+        GitHub macOS runners ``time.sleep(0.05)`` in the drip server overshoots by
+        more than 100%, so a single stream alone takes over a second there.
+        """
+        arrivals: list[tuple[float, str]] = []
+
+        async def consume(client, tag):
+            chunks = []
             async with client.stream("GET", f"{drip_url}/drip?chunks=10&pause=0.05") as response:
-                return b"".join([chunk async for chunk in response.aiter_bytes()])
+                async for chunk in response.aiter_bytes():
+                    arrivals.append((time.perf_counter(), tag))
+                    chunks.append(chunk)
+            return b"".join(chunks)
 
         async with httpr.AsyncClient() as client:
-            started = time.perf_counter()
-            bodies = await asyncio.gather(consume(client), consume(client))
-            elapsed = time.perf_counter() - started
+            bodies = await asyncio.gather(consume(client, "a"), consume(client, "b"))
         assert bodies[0] == bodies[1]
         assert len(bodies[0]) == len(b"".join(f"chunk-{i}\n".encode() for i in range(10)))
-        # Each stream takes ~0.5s on its own; serialised they would take ~1s.
-        assert elapsed < 0.85, f"streams took {elapsed:.2f}s, they did not overlap"
+
+        first = {tag: min(t for t, g in arrivals if g == tag) for tag in "ab"}
+        last = {tag: max(t for t, g in arrivals if g == tag) for tag in "ab"}
+        shortest = min(last[tag] - first[tag] for tag in "ab")
+        # The window in which both streams were delivering chunks. Serialised
+        # streams give a window <= 0; concurrent ones share most of their lifetime.
+        shared = min(last.values()) - max(first.values())
+        order = "".join(tag for _, tag in sorted(arrivals))
+        assert shared > 0.5 * shortest, f"streams did not overlap: arrival order {order}"
 
 
 def test_stream_delete_json_body(base_url_ssl, ca_bundle):
