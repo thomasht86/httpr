@@ -2,8 +2,9 @@
 // and the MutexGuards are intentionally held across block_on calls
 #![allow(clippy::await_holding_lock)]
 
-use crate::exceptions::{HTTPStatusError, StreamClosed, StreamConsumed};
+use crate::exceptions::{map_anyhow_error, HTTPStatusError, StreamClosed, StreamConsumed};
 use crate::lifecycle::InFlight;
+use crate::timeout::{next_chunk, read_body, TimedOut};
 use crate::utils::{get_encoding_from_case_insensitive_headers, get_encoding_from_content};
 use crate::RUNTIME;
 use anyhow::{anyhow, Result};
@@ -18,6 +19,22 @@ use pyo3::{prelude::*, types::PyBytes, IntoPyObject};
 use pythonize::pythonize;
 use serde_json::from_slice;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+/// Maps an error from reading the body: a timeout becomes `ReadTimeout`,
+/// anything else is passed to `fallback` with `context` prepended, which
+/// keeps the exception types those errors have always had.
+fn body_read_error(err: anyhow::Error, context: &str, fallback: fn(String) -> PyErr) -> PyErr {
+    if err.is::<TimedOut>() {
+        map_anyhow_error(err)
+    } else {
+        fallback(format!("{context}: {err}"))
+    }
+}
+
+fn runtime_error(msg: String) -> PyErr {
+    pyo3::exceptions::PyRuntimeError::new_err(msg)
+}
 
 fn reason_phrase(status_code: u16) -> &'static str {
     reqwest::StatusCode::from_u16(status_code)
@@ -355,6 +372,8 @@ pub struct StreamingResponse {
     closed: Arc<Mutex<bool>>,
     consumed: Arc<Mutex<bool>>,
     encoding: Arc<Mutex<Option<String>>>,
+    /// How long to wait for each chunk of the body (see `timeout.rs`).
+    timeout: Option<Duration>,
     /// Keeps the request counted as in flight on its client until `close()`.
     /// Declared last so that, if the response is dropped without `close()`,
     /// the connection is released before the guard settles the pool.
@@ -370,6 +389,7 @@ impl StreamingResponse {
         headers: CaseInsensitiveHeaderMap,
         status_code: u16,
         url: String,
+        timeout: Option<Duration>,
     ) -> Self {
         StreamingResponse {
             response: Arc::new(Mutex::new(Some(response))),
@@ -380,6 +400,7 @@ impl StreamingResponse {
             closed: Arc::new(Mutex::new(false)),
             consumed: Arc::new(Mutex::new(false)),
             encoding: Arc::new(Mutex::new(None)),
+            timeout,
             in_flight: Mutex::new(Some(in_flight)),
         }
     }
@@ -488,6 +509,7 @@ impl StreamingResponse {
 
         let response_arc = Arc::clone(&self.response);
         let consumed_arc = Arc::clone(&self.consumed);
+        let timeout = self.timeout;
 
         // Release GIL while fetching the next chunk
         let result = py.detach(|| {
@@ -497,16 +519,15 @@ impl StreamingResponse {
                     .map_err(|e| anyhow::anyhow!("Failed to acquire response lock: {}", e))?;
 
                 if let Some(ref mut resp) = *response_guard {
-                    match resp.chunk().await {
-                        Ok(Some(chunk)) => Ok(Some(chunk)),
-                        Ok(None) => {
+                    match next_chunk(resp, timeout).await? {
+                        Some(chunk) => Ok(Some(chunk)),
+                        None => {
                             // Stream exhausted, mark as consumed
                             if let Ok(mut consumed) = consumed_arc.lock() {
                                 *consumed = true;
                             }
                             Ok(None)
                         }
-                        Err(e) => Err(anyhow::anyhow!("Error reading chunk: {}", e)),
                     }
                 } else {
                     // Response already taken, mark as consumed
@@ -521,7 +542,7 @@ impl StreamingResponse {
         match result {
             Ok(Some(chunk)) => Ok(Some(PyBytes::new(py, &chunk).unbind())),
             Ok(None) => Ok(None),
-            Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e.to_string())),
+            Err(e) => Err(body_read_error(e, "Error reading chunk", runtime_error)),
         }
     }
 
@@ -558,6 +579,7 @@ impl StreamingResponse {
             closed: Arc::clone(&self.closed),
             consumed: Arc::clone(&self.consumed),
             encoding: self.get_encoding_internal(),
+            timeout: self.timeout,
         })
     }
 
@@ -579,6 +601,7 @@ impl StreamingResponse {
             consumed: Arc::clone(&self.consumed),
             encoding: self.get_encoding_internal(),
             buffer: String::new(),
+            timeout: self.timeout,
         })
     }
 
@@ -598,6 +621,7 @@ impl StreamingResponse {
 
         let response_arc = Arc::clone(&self.response);
         let consumed_arc = Arc::clone(&self.consumed);
+        let timeout = self.timeout;
 
         let result = py.detach(|| {
             RUNTIME.block_on(async {
@@ -606,10 +630,7 @@ impl StreamingResponse {
                     .map_err(|e| anyhow::anyhow!("Failed to acquire response lock: {}", e))?;
 
                 if let Some(resp) = response_guard.take() {
-                    let bytes = resp
-                        .bytes()
-                        .await
-                        .map_err(|e| anyhow::anyhow!("Error reading response body: {}", e))?;
+                    let bytes = read_body(resp, timeout).await?;
 
                     // Mark as consumed
                     if let Ok(mut consumed) = consumed_arc.lock() {
@@ -625,7 +646,9 @@ impl StreamingResponse {
 
         match result {
             Ok(bytes) => Ok(PyBytes::new(py, &bytes).unbind()),
-            Err(e) => Err(StreamConsumed::new_err(e.to_string())),
+            Err(e) => Err(body_read_error(e, "Error reading response body", |msg| {
+                StreamConsumed::new_err(msg)
+            })),
         }
     }
 
@@ -690,6 +713,7 @@ pub struct TextIterator {
     closed: Arc<Mutex<bool>>,
     consumed: Arc<Mutex<bool>>,
     encoding: String,
+    timeout: Option<Duration>,
 }
 
 #[pymethods]
@@ -712,6 +736,7 @@ impl TextIterator {
         let response_arc = Arc::clone(&self.response);
         let consumed_arc = Arc::clone(&self.consumed);
         let encoding_name = self.encoding.clone();
+        let timeout = self.timeout;
 
         let result = py.detach(|| {
             RUNTIME.block_on(async {
@@ -720,21 +745,20 @@ impl TextIterator {
                     .map_err(|e| anyhow::anyhow!("Failed to acquire response lock: {}", e))?;
 
                 if let Some(ref mut resp) = *response_guard {
-                    match resp.chunk().await {
-                        Ok(Some(chunk)) => {
+                    match next_chunk(resp, timeout).await? {
+                        Some(chunk) => {
                             // Decode the chunk using the encoding
                             let encoding = Encoding::for_label(encoding_name.as_bytes())
                                 .unwrap_or(encoding_rs::UTF_8);
                             let (decoded, _, _) = encoding.decode(&chunk);
                             Ok(Some(decoded.to_string()))
                         }
-                        Ok(None) => {
+                        None => {
                             if let Ok(mut consumed) = consumed_arc.lock() {
                                 *consumed = true;
                             }
                             Ok(None)
                         }
-                        Err(e) => Err(anyhow::anyhow!("Error reading chunk: {}", e)),
                     }
                 } else {
                     if let Ok(mut consumed) = consumed_arc.lock() {
@@ -747,7 +771,7 @@ impl TextIterator {
 
         match result {
             Ok(opt) => Ok(opt),
-            Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e.to_string())),
+            Err(e) => Err(body_read_error(e, "Error reading chunk", runtime_error)),
         }
     }
 }
@@ -760,6 +784,7 @@ pub struct LineIterator {
     consumed: Arc<Mutex<bool>>,
     encoding: String,
     buffer: String,
+    timeout: Option<Duration>,
 }
 
 #[pymethods]
@@ -789,6 +814,7 @@ impl LineIterator {
         let response_arc = Arc::clone(&self.response);
         let consumed_arc = Arc::clone(&self.consumed);
         let encoding_name = self.encoding.clone();
+        let timeout = self.timeout;
 
         loop {
             let result = py.detach(|| {
@@ -798,20 +824,19 @@ impl LineIterator {
                         .map_err(|e| anyhow::anyhow!("Failed to acquire response lock: {}", e))?;
 
                     if let Some(ref mut resp) = *response_guard {
-                        match resp.chunk().await {
-                            Ok(Some(chunk)) => {
+                        match next_chunk(resp, timeout).await? {
+                            Some(chunk) => {
                                 let encoding = Encoding::for_label(encoding_name.as_bytes())
                                     .unwrap_or(encoding_rs::UTF_8);
                                 let (decoded, _, _) = encoding.decode(&chunk);
                                 Ok(Some(decoded.to_string()))
                             }
-                            Ok(None) => {
+                            None => {
                                 if let Ok(mut consumed) = consumed_arc.lock() {
                                     *consumed = true;
                                 }
                                 Ok(None)
                             }
-                            Err(e) => Err(anyhow::anyhow!("Error reading chunk: {}", e)),
                         }
                     } else {
                         if let Ok(mut consumed) = consumed_arc.lock() {
@@ -842,7 +867,7 @@ impl LineIterator {
                     }
                     return Ok(None);
                 }
-                Err(e) => return Err(pyo3::exceptions::PyRuntimeError::new_err(e.to_string())),
+                Err(e) => return Err(body_read_error(e, "Error reading chunk", runtime_error)),
             }
         }
     }

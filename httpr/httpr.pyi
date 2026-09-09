@@ -369,7 +369,7 @@ class RClient:
         params: QueryParamTypes | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
-        timeout: float | None = None,
+        timeout: float | None = 30,
         cookie_store: bool | None = True,
         referer: bool | None = True,
         proxy: str | None = None,
@@ -492,7 +492,10 @@ class Client(RClient):
             cookie_store: Enable persistent cookie store. Default is True.
             referer: Automatically set Referer header. Default is True.
             proxy: Proxy URL (e.g., "http://proxy:8080" or "socks5://127.0.0.1:1080").
-            timeout: Request timeout in seconds. Default is 30.
+            timeout: Timeout in seconds for waiting on the server: for the response
+                headers, then for each chunk of the body. A response that keeps
+                arriving is never cut off, however long it takes. Default is 30;
+                `None` disables the timeout. Raises `ReadTimeout` when exceeded.
             follow_redirects: Follow HTTP redirects. Default is True.
             max_redirects: Maximum redirects to follow. Default is 20.
             verify: Verify SSL certificates. Default is True.

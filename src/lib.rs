@@ -43,6 +43,9 @@ use exceptions::{map_anyhow_error, map_reqwest_error, ClientClosed};
 mod lifecycle;
 use lifecycle::ClientState;
 
+mod timeout;
+use timeout::Phase;
+
 type IndexMapSSR = IndexMap<String, String, RandomState>;
 
 // Tokio global one-thread runtime
@@ -75,15 +78,15 @@ struct ClientConfig {
 
 impl ClientConfig {
     /// Builds a client from these settings plus the state that lives on the
-    /// `RClient` and may have changed since construction: the default headers,
-    /// the proxy and the timeout. `layer` must come from the `ClientState` the
-    /// client will live in, so `close()` can cancel its pending connects.
+    /// `RClient` and may have changed since construction: the default headers
+    /// and the proxy. `layer` must come from the `ClientState` the client will
+    /// live in, so `close()` can cancel its pending connects. The timeout is
+    /// deliberately not part of the built client (see `timeout.rs`).
     fn build(
         &self,
         layer: lifecycle::CancelConnectsLayer,
         default_headers: reqwest::header::HeaderMap,
         proxy: Option<&str>,
-        timeout: Option<f64>,
     ) -> PyResult<reqwest::Client> {
         let mut builder = reqwest::Client::builder()
             .connector_layer(layer)
@@ -99,9 +102,6 @@ impl ClientConfig {
         }
         if let Some(proxy) = proxy {
             builder = builder.proxy(reqwest::Proxy::all(proxy).map_err(map_reqwest_error)?);
-        }
-        if let Some(seconds) = timeout {
-            builder = builder.timeout(Duration::from_secs_f64(seconds));
         }
         if self.verify {
             builder = builder.tls_built_in_root_certs(true);
@@ -142,6 +142,8 @@ pub struct RClient {
     params: Option<Pairs>,
     #[pyo3(get, set)]
     proxy: Option<String>,
+    /// Default timeout in seconds for every request (`None` disables it).
+    /// Read at request time, so assigning it takes effect immediately.
     #[pyo3(get, set)]
     timeout: Option<f64>,
 }
@@ -168,7 +170,8 @@ impl Drop for RClient {
 
 impl RClient {
     /// Everything about a request that is settled before it is sent: the
-    /// builder with query, headers, cookies, body, auth and timeout applied.
+    /// builder with query, headers, cookies, body and auth applied, plus the
+    /// timeout to wait with (the request's own, else the client's).
     /// `files` are attached by `send_request`, since opening them is async.
     /// Shared by `request()` and `_stream()`.
     ///
@@ -189,7 +192,8 @@ impl RClient {
         auth: Option<(String, Option<String>)>,
         auth_bearer: Option<String>,
         timeout: Option<f64>,
-    ) -> PyResult<reqwest::RequestBuilder> {
+    ) -> PyResult<(reqwest::RequestBuilder, Option<Duration>)> {
+        let timeout = timeout::duration(timeout.or(self.timeout))?;
         let method = Method::from_bytes(method.as_bytes())
             .map_err(|e| map_anyhow_error(anyhow::Error::new(e)))?;
         let mut builder = client.request(method, url);
@@ -262,19 +266,16 @@ impl RClient {
             builder = builder.bearer_auth(token);
         }
 
-        // Timeout
-        if let Some(seconds) = timeout.or(self.timeout) {
-            builder = builder.timeout(Duration::from_secs_f64(seconds));
-        }
-
-        Ok(builder)
+        Ok((builder, timeout))
     }
 }
 
-/// Attaches `files` as a multipart form, if any, and sends the request.
+/// Attaches `files` as a multipart form, if any, and sends the request,
+/// waiting at most `timeout` for the response headers.
 async fn send_request(
     mut builder: reqwest::RequestBuilder,
     files: Option<IndexMap<String, String>>,
+    timeout: Option<Duration>,
 ) -> anyhow::Result<reqwest::Response> {
     if let Some(files) = files {
         let mut form = multipart::Form::new();
@@ -287,7 +288,7 @@ async fn send_request(
         }
         builder = builder.multipart(form);
     }
-    builder.send().await.map_err(anyhow::Error::new)
+    timeout::with_timeout(timeout, Phase::Headers, builder.send()).await
 }
 
 /// Cookies, headers, status and final URL of a response.
@@ -324,7 +325,8 @@ impl RClient {
     ///         in additional requests. Default is `true`.
     /// * `referer` - Enable or disable automatic setting of the `Referer` header. Default is `true`.
     /// * `proxy` - An optional proxy URL for HTTP requests.
-    /// * `timeout` - An optional timeout for HTTP requests in seconds.
+    /// * `timeout` - Timeout in seconds for waiting on the server: for the response headers, then
+    ///         for each chunk of the body. Default is 30. `None` disables it.
     /// * `follow_redirects` - A boolean to enable or disable following redirects. Default is `true`.
     /// * `max_redirects` - The maximum number of redirects to follow. Default is 20. Applies if `follow_redirects` is `true`.
     /// * `verify` - An optional boolean indicating whether to verify SSL certificates. Default is `true`.
@@ -357,7 +359,7 @@ impl RClient {
     /// ```
     #[new]
     #[pyo3(signature = (auth=None, auth_bearer=None, params=None, headers=None, cookies=None,
-        cookie_store=true, referer=true, proxy=None, timeout=None, follow_redirects=true,
+        cookie_store=true, referer=true, proxy=None, timeout=30.0, follow_redirects=true,
         max_redirects=20, verify=true, ca_cert_file=None, client_pem=None, client_pem_data=None, https_only=false, http2_only=false))]
     fn new(
         auth: Option<(String, Option<String>)>,
@@ -448,8 +450,9 @@ impl RClient {
             lifecycle::CancelConnectsLayer::new(connects.clone()),
             headers_headermap.clone(),
             proxy.as_deref(),
-            timeout,
         )?;
+        // Validate now so a bad value fails at construction, not on first use.
+        timeout::duration(timeout)?;
         let headers = Arc::new(Mutex::new(headers_headermap));
 
         Ok(RClient {
@@ -572,7 +575,7 @@ impl RClient {
     /// Rebuilds the underlying `reqwest::Client` with the new proxy (`None`
     /// removes it; `HTTPR_PROXY` is not consulted again). Every other setting
     /// from construction is carried over, along with the current default
-    /// headers and timeout; a `cookie_store` starts empty again. The old pool
+    /// headers; a `cookie_store` starts empty again. The old pool
     /// is dropped and its idle connections are released; a connect the old
     /// pool still had pending in the background is left to resolve on its own
     /// (it is torn down the next time the runtime is driven). Raises
@@ -588,7 +591,6 @@ impl RClient {
             self.state.connector_layer(),
             default_headers,
             proxy.as_deref(),
-            self.timeout,
         )?;
         if !py.detach(|| self.state.replace(new_client)) {
             return Err(ClientClosed::new_err(CLIENT_CLOSED_MSG));
@@ -633,7 +635,7 @@ impl RClient {
     /// * `files` - A map of file fields to file paths to be sent as multipart/form-data. Default is None.
     /// * `auth` - A tuple containing the username and an optional password for basic authentication. Default is None.
     /// * `auth_bearer` - A string representing the bearer token for bearer token authentication. Default is None.
-    /// * `timeout` - The timeout for the request in seconds. Default is 30.
+    /// * `timeout` - The timeout for this request in seconds; defaults to the client's. See `timeout.rs`.
     ///
     /// # Returns
     ///
@@ -671,7 +673,7 @@ impl RClient {
         timeout: Option<f64>,
     ) -> PyResult<Response> {
         let (client, in_flight) = self.begin_request()?;
-        let builder = self.build_request(
+        let (builder, timeout) = self.build_request(
             client,
             method,
             url,
@@ -687,9 +689,9 @@ impl RClient {
         )?;
 
         let future = async move {
-            let resp = send_request(builder, files).await?;
+            let resp = send_request(builder, files, timeout).await?;
             let (cookies, headers, status_code, url) = response_meta(&resp);
-            let buf = resp.bytes().await.map_err(anyhow::Error::new)?;
+            let buf = timeout::read_body(resp, timeout).await?;
 
             tracing::info!("response: {} {} {}", url, status_code, buf.len());
             Ok::<(Bytes, IndexMapSSR, IndexMapSSR, u16, String), anyhow::Error>((
@@ -766,7 +768,7 @@ impl RClient {
         timeout: Option<f64>,
     ) -> PyResult<StreamingResponse> {
         let (client, in_flight) = self.begin_request()?;
-        let builder = self.build_request(
+        let (builder, timeout) = self.build_request(
             client,
             method,
             url,
@@ -783,7 +785,7 @@ impl RClient {
 
         let future = async move {
             // Send the request and await the response (but don't read body)
-            let resp = send_request(builder, files).await?;
+            let resp = send_request(builder, files, timeout).await?;
             let (cookies, headers, status_code, url) = response_meta(&resp);
 
             tracing::info!("streaming response: {} {}", url, status_code);
@@ -810,6 +812,7 @@ impl RClient {
             CaseInsensitiveHeaderMap::from_indexmap(f_headers),
             f_status_code,
             f_url,
+            timeout,
         ))
     }
 }
