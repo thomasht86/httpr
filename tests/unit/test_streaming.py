@@ -1,10 +1,67 @@
 """Tests for streaming response functionality."""
 
+import asyncio
 import json
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
 import httpr  # type: ignore
+
+
+class _DripHandler(BaseHTTPRequestHandler):
+    """Serves ``/drip?chunks=N&pause=S`` as N chunks with S seconds between them.
+
+    ``/sse?events=N&pause=S`` sends N ``data: <i>`` events, each followed by a
+    blank line, as text/event-stream. Chunks are flushed one at a time so the
+    client really receives them spread out in time.
+    """
+
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, *args):  # silence the default stderr logging
+        pass
+
+    def do_GET(self):
+        url = urlparse(self.path)
+        query = parse_qs(url.query)
+        count = int(query.get("chunks", query.get("events", ["10"]))[0])
+        pause = float(query.get("pause", ["0.05"])[0])
+        sse = url.path == "/sse"
+        payload = [f"data: {i}\n\n".encode() if sse else f"chunk-{i}\n".encode() for i in range(count)]
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream" if sse else "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(sum(len(c) for c in payload)))
+        self.end_headers()
+        for chunk in payload:
+            self.wfile.write(chunk)
+            self.wfile.flush()
+            time.sleep(pause)
+
+
+@pytest.fixture(scope="module")
+def drip_url():
+    """Base URL of a multi-threaded server that trickles out responses over time."""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _DripHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+async def _heartbeat(stop: asyncio.Event, interval: float = 0.01) -> int:
+    """Count how many times the event loop got to run while ``stop`` is unset."""
+    ticks = 0
+    while not stop.is_set():
+        await asyncio.sleep(interval)
+        ticks += 1
+    return ticks
 
 
 class TestStreamingClient:
@@ -188,64 +245,96 @@ class TestStreamingClient:
 class TestStreamingAsyncClient:
     """Test streaming functionality with async AsyncClient."""
 
-    async def test_async_stream_iter_bytes(self, base_url_ssl, ca_bundle):
+    async def test_async_stream_aiter_bytes(self, base_url_ssl, ca_bundle):
         """Test async iterating over response as bytes chunks."""
         async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
             async with client.stream("GET", f"{base_url_ssl}/get") as response:
+                assert isinstance(response, httpr.AsyncStreamingResponse)
                 assert response.status_code == 200
-                chunks = list(response.iter_bytes())
-                total_bytes = b"".join(chunks)
-                assert len(total_bytes) > 0
+                chunks = [chunk async for chunk in response.aiter_bytes()]
+                assert all(isinstance(chunk, bytes) for chunk in chunks)
+                assert len(b"".join(chunks)) > 0
+                assert response.is_consumed
 
-    async def test_async_stream_direct_iteration(self, base_url_ssl, ca_bundle):
-        """Test async direct iteration over StreamingResponse."""
+    async def test_async_stream_direct_async_iteration(self, base_url_ssl, ca_bundle):
+        """``async for chunk in response`` is the same as ``aiter_bytes()``."""
         async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
             async with client.stream("GET", f"{base_url_ssl}/html") as response:
-                assert response.status_code == 200
-                chunks = list(response)
-                total_bytes = b"".join(chunks)
-                assert len(total_bytes) > 0
+                chunks = [chunk async for chunk in response]
+                assert len(b"".join(chunks)) > 0
 
-    async def test_async_stream_iter_text(self, base_url_ssl, ca_bundle):
+    async def test_async_stream_aiter_text(self, base_url_ssl, ca_bundle):
         """Test async iterating over response as text chunks."""
         async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
             async with client.stream("GET", f"{base_url_ssl}/html") as response:
                 assert response.status_code == 200
-                chunks = list(response.iter_text())
-                full_text = "".join(chunks)
-                assert len(full_text) > 0
+                chunks = [chunk async for chunk in response.aiter_text()]
+                assert all(isinstance(chunk, str) for chunk in chunks)
+                assert "<html" in "".join(chunks)
 
-    async def test_async_stream_iter_lines(self, base_url_ssl, ca_bundle):
+    async def test_async_stream_aiter_lines(self, base_url_ssl, ca_bundle):
         """Test async iterating over response line by line."""
         async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
             async with client.stream("GET", f"{base_url_ssl}/robots.txt") as response:
                 assert response.status_code == 200
-                lines = list(response.iter_lines())
+                lines = [line async for line in response.aiter_lines()]
                 assert len(lines) >= 1
+                assert lines[0].startswith("User-agent")
 
-    async def test_async_stream_read_all(self, base_url_ssl, ca_bundle):
+    async def test_async_stream_aread(self, base_url_ssl, ca_bundle):
         """Test async reading entire response body at once."""
-        async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
-            async with client.stream("GET", f"{base_url_ssl}/get") as response:
-                assert response.status_code == 200
-                content = response.read()
-                assert len(content) > 0
-
-    async def test_async_stream_headers_available(self, base_url_ssl, ca_bundle):
-        """Test that headers are available before iteration in async."""
-        async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
-            async with client.stream("GET", f"{base_url_ssl}/get") as response:
-                assert response.status_code == 200
-                # Use keys() instead of len() since CaseInsensitiveHeaderMap doesn't have __len__
-                assert len(response.headers.keys()) > 0
-
-    async def test_async_stream_with_params(self, base_url_ssl, ca_bundle):
-        """Test async streaming with query parameters."""
         async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
             async with client.stream("GET", f"{base_url_ssl}/get", params={"key": "value"}) as response:
                 assert response.status_code == 200
-                content = response.read()
-                assert b"key" in content
+                content = await response.aread()
+                assert json.loads(content)["args"] == {"key": "value"}
+                assert response.is_consumed
+
+    async def test_async_stream_sync_iteration_still_works(self, base_url_ssl, ca_bundle):
+        """The synchronous iter_* / read / direct iteration API is kept (additive change)."""
+        async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
+            async with client.stream("GET", f"{base_url_ssl}/html") as response:
+                assert len(b"".join(response.iter_bytes())) > 0
+            async with client.stream("GET", f"{base_url_ssl}/html") as response:
+                assert len(b"".join(response)) > 0
+            async with client.stream("GET", f"{base_url_ssl}/html") as response:
+                assert "<html" in "".join(response.iter_text())
+            async with client.stream("GET", f"{base_url_ssl}/robots.txt") as response:
+                assert len(list(response.iter_lines())) >= 1
+            async with client.stream("GET", f"{base_url_ssl}/get") as response:
+                assert len(response.read()) > 0
+
+    async def test_async_stream_metadata_available(self, base_url_ssl, ca_bundle):
+        """Status, headers, cookies and URL are available before the body is read."""
+        async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
+            url = f"{base_url_ssl}/response-headers?X-Test=test-value"
+            async with client.stream("GET", url) as response:
+                assert response.status_code == 200
+                assert response.reason_phrase == "OK"
+                assert response.is_success and not response.is_error
+                assert response.headers["x-test"] == "test-value"
+                assert response.url.startswith(f"{base_url_ssl}/response-headers")
+                assert response.raise_for_status() is response
+                assert not response.is_consumed
+                assert not response.is_closed
+            assert response.is_closed
+
+    async def test_async_stream_aclose(self, base_url_ssl, ca_bundle):
+        """aclose() closes the stream early; the context manager exit is then a no-op."""
+        async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
+            async with client.stream("GET", f"{base_url_ssl}/html") as response:
+                await response.aclose()
+                assert response.is_closed
+                with pytest.raises(httpr.StreamClosed):
+                    async for _ in response.aiter_bytes():
+                        pass
+
+    async def test_async_stream_raise_for_status(self, base_url_ssl, ca_bundle):
+        async with httpr.AsyncClient(ca_cert_file=ca_bundle) as client:
+            async with client.stream("GET", f"{base_url_ssl}/status/404") as response:
+                assert response.is_client_error
+                with pytest.raises(httpr.HTTPStatusError):
+                    response.raise_for_status()
 
     async def test_async_stream_invalid_method(self, base_url_ssl, ca_bundle):
         """Test that invalid HTTP method raises ValueError in async."""
@@ -253,6 +342,65 @@ class TestStreamingAsyncClient:
             with pytest.raises(ValueError, match="Unsupported HTTP method"):
                 async with client.stream("INVALID", f"{base_url_ssl}/get") as _:  # type: ignore[arg-type]
                     pass
+
+    async def test_async_stream_after_close_raises_client_closed(self, base_url_ssl, ca_bundle):
+        """Once the client is closed, async iteration reports ClientClosed."""
+        client = httpr.AsyncClient(ca_cert_file=ca_bundle)
+        async with client.stream("GET", f"{base_url_ssl}/html") as response:
+            await client.aclose()
+            with pytest.raises(httpr.ClientClosed):
+                async for _ in response.aiter_bytes():
+                    pass
+
+    # -- Issue #85: iteration must not block the event loop ---------------------
+
+    async def test_aiter_bytes_does_not_block_event_loop(self, drip_url):
+        """A heartbeat task keeps ticking while an async stream is being consumed."""
+        stop = asyncio.Event()
+        ticker = asyncio.create_task(_heartbeat(stop))
+        async with httpr.AsyncClient() as client:
+            async with client.stream("GET", f"{drip_url}/drip?chunks=10&pause=0.05") as response:
+                chunks = [chunk async for chunk in response.aiter_bytes()]
+        stop.set()
+        ticks = await ticker
+        assert b"".join(chunks) == b"".join(f"chunk-{i}\n".encode() for i in range(10))
+        # The stream takes ~0.5s; a blocked loop would manage one or two ticks.
+        assert ticks > 10, f"event loop only ticked {ticks} times during the stream"
+
+    async def test_sync_iteration_blocks_event_loop(self, drip_url):
+        """Control for the test above: the sync iterator does block the loop."""
+        stop = asyncio.Event()
+        ticker = asyncio.create_task(_heartbeat(stop))
+        async with httpr.AsyncClient() as client:
+            async with client.stream("GET", f"{drip_url}/drip?chunks=10&pause=0.05") as response:
+                list(response.iter_bytes())
+        stop.set()
+        ticks = await ticker
+        assert ticks <= 3
+
+    async def test_aiter_lines_sse(self, drip_url):
+        """aiter_lines() over a trickled text/event-stream response yields the events."""
+        async with httpr.AsyncClient() as client:
+            async with client.stream("GET", f"{drip_url}/sse?events=5&pause=0.02") as response:
+                assert response.headers["content-type"] == "text/event-stream"
+                lines = [line async for line in response.aiter_lines()]
+        assert [line.rstrip("\n") for line in lines if line.strip()] == [f"data: {i}" for i in range(5)]
+
+    async def test_concurrent_async_streams_overlap(self, drip_url):
+        """Two async streams consumed concurrently overlap instead of running back to back."""
+
+        async def consume(client):
+            async with client.stream("GET", f"{drip_url}/drip?chunks=10&pause=0.05") as response:
+                return b"".join([chunk async for chunk in response.aiter_bytes()])
+
+        async with httpr.AsyncClient() as client:
+            started = time.perf_counter()
+            bodies = await asyncio.gather(consume(client), consume(client))
+            elapsed = time.perf_counter() - started
+        assert bodies[0] == bodies[1]
+        assert len(bodies[0]) == len(b"".join(f"chunk-{i}\n".encode() for i in range(10)))
+        # Each stream takes ~0.5s on its own; serialised they would take ~1s.
+        assert elapsed < 0.85, f"streams took {elapsed:.2f}s, they did not overlap"
 
 
 def test_stream_delete_json_body(base_url_ssl, ca_bundle):

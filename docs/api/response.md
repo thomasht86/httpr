@@ -579,6 +579,66 @@ with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
 
 ---
 
+### Async Streaming
+
+`AsyncClient.stream()` yields an `AsyncStreamingResponse`. It exposes the same
+attributes and methods as `StreamingResponse` (status, headers, cookies, URL,
+`raise_for_status()`, `is_closed`, `is_consumed`, the synchronous `iter_*()`,
+`read()` and `close()`), plus async variants that read each chunk on the
+client's thread pool so the event loop is never blocked:
+
+#### aiter_bytes
+
+```python
+def aiter_bytes(self) -> AsyncIterator[bytes]
+```
+
+Iterate over the response body as bytes chunks. `async for chunk in response` is equivalent.
+
+#### aiter_text
+
+```python
+def aiter_text(self) -> AsyncIterator[str]
+```
+
+Iterate over the response body as text chunks, decoded with the response's encoding.
+
+#### aiter_lines
+
+```python
+def aiter_lines(self) -> AsyncIterator[str]
+```
+
+Iterate over the response body line by line (lines include their trailing newline).
+
+#### aread
+
+```python
+async def aread(self) -> bytes
+```
+
+Read the entire remaining body into memory.
+
+#### aclose
+
+```python
+async def aclose(self) -> None
+```
+
+Close the stream and release its connection. Called automatically when the `async with` block exits.
+
+**Example:**
+```python
+async with httpr.AsyncClient() as client:
+    async with client.stream("GET", "https://example.com/events") as response:
+        async for line in response.aiter_lines():
+            handle(line)
+```
+
+The synchronous `iter_bytes()`, `iter_text()`, `iter_lines()` and `read()` remain available on the async response but block the event loop until the next chunk arrives; prefer the `a`-prefixed methods in async code. After `client.aclose()`, the next async step raises `httpr.ClientClosed`.
+
+---
+
 ### Important Notes
 
 - **Always use as context manager**: Ensures proper cleanup of resources

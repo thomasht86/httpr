@@ -29,11 +29,11 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from collections.abc import AsyncIterator, Generator
+from collections.abc import AsyncIterator, Generator, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, TypedDict, TypeVar
 
 if sys.version_info <= (3, 11):
     from typing_extensions import Unpack
@@ -53,6 +53,8 @@ from .httpr import (
 #: Default number of requests an :class:`AsyncClient` keeps in flight. Threads are
 #: created lazily, so an idle client costs nothing.
 DEFAULT_MAX_CONCURRENCY = 64
+
+_T = TypeVar("_T")
 
 
 class CaseInsensitiveDict(dict[str, str]):
@@ -619,6 +621,197 @@ class Client(RClient):
             response.close()
 
 
+class AsyncStreamingResponse:
+    """
+    The streaming response yielded by `AsyncClient.stream()`.
+
+    Wraps the `StreamingResponse` produced by the Rust core and adds async
+    iteration: `aiter_bytes()`, `aiter_text()`, `aiter_lines()` and `aread()`
+    fetch each chunk on the client's thread pool, so the event loop keeps
+    running other tasks while the server is producing the next one. Status,
+    headers, cookies and URL are available as soon as the context manager is
+    entered, before any of the body has been read.
+
+    The synchronous `iter_bytes()`, `iter_text()`, `iter_lines()` and `read()`
+    are still available, but each step blocks the event loop for as long as the
+    server takes to send the next chunk; use the async variants in async code.
+
+    Example:
+        ```python
+        async with client.stream("GET", "https://example.com/events") as response:
+            async for line in response.aiter_lines():
+                handle(line)
+        ```
+    """
+
+    __slots__ = ("_client", "_response")
+
+    def __init__(self, response: StreamingResponse, client: AsyncClient) -> None:
+        self._response = response
+        self._client = client
+
+    # -- Metadata, available before the body is read ---------------------------
+
+    @property
+    def status_code(self) -> int:
+        """HTTP status code."""
+        return self._response.status_code
+
+    @property
+    def reason_phrase(self) -> str:
+        """Canonical reason phrase for the status code (e.g. "OK")."""
+        return self._response.reason_phrase
+
+    @property
+    def headers(self) -> CaseInsensitiveHeaderMap:
+        """Response headers (case-insensitive access)."""
+        return self._response.headers
+
+    @property
+    def cookies(self) -> dict[str, str]:
+        """Response cookies."""
+        return self._response.cookies
+
+    @property
+    def url(self) -> str:
+        """Final URL after any redirects."""
+        return self._response.url
+
+    @property
+    def is_informational(self) -> bool:
+        """True for 1xx status codes."""
+        return self._response.is_informational
+
+    @property
+    def is_success(self) -> bool:
+        """True for 2xx status codes."""
+        return self._response.is_success
+
+    @property
+    def is_redirect(self) -> bool:
+        """True for 3xx status codes."""
+        return self._response.is_redirect
+
+    @property
+    def is_client_error(self) -> bool:
+        """True for 4xx status codes."""
+        return self._response.is_client_error
+
+    @property
+    def is_server_error(self) -> bool:
+        """True for 5xx status codes."""
+        return self._response.is_server_error
+
+    @property
+    def is_error(self) -> bool:
+        """True for 4xx and 5xx status codes."""
+        return self._response.is_error
+
+    @property
+    def has_redirect_location(self) -> bool:
+        """True for 3xx responses that carry a `Location` header."""
+        return self._response.has_redirect_location
+
+    @property
+    def is_closed(self) -> bool:
+        """Whether the stream has been closed."""
+        return self._response.is_closed
+
+    @property
+    def is_consumed(self) -> bool:
+        """Whether the stream has been fully consumed."""
+        return self._response.is_consumed
+
+    def raise_for_status(self) -> AsyncStreamingResponse:
+        """Raise `HTTPStatusError` on a non-2xx status; returns self on success."""
+        self._response.raise_for_status()
+        return self
+
+    # -- Async body access -----------------------------------------------------
+
+    async def _aiter(self, it: Iterator[_T]) -> AsyncIterator[_T]:
+        # Each `next()` does a blocking read on the Rust side, so it goes through
+        # the client's executor like a request does. `_run_sync_asyncio` maps a
+        # closed client to ClientClosed.
+        sentinel: object = object()
+        while True:
+            item = await self._client._run_sync_asyncio(next, it, sentinel)
+            if item is sentinel:
+                return
+            yield item
+
+    def aiter_bytes(self) -> AsyncIterator[bytes]:
+        """
+        Iterate over the response body as bytes chunks without blocking the event loop.
+
+        Example:
+            ```python
+            async for chunk in response.aiter_bytes():
+                process(chunk)
+            ```
+        """
+        return self._aiter(self._response.iter_bytes())
+
+    def aiter_text(self) -> AsyncIterator[str]:
+        """Iterate over the response body as text chunks, decoded with the response encoding."""
+        return self._aiter(self._response.iter_text())
+
+    def aiter_lines(self) -> AsyncIterator[str]:
+        """
+        Iterate over the response body line by line, e.g. for Server-Sent Events.
+
+        Example:
+            ```python
+            async for line in response.aiter_lines():
+                if line.startswith("data:"):
+                    handle(line[5:].strip())
+            ```
+        """
+        return self._aiter(self._response.iter_lines())
+
+    def __aiter__(self) -> AsyncIterator[bytes]:
+        """`async for chunk in response` is the same as `aiter_bytes()`."""
+        return self.aiter_bytes()
+
+    async def aread(self) -> bytes:
+        """Read the entire remaining response body without blocking the event loop."""
+        return await self._client._run_sync_asyncio(self._response.read)
+
+    async def aclose(self) -> None:
+        """
+        Close the streaming response and release its connection.
+
+        `AsyncClient.stream()` calls this when the `async with` block exits.
+        Closing never waits on I/O, so it runs on the event-loop thread.
+        """
+        self._response.close()
+
+    # -- Synchronous body access (blocks the event loop) -----------------------
+
+    def iter_bytes(self) -> Iterator[bytes]:
+        """Synchronous `aiter_bytes()`; blocks the event loop while waiting for chunks."""
+        return self._response.iter_bytes()
+
+    def iter_text(self) -> Iterator[str]:
+        """Synchronous `aiter_text()`; blocks the event loop while waiting for chunks."""
+        return self._response.iter_text()
+
+    def iter_lines(self) -> Iterator[str]:
+        """Synchronous `aiter_lines()`; blocks the event loop while waiting for chunks."""
+        return self._response.iter_lines()
+
+    def __iter__(self) -> Iterator[bytes]:
+        return self._response.iter_bytes()
+
+    def read(self) -> bytes:
+        """Synchronous `aread()`; blocks the event loop until the body has arrived."""
+        return self._response.read()
+
+    def close(self) -> None:
+        """Synchronous `aclose()`."""
+        self._response.close()
+
+
 class AsyncClient(Client):
     """
     An asynchronous HTTP client for use with asyncio.
@@ -932,12 +1125,14 @@ class AsyncClient(Client):
         method: HttpMethod,
         url: str,
         **kwargs: Unpack[RequestParams],
-    ) -> AsyncIterator[StreamingResponse]:
+    ) -> AsyncIterator[AsyncStreamingResponse]:
         """
         Make an async streaming HTTP request.
 
-        Returns an async context manager that yields a StreamingResponse for
-        iterating over the response body in chunks.
+        Returns an async context manager that yields an `AsyncStreamingResponse`
+        for iterating over the response body in chunks. Status, headers and
+        cookies are available as soon as the block is entered; the body is
+        read as you iterate.
 
         Args:
             method: HTTP method.
@@ -945,26 +1140,32 @@ class AsyncClient(Client):
             **kwargs: Request parameters.
 
         Yields:
-            StreamingResponse: A response object that can be iterated.
+            AsyncStreamingResponse: A response object that can be iterated with
+            `async for`.
 
         Example:
             ```python
             async with client.stream("GET", "https://example.com/large-file") as response:
-                for chunk in response.iter_bytes():
+                async for chunk in response.aiter_bytes():
                     process(chunk)
+
+            async with client.stream("GET", "https://example.com/events") as response:
+                async for line in response.aiter_lines():
+                    handle(line)
             ```
 
         Note:
-            Iteration over the response is synchronous (uses iter_bytes, iter_text,
-            iter_lines). The async part is initiating the request and entering
-            the context manager.
+            `aiter_bytes()`, `aiter_text()`, `aiter_lines()` and `aread()` read
+            each chunk on the client's thread pool, so other tasks keep running
+            while the server is producing data. The synchronous `iter_*()` and
+            `read()` methods are still available but block the event loop.
         """
         if method not in ["GET", "HEAD", "OPTIONS", "DELETE", "POST", "PUT", "PATCH"]:
             raise ValueError(f"Unsupported HTTP method: {method}")
         # Run the sync _stream in executor
         response = await self._run_sync_asyncio(super(Client, self)._stream, method=method, url=url, **kwargs)
         try:
-            yield response
+            yield AsyncStreamingResponse(response, self)
         finally:
             response.close()
 
@@ -1220,6 +1421,7 @@ __all__ = [
     # Response classes
     "Response",
     "StreamingResponse",
+    "AsyncStreamingResponse",
     "CaseInsensitiveHeaderMap",
     # Base exceptions
     "HTTPError",
