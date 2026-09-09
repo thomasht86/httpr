@@ -576,7 +576,7 @@ except httpr.StreamClosed:
 
 ### Async Streaming
 
-The `AsyncClient` also supports streaming with the same API:
+`AsyncClient.stream()` yields an `AsyncStreamingResponse`, which is iterated with `async for`:
 
 ```python
 import asyncio
@@ -585,16 +585,24 @@ import httpr
 async def stream_data():
     async with httpr.AsyncClient() as client:
         async with client.stream("GET", "https://httpbin.org/stream-bytes/1000") as response:
-            # Note: iteration is sync, but context manager is async
-            for chunk in response.iter_bytes():
+            async for chunk in response.aiter_bytes():
                 process(chunk)
 
 asyncio.run(stream_data())
 ```
 
+`aiter_bytes()`, `aiter_text()`, `aiter_lines()` and `aread()` fetch each chunk on the client's thread pool, so the event loop keeps running other tasks (concurrent requests, timers, health checks) while the server is producing the next chunk. That matters for Server-Sent Events and LLM token streams, where a response can stay open for minutes:
+
+```python
+async with client.stream("GET", "https://example.com/events") as response:
+    async for line in response.aiter_lines():
+        if line.startswith("data:"):
+            handle(line[5:].strip())
+```
+
 Note
 
-With `AsyncClient`, the context manager is async (`async with`), but the iteration over chunks remains synchronous (regular `for` loop, not `async for`).
+The synchronous `iter_bytes()`, `iter_text()`, `iter_lines()` and `read()` are still available on the async response, but each step blocks the event loop until the next chunk arrives. Use the `a`-prefixed variants in async code.
 
 ### Important Notes
 

@@ -1140,6 +1140,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AsyncStreamingResponse
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AsyncStreamingResponse">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.aiter_bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_bytes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.aiter_text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.aiter_lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_lines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.aread" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aread
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.aclose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aclose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.raise_for_status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        raise_for_status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1410,6 +1493,89 @@
     <span class="md-ellipsis">
       
         aclose
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AsyncStreamingResponse
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AsyncStreamingResponse">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.aiter_bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_bytes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.aiter_text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.aiter_lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_lines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.aread" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aread
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.aclose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aclose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#httpr.AsyncStreamingResponse.raise_for_status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        raise_for_status
       
     </span>
   </a>
@@ -2415,14 +2581,16 @@ CPython sizes it at <code>min(32, cpu_count + 4)</code>.</p>
   </span>
 
 <a href="#httpr.AsyncClient.stream" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">stream</span><span class="p">(</span><span class="n">method</span><span class="p">:</span> <span class="n">HttpMethod</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Unpack</span><span class="p">[</span><span class="n">RequestParams</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">StreamingResponse</span><span class="p">]</span>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">stream</span><span class="p">(</span><span class="n">method</span><span class="p">:</span> <span class="n">HttpMethod</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Unpack</span><span class="p">[</span><span class="n">RequestParams</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">AsyncStreamingResponse</span><span class="p">]</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Make an async streaming HTTP request.</p>
-<p>Returns an async context manager that yields a StreamingResponse for
-iterating over the response body in chunks.</p>
+<p>Returns an async context manager that yields an <code>AsyncStreamingResponse</code>
+for iterating over the response body in chunks. Status, headers and
+cookies are available as soon as the block is entered; the body is
+read as you iterate.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2498,12 +2666,22 @@ iterating over the response body in chunks.</p>
       </thead>
       <tbody>
           <tr class="doc-section-item">
-<td><code>StreamingResponse</code></td>            <td>
-                  <code><span title="collections.abc.AsyncIterator">AsyncIterator</span>[<span title="httpr.httpr.StreamingResponse">StreamingResponse</span>]</code>
+<td><code>AsyncStreamingResponse</code></td>            <td>
+                  <code><span title="collections.abc.AsyncIterator">AsyncIterator</span>[<a class="autorefs autorefs-internal" title="AsyncStreamingResponse (httpr.AsyncStreamingResponse)" href="#httpr.AsyncStreamingResponse">AsyncStreamingResponse</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>A response object that can be iterated.</p>
+                <p>A response object that can be iterated with</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><span title="collections.abc.AsyncIterator">AsyncIterator</span>[<a class="autorefs autorefs-internal" title="AsyncStreamingResponse (httpr.AsyncStreamingResponse)" href="#httpr.AsyncStreamingResponse">AsyncStreamingResponse</a>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>async for</code>.</p>
               </div>
             </td>
           </tr>
@@ -2514,16 +2692,21 @@ iterating over the response body in chunks.</p>
 <details class="example" open>
   <summary>Example</summary>
   <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.com/large-file&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">iter_bytes</span><span class="p">():</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">aiter_bytes</span><span class="p">():</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        <span class="n">process</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">async</span> <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.com/events&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">aiter_lines</span><span class="p">():</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        <span class="n">handle</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
 </span></code></pre></div>
 </details>
 
 <details class="note" open>
   <summary>Note</summary>
-  <p>Iteration over the response is synchronous (uses iter_bytes, iter_text,
-iter_lines). The async part is initiating the request and entering
-the context manager.</p>
+  <p><code>aiter_bytes()</code>, <code>aiter_text()</code>, <code>aiter_lines()</code> and <code>aread()</code> read
+each chunk on the client's thread pool, so other tasks keep running
+while the server is producing data. The synchronous <code>iter_*()</code> and
+<code>read()</code> methods are still available but block the event loop.</p>
 </details>
 
     </div>
@@ -2562,6 +2745,215 @@ more than once is a no-op.</p>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">aclose</span><span class="p">()</span>
 </span></code></pre></div>
 </details>
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="httpr.AsyncStreamingResponse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">AsyncStreamingResponse</span>
+
+
+<a href="#httpr.AsyncStreamingResponse" class="headerlink" title="Permanent link">&para;</a></h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">AsyncStreamingResponse</span><span class="p">(</span><span class="n">response</span><span class="p">:</span> <span class="n">StreamingResponse</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="n">AsyncClient</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>The streaming response yielded by <code>AsyncClient.stream()</code>.</p>
+<p>Wraps the <code>StreamingResponse</code> produced by the Rust core and adds async
+iteration: <code>aiter_bytes()</code>, <code>aiter_text()</code>, <code>aiter_lines()</code> and <code>aread()</code>
+fetch each chunk on the client's thread pool, so the event loop keeps
+running other tasks while the server is producing the next one. Status,
+headers, cookies and URL are available as soon as the context manager is
+entered, before any of the body has been read.</p>
+<p>The synchronous <code>iter_bytes()</code>, <code>iter_text()</code>, <code>iter_lines()</code> and <code>read()</code>
+are still available, but each step blocks the event loop for as long as the
+server takes to send the next chunk; use the async variants in async code.</p>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.com/events&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">aiter_lines</span><span class="p">():</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        <span class="n">handle</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+</span></code></pre></div>
+</details>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="httpr.AsyncStreamingResponse.aiter_bytes" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">aiter_bytes</span>
+
+
+<a href="#httpr.AsyncStreamingResponse.aiter_bytes" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">aiter_bytes</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Iterate over the response body as bytes chunks without blocking the event loop.</p>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">aiter_bytes</span><span class="p">():</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">process</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+</span></code></pre></div>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="httpr.AsyncStreamingResponse.aiter_text" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">aiter_text</span>
+
+
+<a href="#httpr.AsyncStreamingResponse.aiter_text" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">aiter_text</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Iterate over the response body as text chunks, decoded with the response encoding.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="httpr.AsyncStreamingResponse.aiter_lines" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">aiter_lines</span>
+
+
+<a href="#httpr.AsyncStreamingResponse.aiter_lines" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">aiter_lines</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Iterate over the response body line by line, e.g. for Server-Sent Events.</p>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">async</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">aiter_lines</span><span class="p">():</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;data:&quot;</span><span class="p">):</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        <span class="n">handle</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">5</span><span class="p">:]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+</span></code></pre></div>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="httpr.AsyncStreamingResponse.aread" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">aread</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-async"><code>async</code></small>
+  </span>
+
+<a href="#httpr.AsyncStreamingResponse.aread" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">aread</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bytes</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Read the entire remaining response body without blocking the event loop.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="httpr.AsyncStreamingResponse.aclose" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">aclose</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-async"><code>async</code></small>
+  </span>
+
+<a href="#httpr.AsyncStreamingResponse.aclose" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">aclose</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Close the streaming response and release its connection.</p>
+<p><code>AsyncClient.stream()</code> calls this when the <code>async with</code> block exits.
+Closing never waits on I/O, so it runs on the event-loop thread.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="httpr.AsyncStreamingResponse.raise_for_status" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">raise_for_status</span>
+
+
+<a href="#httpr.AsyncStreamingResponse.raise_for_status" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">raise_for_status</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AsyncStreamingResponse</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Raise <code>HTTPStatusError</code> on a non-2xx status; returns self on success.</p>
+
 
     </div>
 

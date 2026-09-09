@@ -254,12 +254,12 @@ Returns:
 ### stream
 
 ```python
-stream(method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> AsyncIterator[StreamingResponse]
+stream(method: HttpMethod, url: str, **kwargs: Unpack[RequestParams]) -> AsyncIterator[AsyncStreamingResponse]
 ```
 
 Make an async streaming HTTP request.
 
-Returns an async context manager that yields a StreamingResponse for iterating over the response body in chunks.
+Returns an async context manager that yields an `AsyncStreamingResponse` for iterating over the response body in chunks. Status, headers and cookies are available as soon as the block is entered; the body is read as you iterate.
 
 Parameters:
 
@@ -271,21 +271,26 @@ Parameters:
 
 Yields:
 
-| Name                | Type                               | Description                             |
-| ------------------- | ---------------------------------- | --------------------------------------- |
-| `StreamingResponse` | `AsyncIterator[StreamingResponse]` | A response object that can be iterated. |
+| Name                     | Type                                    | Description                                 |
+| ------------------------ | --------------------------------------- | ------------------------------------------- |
+| `AsyncStreamingResponse` | `AsyncIterator[AsyncStreamingResponse]` | A response object that can be iterated with |
+|                          | `AsyncIterator[AsyncStreamingResponse]` | async for.                                  |
 
 Example
 
 ```python
 async with client.stream("GET", "https://example.com/large-file") as response:
-    for chunk in response.iter_bytes():
+    async for chunk in response.aiter_bytes():
         process(chunk)
+
+async with client.stream("GET", "https://example.com/events") as response:
+    async for line in response.aiter_lines():
+        handle(line)
 ```
 
 Note
 
-Iteration over the response is synchronous (uses iter_bytes, iter_text, iter_lines). The async part is initiating the request and entering the context manager.
+`aiter_bytes()`, `aiter_text()`, `aiter_lines()` and `aread()` read each chunk on the client's thread pool, so other tasks keep running while the server is producing data. The synchronous `iter_*()` and `read()` methods are still available but block the event loop.
 
 ### aclose
 
@@ -306,3 +311,88 @@ try:
 finally:
     await client.aclose()
 ```
+
+## AsyncStreamingResponse
+
+```python
+AsyncStreamingResponse(response: StreamingResponse, client: AsyncClient)
+```
+
+The streaming response yielded by `AsyncClient.stream()`.
+
+Wraps the `StreamingResponse` produced by the Rust core and adds async iteration: `aiter_bytes()`, `aiter_text()`, `aiter_lines()` and `aread()` fetch each chunk on the client's thread pool, so the event loop keeps running other tasks while the server is producing the next one. Status, headers, cookies and URL are available as soon as the context manager is entered, before any of the body has been read.
+
+The synchronous `iter_bytes()`, `iter_text()`, `iter_lines()` and `read()` are still available, but each step blocks the event loop for as long as the server takes to send the next chunk; use the async variants in async code.
+
+Example
+
+```python
+async with client.stream("GET", "https://example.com/events") as response:
+    async for line in response.aiter_lines():
+        handle(line)
+```
+
+### aiter_bytes
+
+```python
+aiter_bytes() -> AsyncIterator[bytes]
+```
+
+Iterate over the response body as bytes chunks without blocking the event loop.
+
+Example
+
+```python
+async for chunk in response.aiter_bytes():
+    process(chunk)
+```
+
+### aiter_text
+
+```python
+aiter_text() -> AsyncIterator[str]
+```
+
+Iterate over the response body as text chunks, decoded with the response encoding.
+
+### aiter_lines
+
+```python
+aiter_lines() -> AsyncIterator[str]
+```
+
+Iterate over the response body line by line, e.g. for Server-Sent Events.
+
+Example
+
+```python
+async for line in response.aiter_lines():
+    if line.startswith("data:"):
+        handle(line[5:].strip())
+```
+
+### aread
+
+```python
+aread() -> bytes
+```
+
+Read the entire remaining response body without blocking the event loop.
+
+### aclose
+
+```python
+aclose() -> None
+```
+
+Close the streaming response and release its connection.
+
+`AsyncClient.stream()` calls this when the `async with` block exits. Closing never waits on I/O, so it runs on the event-loop thread.
+
+### raise_for_status
+
+```python
+raise_for_status() -> AsyncStreamingResponse
+```
+
+Raise `HTTPStatusError` on a non-2xx status; returns self on success.

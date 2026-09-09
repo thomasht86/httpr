@@ -1430,6 +1430,78 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#async-streaming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Async Streaming
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Async Streaming">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#aiter_bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_bytes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aiter_text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aiter_lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_lines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aread" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aread
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aclose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aclose
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#important-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1971,6 +2043,78 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#async-streaming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Async Streaming
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Async Streaming">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#aiter_bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_bytes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aiter_text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aiter_lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiter_lines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aread" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aread
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aclose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aclose
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#important-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2475,6 +2619,40 @@ immediately after the headers arrive (before the body is read):</p>
 </span><span id="__span-49-3"><a id="__codelineno-49-3" name="__codelineno-49-3" href="#__codelineno-49-3"></a>        <span class="n">process</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
 </span></code></pre></div>
 <hr />
+<h3 id="async-streaming">Async Streaming<a class="headerlink" href="#async-streaming" title="Permanent link">&para;</a></h3>
+<p><code>AsyncClient.stream()</code> yields an <code>AsyncStreamingResponse</code>. It exposes the same
+attributes and methods as <code>StreamingResponse</code> (status, headers, cookies, URL,
+<code>raise_for_status()</code>, <code>is_closed</code>, <code>is_consumed</code>, the synchronous <code>iter_*()</code>,
+<code>read()</code> and <code>close()</code>), plus async variants that read each chunk on the
+client's thread pool so the event loop is never blocked:</p>
+<h4 id="aiter_bytes">aiter_bytes<a class="headerlink" href="#aiter_bytes" title="Permanent link">&para;</a></h4>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-50-1"><a id="__codelineno-50-1" name="__codelineno-50-1" href="#__codelineno-50-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">aiter_bytes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]</span>
+</span></code></pre></div>
+<p>Iterate over the response body as bytes chunks. <code>async for chunk in response</code> is equivalent.</p>
+<h4 id="aiter_text">aiter_text<a class="headerlink" href="#aiter_text" title="Permanent link">&para;</a></h4>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-51-1"><a id="__codelineno-51-1" name="__codelineno-51-1" href="#__codelineno-51-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">aiter_text</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</span></code></pre></div>
+<p>Iterate over the response body as text chunks, decoded with the response's encoding.</p>
+<h4 id="aiter_lines">aiter_lines<a class="headerlink" href="#aiter_lines" title="Permanent link">&para;</a></h4>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-52-1"><a id="__codelineno-52-1" name="__codelineno-52-1" href="#__codelineno-52-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">aiter_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</span></code></pre></div>
+<p>Iterate over the response body line by line (lines include their trailing newline).</p>
+<h4 id="aread">aread<a class="headerlink" href="#aread" title="Permanent link">&para;</a></h4>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-53-1"><a id="__codelineno-53-1" name="__codelineno-53-1" href="#__codelineno-53-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">aread</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span>
+</span></code></pre></div>
+<p>Read the entire remaining body into memory.</p>
+<h4 id="aclose">aclose<a class="headerlink" href="#aclose" title="Permanent link">&para;</a></h4>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-54-1"><a id="__codelineno-54-1" name="__codelineno-54-1" href="#__codelineno-54-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">aclose</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</span></code></pre></div>
+<p>Close the stream and release its connection. Called automatically when the <code>async with</code> block exits.</p>
+<p><strong>Example:</strong>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-55-1"><a id="__codelineno-55-1" name="__codelineno-55-1" href="#__codelineno-55-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">httpr</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+</span><span id="__span-55-2"><a id="__codelineno-55-2" name="__codelineno-55-2" href="#__codelineno-55-2"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.com/events&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+</span><span id="__span-55-3"><a id="__codelineno-55-3" name="__codelineno-55-3" href="#__codelineno-55-3"></a>        <span class="k">async</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">aiter_lines</span><span class="p">():</span>
+</span><span id="__span-55-4"><a id="__codelineno-55-4" name="__codelineno-55-4" href="#__codelineno-55-4"></a>            <span class="n">handle</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+</span></code></pre></div></p>
+<p>The synchronous <code>iter_bytes()</code>, <code>iter_text()</code>, <code>iter_lines()</code> and <code>read()</code> remain available on the async response but block the event loop until the next chunk arrives; prefer the <code>a</code>-prefixed methods in async code. After <code>client.aclose()</code>, the next async step raises <code>httpr.ClientClosed</code>.</p>
+<hr />
 <h3 id="important-notes">Important Notes<a class="headerlink" href="#important-notes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Always use as context manager</strong>: Ensures proper cleanup of resources</li>
@@ -2491,16 +2669,16 @@ immediately after the headers arrive (before the body is read):</p>
 <li><code>StreamConsumed</code>: Raised when attempting to re-read a consumed stream</li>
 </ul>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-50-1"><a id="__codelineno-50-1" name="__codelineno-50-1" href="#__codelineno-50-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpr</span>
-</span><span id="__span-50-2"><a id="__codelineno-50-2" name="__codelineno-50-2" href="#__codelineno-50-2"></a>
-</span><span id="__span-50-3"><a id="__codelineno-50-3" name="__codelineno-50-3" href="#__codelineno-50-3"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/get&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
-</span><span id="__span-50-4"><a id="__codelineno-50-4" name="__codelineno-50-4" href="#__codelineno-50-4"></a>    <span class="n">content</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span id="__span-50-5"><a id="__codelineno-50-5" name="__codelineno-50-5" href="#__codelineno-50-5"></a>
-</span><span id="__span-50-6"><a id="__codelineno-50-6" name="__codelineno-50-6" href="#__codelineno-50-6"></a>    <span class="c1"># This will raise StreamConsumed</span>
-</span><span id="__span-50-7"><a id="__codelineno-50-7" name="__codelineno-50-7" href="#__codelineno-50-7"></a>    <span class="k">try</span><span class="p">:</span>
-</span><span id="__span-50-8"><a id="__codelineno-50-8" name="__codelineno-50-8" href="#__codelineno-50-8"></a>        <span class="n">more</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span id="__span-50-9"><a id="__codelineno-50-9" name="__codelineno-50-9" href="#__codelineno-50-9"></a>    <span class="k">except</span> <span class="n">httpr</span><span class="o">.</span><span class="n">StreamConsumed</span><span class="p">:</span>
-</span><span id="__span-50-10"><a id="__codelineno-50-10" name="__codelineno-50-10" href="#__codelineno-50-10"></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Stream already consumed&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-56-1"><a id="__codelineno-56-1" name="__codelineno-56-1" href="#__codelineno-56-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpr</span>
+</span><span id="__span-56-2"><a id="__codelineno-56-2" name="__codelineno-56-2" href="#__codelineno-56-2"></a>
+</span><span id="__span-56-3"><a id="__codelineno-56-3" name="__codelineno-56-3" href="#__codelineno-56-3"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/get&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+</span><span id="__span-56-4"><a id="__codelineno-56-4" name="__codelineno-56-4" href="#__codelineno-56-4"></a>    <span class="n">content</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-56-5"><a id="__codelineno-56-5" name="__codelineno-56-5" href="#__codelineno-56-5"></a>
+</span><span id="__span-56-6"><a id="__codelineno-56-6" name="__codelineno-56-6" href="#__codelineno-56-6"></a>    <span class="c1"># This will raise StreamConsumed</span>
+</span><span id="__span-56-7"><a id="__codelineno-56-7" name="__codelineno-56-7" href="#__codelineno-56-7"></a>    <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-56-8"><a id="__codelineno-56-8" name="__codelineno-56-8" href="#__codelineno-56-8"></a>        <span class="n">more</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-56-9"><a id="__codelineno-56-9" name="__codelineno-56-9" href="#__codelineno-56-9"></a>    <span class="k">except</span> <span class="n">httpr</span><span class="o">.</span><span class="n">StreamConsumed</span><span class="p">:</span>
+</span><span id="__span-56-10"><a id="__codelineno-56-10" name="__codelineno-56-10" href="#__codelineno-56-10"></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Stream already consumed&quot;</span><span class="p">)</span>
 </span></code></pre></div></p>
 
 
