@@ -2215,7 +2215,7 @@
 <p>The <code>Response</code> class provides access to all aspects of an HTTP response:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpr</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/get&quot;</span><span class="p">)</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/get"</span><span class="p">)</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># Status</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span>  <span class="c1"># 200</span>
@@ -2226,11 +2226,11 @@
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>       <span class="c1"># Parsed JSON</span>
 </span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1"># Headers (case-insensitive)</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;content-type&quot;</span><span class="p">])</span>
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">])</span>  <span class="c1"># Same result</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"content-type"</span><span class="p">])</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"Content-Type"</span><span class="p">])</span>  <span class="c1"># Same result</span>
 </span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="c1"># Cookies</span>
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">cookies</span><span class="p">)</span>      <span class="c1"># {&quot;session&quot;: &quot;value&quot;}</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">cookies</span><span class="p">)</span>      <span class="c1"># {"session": "value"}</span>
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
 </span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="c1"># Metadata</span>
 </span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>          <span class="c1"># Final URL after redirects</span>
@@ -2243,7 +2243,7 @@
 </span></code></pre></div>
 <p>HTTP status code (e.g., 200, 404, 500).</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/status/201&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/status/201"</span><span class="p">)</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span>  <span class="c1"># 201</span>
 </span></code></pre></div></p>
 <hr />
@@ -2253,8 +2253,8 @@
 </span></code></pre></div>
 <p>Canonical reason phrase for the status code (e.g., <code>"OK"</code>, <code>"Not Found"</code>).</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/status/404&quot;</span><span class="p">)</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">reason_phrase</span><span class="p">)</span>  <span class="c1"># &quot;Not Found&quot;</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/status/404"</span><span class="p">)</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">reason_phrase</span><span class="p">)</span>  <span class="c1"># "Not Found"</span>
 </span></code></pre></div></p>
 <hr />
 <h3 id="status-classification">Status classification<a class="headerlink" href="#status-classification" title="Permanent link">&para;</a></h3>
@@ -2299,14 +2299,14 @@ comparing integers manually:</p>
 </tbody>
 </table>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/status/200&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/status/200"</span><span class="p">)</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">is_success</span><span class="p">:</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Success!&quot;</span><span class="p">)</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"Success!"</span><span class="p">)</span>
 </span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">elif</span> <span class="n">response</span><span class="o">.</span><span class="n">is_client_error</span><span class="p">:</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Client error&quot;</span><span class="p">)</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"Client error"</span><span class="p">)</span>
 </span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">elif</span> <span class="n">response</span><span class="o">.</span><span class="n">is_server_error</span><span class="p">:</span>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Server error&quot;</span><span class="p">)</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"Server error"</span><span class="p">)</span>
 </span></code></pre></div></p>
 <hr />
 <h3 id="text">text<a class="headerlink" href="#text" title="Permanent link">&para;</a></h3>
@@ -2321,7 +2321,7 @@ comparing integers manually:</p>
 <li>Falls back to UTF-8</li>
 </ol>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/html&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/html"</span><span class="p">)</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>  <span class="c1"># HTML content</span>
 </span></code></pre></div></p>
 <hr />
@@ -2331,12 +2331,12 @@ comparing integers manually:</p>
 </span></code></pre></div>
 <p>Response body as raw bytes.</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/bytes/100&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/bytes/100"</span><span class="p">)</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">))</span>  <span class="c1"># 100</span>
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
 </span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># Save binary file</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/image/png&quot;</span><span class="p">)</span>
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;image.png&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/image/png"</span><span class="p">)</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"image.png"</span><span class="p">,</span> <span class="s2">"wb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
 </span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
 </span></code></pre></div></p>
 <hr />
@@ -2355,15 +2355,15 @@ comparing integers manually:</p>
 <li><code>response.headers.items()</code> - key-value pairs</li>
 </ul>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/get&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/get"</span><span class="p">)</span>
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
 </span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="c1"># Case-insensitive access</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;content-type&quot;</span><span class="p">])</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">])</span>  <span class="c1"># Same</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"content-type"</span><span class="p">])</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"Content-Type"</span><span class="p">])</span>  <span class="c1"># Same</span>
 </span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
 </span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="c1"># Iteration</span>
 </span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </span></code></pre></div></p>
 <hr />
 <h3 id="cookies">cookies<a class="headerlink" href="#cookies" title="Permanent link">&para;</a></h3>
@@ -2372,8 +2372,8 @@ comparing integers manually:</p>
 </span></code></pre></div>
 <p>Cookies set by the server via <code>Set-Cookie</code> headers.</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/cookies/set?name=value&quot;</span><span class="p">)</span>
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">cookies</span><span class="p">)</span>  <span class="c1"># {&quot;name&quot;: &quot;value&quot;}</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/cookies/set?name=value"</span><span class="p">)</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">cookies</span><span class="p">)</span>  <span class="c1"># {"name": "value"}</span>
 </span></code></pre></div></p>
 <hr />
 <h3 id="url">url<a class="headerlink" href="#url" title="Permanent link">&para;</a></h3>
@@ -2382,7 +2382,7 @@ comparing integers manually:</p>
 </span></code></pre></div>
 <p>Final URL after following any redirects.</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/redirect/3&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/redirect/3"</span><span class="p">)</span>
 </span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>  <span class="c1"># https://httpbin.org/get</span>
 </span></code></pre></div></p>
 <hr />
@@ -2392,8 +2392,8 @@ comparing integers manually:</p>
 </span></code></pre></div>
 <p>Character encoding detected from response headers or content.</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/encoding/utf8&quot;</span><span class="p">)</span>
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">encoding</span><span class="p">)</span>  <span class="c1"># &quot;utf-8&quot;</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/encoding/utf8"</span><span class="p">)</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">encoding</span><span class="p">)</span>  <span class="c1"># "utf-8"</span>
 </span></code></pre></div></p>
 <hr />
 <h3 id="text_markdown">text_markdown<a class="headerlink" href="#text_markdown" title="Permanent link">&para;</a></h3>
@@ -2403,7 +2403,7 @@ comparing integers manually:</p>
 <p>HTML response body converted to Markdown format.</p>
 <p>Uses Rust's <code>html2text</code> crate for conversion.</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://example.com&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://example.com"</span><span class="p">)</span>
 </span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">text_markdown</span><span class="p">)</span>
 </span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="c1"># # Example Domain</span>
 </span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="c1">#</span>
@@ -2416,7 +2416,7 @@ comparing integers manually:</p>
 </span></code></pre></div>
 <p>HTML response body converted to plain text (no formatting).</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://example.com&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://example.com"</span><span class="p">)</span>
 </span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">text_plain</span><span class="p">)</span>
 </span></code></pre></div></p>
 <hr />
@@ -2434,9 +2434,9 @@ comparing integers manually:</p>
 <p><strong>Returns:</strong> Parsed JSON (dict, list, str, int, float, bool, or None)</p>
 <p><strong>Raises:</strong> Exception if body is not valid JSON</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/json&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/json"</span><span class="p">)</span>
 </span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;slideshow&quot;</span><span class="p">][</span><span class="s2">&quot;title&quot;</span><span class="p">])</span>
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">"slideshow"</span><span class="p">][</span><span class="s2">"title"</span><span class="p">])</span>
 </span></code></pre></div></p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2451,15 +2451,15 @@ code. Returns the response itself on success, so the call can be chained.</p>
 <p><strong>Returns:</strong> The same <code>Response</code> object (when the status is 2xx)</p>
 <p><strong>Raises:</strong> <code>HTTPStatusError</code> for any non-2xx status code</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/status/404&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="n">response</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/status/404"</span><span class="p">)</span>
 </span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>
 </span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="k">try</span><span class="p">:</span>
 </span><span id="__span-26-4"><a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 </span><span id="__span-26-5"><a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a><span class="k">except</span> <span class="n">httpr</span><span class="o">.</span><span class="n">HTTPStatusError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-</span><span id="__span-26-6"><a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>  <span class="c1"># Client error &#39;404 Not Found&#39; for url &#39;...&#39;</span>
+</span><span id="__span-26-6"><a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>  <span class="c1"># Client error '404 Not Found' for url '...'</span>
 </span><span id="__span-26-7"><a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>
 </span><span id="__span-26-8"><a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a><span class="c1"># Chaining: raise on error, otherwise parse the body</span>
-</span><span id="__span-26-9"><a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a><span class="n">data</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://httpbin.org/json&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+</span><span id="__span-26-9"><a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a><span class="n">data</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://httpbin.org/json"</span><span class="p">)</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 </span></code></pre></div></p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2473,7 +2473,7 @@ default), a 3xx is only seen when <code>follow_redirects=False</code>.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpr</span>
 </span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>
 </span><span id="__span-27-3"><a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="k">with</span> <span class="n">httpr</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-</span><span id="__span-27-4"><a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>    <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/stream-bytes/1000&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+</span><span id="__span-27-4"><a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>    <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/stream-bytes/1000"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-27-5"><a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>        <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">iter_bytes</span><span class="p">():</span>
 </span><span id="__span-27-6"><a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a>            <span class="n">process</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
 </span></code></pre></div>
@@ -2484,7 +2484,7 @@ default), a 3xx is only seen when <code>follow_redirects=False</code>.</p>
 </span></code></pre></div>
 <p>HTTP status code (e.g., 200, 404, 500).</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/get&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/get"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-29-2"><a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span>  <span class="c1"># 200</span>
 </span></code></pre></div></p>
 <hr />
@@ -2500,7 +2500,7 @@ immediately after the headers arrive (before the body is read):</p>
   otherwise return the streaming response itself</li>
 </ul>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/stream-bytes/1000&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/stream-bytes/1000"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-30-2"><a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>  <span class="c1"># bail out early on a non-2xx status</span>
 </span><span id="__span-30-3"><a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">iter_bytes</span><span class="p">():</span>
 </span><span id="__span-30-4"><a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>        <span class="n">process</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
@@ -2512,8 +2512,8 @@ immediately after the headers arrive (before the body is read):</p>
 </span></code></pre></div>
 <p>Response headers as a case-insensitive dict-like object.</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-32-1"><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/get&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
-</span><span id="__span-32-2"><a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>    <span class="n">content_type</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;content-type&quot;</span><span class="p">]</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-32-1"><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/get"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+</span><span id="__span-32-2"><a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>    <span class="n">content_type</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"content-type"</span><span class="p">]</span>
 </span></code></pre></div></p>
 <hr />
 <h4 id="cookies_1">cookies<a class="headerlink" href="#cookies_1" title="Permanent link">&para;</a></h4>
@@ -2534,7 +2534,7 @@ immediately after the headers arrive (before the body is read):</p>
 </span></code></pre></div>
 <p>Whether the stream has been closed.</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-36-1"><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/get&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-36-1"><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/get"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-36-2"><a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">is_closed</span><span class="p">)</span>  <span class="c1"># False</span>
 </span><span id="__span-36-3"><a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">is_closed</span><span class="p">)</span>  <span class="c1"># True (after context manager exits)</span>
 </span></code></pre></div></p>
@@ -2545,7 +2545,7 @@ immediately after the headers arrive (before the body is read):</p>
 </span></code></pre></div>
 <p>Whether the stream has been fully consumed.</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-38-1"><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/get&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-38-1"><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/get"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-38-2"><a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">is_consumed</span><span class="p">)</span>  <span class="c1"># False</span>
 </span><span id="__span-38-3"><a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>    <span class="n">_</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>  <span class="c1"># Consume the stream</span>
 </span><span id="__span-38-4"><a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">is_consumed</span><span class="p">)</span>  <span class="c1"># True</span>
@@ -2558,9 +2558,9 @@ immediately after the headers arrive (before the body is read):</p>
 <p>Iterate over the response body as bytes chunks.</p>
 <p><strong>Returns:</strong> Iterator yielding bytes chunks</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-40-1"><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/stream-bytes/1000&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-40-1"><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/stream-bytes/1000"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-40-2"><a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">iter_bytes</span><span class="p">():</span>
-</span><span id="__span-40-3"><a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes&quot;</span><span class="p">)</span>
+</span><span id="__span-40-3"><a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Received </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes"</span><span class="p">)</span>
 </span></code></pre></div></p>
 <hr />
 <h4 id="iter_text">iter_text<a class="headerlink" href="#iter_text" title="Permanent link">&para;</a></h4>
@@ -2569,9 +2569,9 @@ immediately after the headers arrive (before the body is read):</p>
 <p>Iterate over the response body as text chunks, decoded using the response encoding.</p>
 <p><strong>Returns:</strong> TextIterator yielding string chunks</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-42-1"><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/html&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-42-1"><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/html"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-42-2"><a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a>    <span class="k">for</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">iter_text</span><span class="p">():</span>
-</span><span id="__span-42-3"><a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a>        <span class="nb">print</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+</span><span id="__span-42-3"><a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a>        <span class="nb">print</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">""</span><span class="p">)</span>
 </span></code></pre></div></p>
 <hr />
 <h4 id="iter_lines">iter_lines<a class="headerlink" href="#iter_lines" title="Permanent link">&para;</a></h4>
@@ -2581,7 +2581,7 @@ immediately after the headers arrive (before the body is read):</p>
 <p><strong>Returns:</strong> LineIterator yielding string lines</p>
 <p>Useful for Server-Sent Events (SSE) and line-based protocols.</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-44-1"><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/stream/10&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-44-1"><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/stream/10"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-44-2"><a id="__codelineno-44-2" name="__codelineno-44-2" href="#__codelineno-44-2"></a>    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">iter_lines</span><span class="p">():</span>
 </span><span id="__span-44-3"><a id="__codelineno-44-3" name="__codelineno-44-3" href="#__codelineno-44-3"></a>        <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
 </span></code></pre></div></p>
@@ -2592,7 +2592,7 @@ immediately after the headers arrive (before the body is read):</p>
 <p>Read the entire remaining response body into memory.</p>
 <p><strong>Returns:</strong> Response body as bytes</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-46-1"><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/get&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-46-1"><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/get"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-46-2"><a id="__codelineno-46-2" name="__codelineno-46-2" href="#__codelineno-46-2"></a>    <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span><span class="p">:</span>
 </span><span id="__span-46-3"><a id="__codelineno-46-3" name="__codelineno-46-3" href="#__codelineno-46-3"></a>        <span class="n">content</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 </span></code></pre></div></p>
@@ -2603,7 +2603,7 @@ immediately after the headers arrive (before the body is read):</p>
 <p>Close the stream and release resources.</p>
 <p><strong>Note:</strong> When using the context manager, <code>close()</code> is called automatically.</p>
 <p><strong>Example:</strong>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-48-1"><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/get&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-48-1"><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/get"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-48-2"><a id="__codelineno-48-2" name="__codelineno-48-2" href="#__codelineno-48-2"></a>    <span class="c1"># Process headers</span>
 </span><span id="__span-48-3"><a id="__codelineno-48-3" name="__codelineno-48-3" href="#__codelineno-48-3"></a>    <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">!=</span> <span class="mi">200</span><span class="p">:</span>
 </span><span id="__span-48-4"><a id="__codelineno-48-4" name="__codelineno-48-4" href="#__codelineno-48-4"></a>        <span class="n">response</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># Close early without reading body</span>
@@ -2614,7 +2614,7 @@ immediately after the headers arrive (before the body is read):</p>
 <hr />
 <h3 id="direct-iteration">Direct Iteration<a class="headerlink" href="#direct-iteration" title="Permanent link">&para;</a></h3>
 <p><code>StreamingResponse</code> supports direct iteration, which is equivalent to calling <code>iter_bytes()</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-49-1"><a id="__codelineno-49-1" name="__codelineno-49-1" href="#__codelineno-49-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/stream-bytes/1000&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-49-1"><a id="__codelineno-49-1" name="__codelineno-49-1" href="#__codelineno-49-1"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/stream-bytes/1000"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-49-2"><a id="__codelineno-49-2" name="__codelineno-49-2" href="#__codelineno-49-2"></a>    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>  <span class="c1"># Same as response.iter_bytes()</span>
 </span><span id="__span-49-3"><a id="__codelineno-49-3" name="__codelineno-49-3" href="#__codelineno-49-3"></a>        <span class="n">process</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
 </span></code></pre></div>
@@ -2647,7 +2647,7 @@ client's thread pool so the event loop is never blocked:</p>
 <p>Close the stream and release its connection. Called automatically when the <code>async with</code> block exits.</p>
 <p><strong>Example:</strong>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-55-1"><a id="__codelineno-55-1" name="__codelineno-55-1" href="#__codelineno-55-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">httpr</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-</span><span id="__span-55-2"><a id="__codelineno-55-2" name="__codelineno-55-2" href="#__codelineno-55-2"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.com/events&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+</span><span id="__span-55-2"><a id="__codelineno-55-2" name="__codelineno-55-2" href="#__codelineno-55-2"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://example.com/events"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-55-3"><a id="__codelineno-55-3" name="__codelineno-55-3" href="#__codelineno-55-3"></a>        <span class="k">async</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">aiter_lines</span><span class="p">():</span>
 </span><span id="__span-55-4"><a id="__codelineno-55-4" name="__codelineno-55-4" href="#__codelineno-55-4"></a>            <span class="n">handle</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
 </span></code></pre></div></p>
@@ -2671,14 +2671,14 @@ client's thread pool so the event loop is never blocked:</p>
 <p><strong>Example:</strong>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-56-1"><a id="__codelineno-56-1" name="__codelineno-56-1" href="#__codelineno-56-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpr</span>
 </span><span id="__span-56-2"><a id="__codelineno-56-2" name="__codelineno-56-2" href="#__codelineno-56-2"></a>
-</span><span id="__span-56-3"><a id="__codelineno-56-3" name="__codelineno-56-3" href="#__codelineno-56-3"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://httpbin.org/get&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+</span><span id="__span-56-3"><a id="__codelineno-56-3" name="__codelineno-56-3" href="#__codelineno-56-3"></a><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"https://httpbin.org/get"</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
 </span><span id="__span-56-4"><a id="__codelineno-56-4" name="__codelineno-56-4" href="#__codelineno-56-4"></a>    <span class="n">content</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 </span><span id="__span-56-5"><a id="__codelineno-56-5" name="__codelineno-56-5" href="#__codelineno-56-5"></a>
 </span><span id="__span-56-6"><a id="__codelineno-56-6" name="__codelineno-56-6" href="#__codelineno-56-6"></a>    <span class="c1"># This will raise StreamConsumed</span>
 </span><span id="__span-56-7"><a id="__codelineno-56-7" name="__codelineno-56-7" href="#__codelineno-56-7"></a>    <span class="k">try</span><span class="p">:</span>
 </span><span id="__span-56-8"><a id="__codelineno-56-8" name="__codelineno-56-8" href="#__codelineno-56-8"></a>        <span class="n">more</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 </span><span id="__span-56-9"><a id="__codelineno-56-9" name="__codelineno-56-9" href="#__codelineno-56-9"></a>    <span class="k">except</span> <span class="n">httpr</span><span class="o">.</span><span class="n">StreamConsumed</span><span class="p">:</span>
-</span><span id="__span-56-10"><a id="__codelineno-56-10" name="__codelineno-56-10" href="#__codelineno-56-10"></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Stream already consumed&quot;</span><span class="p">)</span>
+</span><span id="__span-56-10"><a id="__codelineno-56-10" name="__codelineno-56-10" href="#__codelineno-56-10"></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">"Stream already consumed"</span><span class="p">)</span>
 </span></code></pre></div></p>
 
 
