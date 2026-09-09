@@ -148,9 +148,7 @@ class TestClientSSL(unittest.TestCase):
         so a corrupt bundle silently produced zero certs and the client fell back
         to built-in roots.
         """
-        with tempfile.NamedTemporaryFile(
-            suffix=".pem", delete=False, mode="wb"
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix=".pem", delete=False, mode="wb") as f:
             f.write(b"this is not a valid PEM bundle")
             bad_path = f.name
         try:
@@ -161,9 +159,7 @@ class TestClientSSL(unittest.TestCase):
 
     def test_empty_ca_cert_file(self):
         """A PEM file with no X.509 certs (e.g. only comments) must also fail."""
-        with tempfile.NamedTemporaryFile(
-            suffix=".pem", delete=False, mode="wb"
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix=".pem", delete=False, mode="wb") as f:
             f.write(b"# bundle with no certificates\n")
             empty_path = f.name
         try:
@@ -188,9 +184,7 @@ class TestClientSSL(unittest.TestCase):
             cert_data = f.read()
 
         async def make_request():
-            async with AsyncClient(
-                client_pem_data=cert_data, ca_cert_file=self.client_ca_path
-            ) as client:
+            async with AsyncClient(client_pem_data=cert_data, ca_cert_file=self.client_ca_path) as client:
                 return await client.get(f"https://localhost:{self.server_port}")
 
         response = asyncio.run(make_request())
