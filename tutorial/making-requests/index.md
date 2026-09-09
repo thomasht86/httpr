@@ -266,9 +266,11 @@ response = client.get("https://httpbin.org/delay/5", timeout=60)
 
 ### Timeout Behavior
 
-- Default timeout is 30 seconds
+- The default timeout is 30 seconds; `timeout=None` disables it
+- The timeout bounds how long the server may keep you waiting, not how long a request may take: it applies to the wait for the response headers and then to the wait for each chunk of the body, and every chunk that arrives resets it. A large download or a long-lived stream that keeps delivering data is never cut off; a server that goes silent for longer than the timeout is
+- When it is exceeded, `httpr.ReadTimeout` (a `TimeoutException`) is raised
+- Assigning `client.timeout` applies to the next request
 - Timeout of `0` or very small values may cause immediate timeout
-- If the server doesn't respond within the timeout, an exception is raised
 
 ```python
 import httpr

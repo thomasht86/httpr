@@ -2025,9 +2025,15 @@ client and included in subsequent requests:</p>
 </span></code></pre></div>
 <h3 id="timeout-behavior">Timeout Behavior<a class="headerlink" href="#timeout-behavior" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Default timeout is 30 seconds</li>
+<li>The default timeout is 30 seconds; <code>timeout=None</code> disables it</li>
+<li>The timeout bounds how long the server may keep you waiting, not how long
+  a request may take: it applies to the wait for the response headers and then
+  to the wait for each chunk of the body, and every chunk that arrives resets it.
+  A large download or a long-lived stream that keeps delivering data is never
+  cut off; a server that goes silent for longer than the timeout is</li>
+<li>When it is exceeded, <code>httpr.ReadTimeout</code> (a <code>TimeoutException</code>) is raised</li>
+<li>Assigning <code>client.timeout</code> applies to the next request</li>
 <li>Timeout of <code>0</code> or very small values may cause immediate timeout</li>
-<li>If the server doesn't respond within the timeout, an exception is raised</li>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpr</span>
 </span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>

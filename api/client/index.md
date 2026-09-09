@@ -70,7 +70,10 @@ Attributes:
         referer: Automatically set Referer header. Default is True.
         proxy: Proxy URL (e.g., "http://proxy:8080" or "socks5://127.0.0.1:1080").
             Falls back to HTTPR_PROXY environment variable.
-        timeout: Request timeout in seconds. Default is 30.
+        timeout: Timeout in seconds for waiting on the server: for the response
+            headers, then for each chunk of the body. A response that keeps
+            arriving is never cut off, however long it takes. Default is 30;
+            `None` disables the timeout. Raises `ReadTimeout` when exceeded.
         follow_redirects: Follow HTTP redirects. Default is True.
         max_redirects: Maximum redirects to follow. Default is 20.
         verify: Verify SSL certificates. Default is True.
@@ -142,7 +145,7 @@ Other Parameters:
 | `cookies`     | `Optional[dict[str, str]]`            | Request cookies, merged with the client's into a single Cookie header (the request wins for a name both supply).                                                                                                                       |
 | `auth`        | `Optional[tuple[str, Optional[str]]]` | Basic auth credentials (overrides client default).                                                                                                                                                                                     |
 | `auth_bearer` | `Optional[str]`                       | Bearer token (overrides client default).                                                                                                                                                                                               |
-| `timeout`     | `Optional[float]`                     | Request timeout in seconds (overrides client default).                                                                                                                                                                                 |
+| `timeout`     | `Optional[float]`                     | Timeout in seconds for this request, overriding the client's; None keeps the client's. See Client for what it bounds.                                                                                                                  |
 | `content`     | `Optional[bytes]`                     | Raw bytes for request body.                                                                                                                                                                                                            |
 | `data`        | `Optional[dict[str, Any]]`            | Form data for request body (application/x-www-form-urlencoded). Values are converted like params; a list/tuple repeats the field.                                                                                                      |
 | `json`        | `Optional[Any]`                       | JSON data for request body (application/json).                                                                                                                                                                                         |

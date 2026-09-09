@@ -1603,7 +1603,7 @@ given more than once maps to a list of values.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Default timeout in seconds.</p>
+                <p>Default timeout in seconds; assigning it applies to the next request.</p>
               </div>
             </td>
           </tr>
@@ -1637,7 +1637,10 @@ given more than once maps to a list of values.</p>
         referer: Automatically set Referer header. Default is True.
         proxy: Proxy URL (e.g., &quot;http://proxy:8080&quot; or &quot;socks5://127.0.0.1:1080&quot;).
             Falls back to HTTPR_PROXY environment variable.
-        timeout: Request timeout in seconds. Default is 30.
+        timeout: Timeout in seconds for waiting on the server: for the response
+            headers, then for each chunk of the body. A response that keeps
+            arriving is never cut off, however long it takes. Default is 30;
+            `None` disables the timeout. Raises `ReadTimeout` when exceeded.
         follow_redirects: Follow HTTP redirects. Default is True.
         max_redirects: Maximum redirects to follow. Default is 20.
         verify: Verify SSL certificates. Default is True.
@@ -1863,7 +1866,8 @@ single <code>Cookie</code> header (the request wins for a name both supply).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Request timeout in seconds (overrides client default).</p>
+                <p>Timeout in seconds for this request, overriding the
+client's; <code>None</code> keeps the client's. See <code>Client</code> for what it bounds.</p>
               </div>
             </td>
           </tr>
