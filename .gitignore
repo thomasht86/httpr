@@ -90,3 +90,6 @@ site/
 
 # Taskfile cache
 .task/
+
+# Claude Code local state (worktrees, settings)
+.claude/
