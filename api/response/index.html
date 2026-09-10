@@ -2651,7 +2651,7 @@ client's thread pool so the event loop is never blocked:</p>
 </span><span id="__span-55-3"><a id="__codelineno-55-3" name="__codelineno-55-3" href="#__codelineno-55-3"></a>        <span class="k">async</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">aiter_lines</span><span class="p">():</span>
 </span><span id="__span-55-4"><a id="__codelineno-55-4" name="__codelineno-55-4" href="#__codelineno-55-4"></a>            <span class="n">handle</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
 </span></code></pre></div></p>
-<p>The synchronous <code>iter_bytes()</code>, <code>iter_text()</code>, <code>iter_lines()</code> and <code>read()</code> remain available on the async response but block the event loop until the next chunk arrives; prefer the <code>a</code>-prefixed methods in async code. After <code>client.aclose()</code>, the next async step raises <code>httpr.ClientClosed</code>.</p>
+<p>The synchronous <code>iter_bytes()</code>, <code>iter_text()</code>, <code>iter_lines()</code> and <code>read()</code> remain available on the async response but block the event loop until the next chunk arrives; prefer the <code>a</code>-prefixed methods in async code. A stream that is open when <code>client.aclose()</code> is called keeps its connection and can still be read to the end.</p>
 <hr />
 <h3 id="important-notes">Important Notes<a class="headerlink" href="#important-notes" title="Permanent link">&para;</a></h3>
 <ul>

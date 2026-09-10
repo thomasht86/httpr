@@ -300,7 +300,7 @@ aclose() -> None
 
 Close the async client.
 
-Releases the connection pool and shuts down this client's thread pool. Any request made after `aclose()` raises `httpr.ClientClosed`. Calling it more than once is a no-op.
+Releases the connection pool and shuts down this client's thread pool. A request made after `aclose()` reopens both, with a `httpr.ClientReopenedWarning` (see `Client.close()`). Calling it more than once is a no-op.
 
 Example
 

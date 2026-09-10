@@ -2732,8 +2732,9 @@ while the server is producing data. The synchronous <code>iter_*()</code> and
 
         <p>Close the async client.</p>
 <p>Releases the connection pool and shuts down this client's thread pool.
-Any request made after <code>aclose()</code> raises <code>httpr.ClientClosed</code>. Calling it
-more than once is a no-op.</p>
+A request made after <code>aclose()</code> reopens both, with a
+<code>httpr.ClientReopenedWarning</code> (see <code>Client.close()</code>). Calling it more
+than once is a no-op.</p>
 
 
 <details class="example" open>

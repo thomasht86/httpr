@@ -483,7 +483,7 @@ close() -> None
 
 Close the client and release its connection pool.
 
-Idle pooled connections are shut down before this returns. Requests that are already in flight (including open `stream()` responses) finish normally and keep the pool alive until the last of them completes, at which point it is released. Any request made after `close()` raises `httpr.ClientClosed` (a `RuntimeError`, as in httpx). Calling `close()` more than once is a no-op.
+Idle pooled connections are shut down before this returns. Requests that are already in flight (including open `stream()` responses) finish normally and keep the pool alive until the last of them completes, at which point it is released. A request made after `close()` reopens the client with a fresh connection pool and emits `httpr.ClientReopenedWarning` (a `ResourceWarning`, silent by default); turn it into an error with the `warnings` module to get httpx's strict behaviour instead. Calling `close()` more than once is a no-op.
 
 Example
 
