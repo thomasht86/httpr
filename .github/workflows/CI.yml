@@ -62,6 +62,53 @@ jobs:
           uv run task dev
           uv run task test:unit
 
+  # Downstream compatibility: pyvespa's unit suite against the wheel built from
+  # this commit. pyvespa is the main consumer of httpr and consumed lazy
+  # generators after `close()` for a year without anyone noticing, until 0.7.0
+  # made close() real. Runs on PRs, main branch, and tag pushes.
+  downstream-pyvespa:
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')))
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+      - name: Cache Rust build
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-v2-${{ runner.os }}-downstream-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-v2-${{ runner.os }}-downstream-
+      - name: Build wheel
+        run: uv run --with maturin maturin build --release --out dist
+      - name: Check out pyvespa master
+        uses: actions/checkout@v5
+        with:
+          repository: vespa-engine/pyvespa
+          ref: master
+          path: pyvespa
+      - name: Install pyvespa, then swap in this wheel
+        # pyvespa pins httpr>=0.4.0 and the local wheel is 0.0.0.dev0, so it
+        # cannot be part of the resolve; install it afterwards with --no-deps.
+        run: |
+          uv venv .venv-pyvespa
+          uv pip install --python .venv-pyvespa/bin/python "./pyvespa[unittest]"
+          uv pip install --python .venv-pyvespa/bin/python --no-deps --reinstall dist/httpr-*.whl
+          .venv-pyvespa/bin/python -c "import importlib.metadata as m; v = m.version('httpr'); assert v.startswith('0.0.0'), v; print('httpr', v)"
+      - name: pyvespa unit tests
+        # The venv's bin goes first on PATH: the deployment tests create a
+        # throwaway Vespa Cloud cert/key pair with the `vespa` CLI (from the
+        # `vespacli` package in pyvespa's unittest extra) and skip it otherwise.
+        working-directory: pyvespa
+        run: |
+          export PATH="$GITHUB_WORKSPACE/.venv-pyvespa/bin:$PATH"
+          python -m pytest tests/unit -q -p no:cacheprovider
+
   # E2E tests with httpbun Docker container - runs on PRs, main branch, and tag pushes
   e2e:
     runs-on: ubuntu-22.04

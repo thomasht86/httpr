@@ -512,7 +512,8 @@ class Client(RClient):
         """
         Close the client and release its connection pool.
 
-        Requests made after `close()` raise `ClientClosed`. Idempotent.
+        A request made after `close()` reopens the client with a fresh pool and
+        emits `ClientReopenedWarning`. Idempotent.
         """
         ...
     def stream(
@@ -608,7 +609,8 @@ class AsyncClient(Client):
         """
         Close the async client and shut down its thread pool.
 
-        Requests made after `aclose()` raise `ClientClosed`. Idempotent.
+        A request made after `aclose()` reopens both and emits
+        `ClientReopenedWarning`. Idempotent.
         """
         ...
     async def request(  # type: ignore[override]
@@ -763,9 +765,16 @@ class StreamClosed(StreamError):
 
 # Client lifecycle exceptions
 class ClientClosed(RuntimeError):
-    """Attempted to use a client after `close()` was called."""
+    """A request could not start because `close()` raced it.
+
+    Rare since 0.7.2: a request on a closed client reopens it instead.
+    """
+
+class ClientReopenedWarning(ResourceWarning):
+    """A request was made on a closed client, which was reopened with a fresh connection pool."""
 
 _CLIENT_CLOSED_MSG: str
+_CLIENT_REOPENED_MSG: str
 
 # Other exceptions
 class InvalidURL(Exception):
@@ -832,6 +841,7 @@ __all__ = [
     "StreamClosed",
     # Client lifecycle exceptions
     "ClientClosed",
+    "ClientReopenedWarning",
     # Other exceptions
     "InvalidURL",
     "CookieConflict",

@@ -1,4 +1,5 @@
 #![allow(clippy::too_many_arguments)]
+use std::ffi::CStr;
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Duration;
 use std::{fs, str};
@@ -38,7 +39,7 @@ mod utils;
 use utils::load_ca_certs;
 
 mod exceptions;
-use exceptions::{map_anyhow_error, map_reqwest_error, ClientClosed};
+use exceptions::{map_anyhow_error, map_reqwest_error, ClientClosed, ClientReopenedWarning};
 
 mod lifecycle;
 use lifecycle::ClientState;
@@ -58,6 +59,7 @@ static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
 
 /// Error message for any operation on a client after `close()`; mirrors httpx.
 const CLIENT_CLOSED_MSG: &str = "Cannot send a request, as the client has been closed.";
+const CLIENT_REOPENED_MSG: &CStr = c"Request made on a closed httpr client; reopening it with a fresh connection pool. Keep the client open for as long as it is used (a generator or stream created inside a `with` block runs after the block has closed the client).";
 
 /// The constructor settings a rebuilt `reqwest::Client` has to carry over, so
 /// that assigning `client.proxy` keeps TLS verification, the CA bundle, the
@@ -150,8 +152,40 @@ pub struct RClient {
 
 impl RClient {
     /// A handle to the underlying `reqwest::Client` plus the in-flight guard
-    /// for one request, or `ClientClosed` if `close()` has been called.
-    fn begin_request(&self) -> PyResult<(reqwest::Client, lifecycle::InFlight)> {
+    /// for one request.
+    ///
+    /// On a closed client this rebuilds the `reqwest::Client` from the
+    /// constructor settings, installs it with a fresh cancellation token and
+    /// emits `ClientReopenedWarning`, so a request after `close()` works the
+    /// way it does on a `requests.Session`. Under `warnings.simplefilter("error")`
+    /// the warning is raised instead and no request is sent. The rebuilt client
+    /// starts with an empty cookie store; default headers, params, auth, proxy
+    /// and timeout live on the `RClient` and carry over.
+    fn begin_request(&self, py: Python<'_>) -> PyResult<(reqwest::Client, lifecycle::InFlight)> {
+        if let Some(started) = self.state.begin_request() {
+            return Ok(started);
+        }
+        let default_headers = self
+            .headers
+            .lock()
+            .map_err(|e| map_anyhow_error(anyhow!("Failed to acquire headers lock: {}", e)))?
+            .clone();
+        let connects = CancellationToken::new();
+        let client = self.config.build(
+            lifecycle::CancelConnectsLayer::new(connects.clone()),
+            default_headers,
+            self.proxy.as_deref(),
+        )?;
+        // Losing to a concurrent reopen is fine: the slot is filled either way
+        // and the unused client here never had a connection to release.
+        self.state.reopen(client, connects);
+        PyErr::warn(
+            py,
+            &py.get_type::<ClientReopenedWarning>(),
+            CLIENT_REOPENED_MSG,
+            2,
+        )?;
+        // Only a `close()` racing in between can still leave this empty.
         self.state
             .begin_request()
             .ok_or_else(|| ClientClosed::new_err(CLIENT_CLOSED_MSG))
@@ -579,7 +613,8 @@ impl RClient {
     /// is dropped and its idle connections are released; a connect the old
     /// pool still had pending in the background is left to resolve on its own
     /// (it is torn down the next time the runtime is driven). Raises
-    /// `ClientClosed` on a closed client.
+    /// On a closed client only the proxy is recorded; the request that reopens
+    /// the client builds with it.
     #[setter]
     pub fn set_proxy(&mut self, py: Python, proxy: Option<String>) -> PyResult<()> {
         let default_headers = self
@@ -592,14 +627,15 @@ impl RClient {
             default_headers,
             proxy.as_deref(),
         )?;
-        if !py.detach(|| self.state.replace(new_client)) {
-            return Err(ClientClosed::new_err(CLIENT_CLOSED_MSG));
-        }
+        // On a closed client there is nothing to swap; the proxy is recorded
+        // and the rebuild on the next request picks it up.
+        py.detach(|| self.state.replace(new_client));
         self.proxy = proxy;
         Ok(())
     }
 
-    /// Whether `close()` has been called on this client.
+    /// Whether the client is currently closed: `close()` has been called and no
+    /// request has reopened it since.
     #[getter]
     pub fn is_closed(&self) -> bool {
         self.state.is_closed()
@@ -612,8 +648,9 @@ impl RClient {
     /// returns. Requests already in flight hold their own handle to the pool
     /// and finish normally; while any of them is running the pool, including
     /// its idle connections, stays alive, and the last one to finish releases
-    /// it. Any later request on this client raises `ClientClosed`. Calling
-    /// `close()` more than once is a no-op.
+    /// it. A later request on this client reopens it with a fresh pool and
+    /// emits `ClientReopenedWarning` (see `begin_request`). Calling `close()`
+    /// more than once is a no-op.
     pub fn close(&self, py: Python) {
         py.detach(|| self.state.close());
     }
@@ -672,7 +709,7 @@ impl RClient {
         auth_bearer: Option<String>,
         timeout: Option<f64>,
     ) -> PyResult<Response> {
-        let (client, in_flight) = self.begin_request()?;
+        let (client, in_flight) = self.begin_request(py)?;
         let (builder, timeout) = self.build_request(
             client,
             method,
@@ -767,7 +804,7 @@ impl RClient {
         auth_bearer: Option<String>,
         timeout: Option<f64>,
     ) -> PyResult<StreamingResponse> {
-        let (client, in_flight) = self.begin_request()?;
+        let (client, in_flight) = self.begin_request(py)?;
         let (builder, timeout) = self.build_request(
             client,
             method,
@@ -828,6 +865,10 @@ fn httpr(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<TextIterator>()?;
     m.add_class::<LineIterator>()?;
     m.add("_CLIENT_CLOSED_MSG", CLIENT_CLOSED_MSG)?;
+    m.add(
+        "_CLIENT_REOPENED_MSG",
+        CLIENT_REOPENED_MSG.to_str().expect("message is ASCII"),
+    )?;
 
     // Register all exception types
     exceptions::register_exceptions(m)?;

@@ -42,9 +42,9 @@ else:
 
 
 from .httpr import (
-    _CLIENT_CLOSED_MSG,
     CaseInsensitiveHeaderMap,
     ClientClosed,
+    ClientReopenedWarning,
     RClient,
     Response,
     StreamingResponse,
@@ -308,9 +308,11 @@ class Client(RClient):
         Idle pooled connections are shut down before this returns. Requests
         that are already in flight (including open `stream()` responses) finish
         normally and keep the pool alive until the last of them completes, at
-        which point it is released. Any request made after `close()` raises
-        `httpr.ClientClosed` (a `RuntimeError`, as in httpx). Calling `close()`
-        more than once is a no-op.
+        which point it is released. A request made after `close()` reopens the
+        client with a fresh connection pool and emits
+        `httpr.ClientReopenedWarning` (a `ResourceWarning`, silent by default);
+        turn it into an error with the `warnings` module to get httpx's strict
+        behaviour instead. Calling `close()` more than once is a no-op.
 
         Example:
             ```python
@@ -738,8 +740,8 @@ class AsyncStreamingResponse:
 
     async def _aiter(self, it: Iterator[_T]) -> AsyncIterator[_T]:
         # Each `next()` does a blocking read on the Rust side, so it goes through
-        # the client's executor like a request does. `_run_sync_asyncio` maps a
-        # closed client to ClientClosed.
+        # the client's executor like a request does. The stream holds its own
+        # handle to the pool, so it keeps reading after the client is closed.
         sentinel: object = object()
         while True:
             item = await self._client._run_sync_asyncio(next, it, sentinel)
@@ -896,12 +898,10 @@ class AsyncClient(Client):
         """
         super().__init__(*args, **kwargs)
         self.max_concurrency = max_concurrency
-        # Threads are created on demand; `close()`/`aclose()` shut the pool down.
-        self._executor = (
-            None
-            if max_concurrency is None
-            else ThreadPoolExecutor(max_workers=max_concurrency, thread_name_prefix="httpr")
-        )
+        # Created on first use by `_dispatch_executor()`; `close()`/`aclose()`
+        # shut it down and drop it, and the next request creates a new one, so
+        # a client reopened after close gets its threads back as well.
+        self._executor: ThreadPoolExecutor | None = None
 
     async def __aenter__(self) -> AsyncClient:
         """Enter async context manager."""
@@ -920,19 +920,21 @@ class AsyncClient(Client):
         the `Client` contract too.
         """
         super().close()
-        if self._executor is not None:
+        executor, self._executor = self._executor, None
+        if executor is not None:
             # Requests still running on the pool keep their handle to the reqwest
-            # client and finish normally; queued ones raise ClientClosed when they
-            # run. Not waiting keeps this safe to call from the event-loop thread.
-            self._executor.shutdown(wait=False)
+            # client and finish normally. Not waiting keeps this safe to call
+            # from the event-loop thread.
+            executor.shutdown(wait=False)
 
     async def aclose(self) -> None:
         """
         Close the async client.
 
         Releases the connection pool and shuts down this client's thread pool.
-        Any request made after `aclose()` raises `httpr.ClientClosed`. Calling it
-        more than once is a no-op.
+        A request made after `aclose()` reopens both, with a
+        `httpr.ClientReopenedWarning` (see `Client.close()`). Calling it more
+        than once is a no-op.
 
         Example:
             ```python
@@ -948,24 +950,25 @@ class AsyncClient(Client):
         # millisecond, less than a hop through the executor would cost.
         self.close()
 
+    def _dispatch_executor(self) -> ThreadPoolExecutor | None:
+        """This client's thread pool, created on demand; `None` means asyncio's default."""
+        if self.max_concurrency is None:
+            return None
+        if self._executor is None:
+            self._executor = ThreadPoolExecutor(max_workers=self.max_concurrency, thread_name_prefix="httpr")
+        return self._executor
+
     async def _run_sync_asyncio(self, fn, *args, **kwargs):
         """Run a synchronous function on this client's executor."""
-        if self.is_closed:
-            # Checked here rather than left to the Rust side so a closed client
-            # raises ClientClosed instead of the executor's own "cannot schedule
-            # new futures after shutdown" RuntimeError.
-            raise ClientClosed(_CLIENT_CLOSED_MSG)
         loop = asyncio.get_running_loop()
+        call = partial(fn, *args, **kwargs)
         try:
-            future = loop.run_in_executor(self._executor, partial(fn, *args, **kwargs))
+            future = loop.run_in_executor(self._dispatch_executor(), call)
         except RuntimeError:
-            # The executor is only ever shut down by close()/aclose(), so if one
-            # landed between the check above and submit (from another thread),
-            # report it as the client being closed rather than leaking the
-            # executor's own error.
-            if self.is_closed:
-                raise ClientClosed(_CLIENT_CLOSED_MSG) from None
-            raise
+            # A close() from another thread shut the pool down between the lookup
+            # and the submit. The client reopens on use, so does its executor.
+            self._executor = None
+            future = loop.run_in_executor(self._dispatch_executor(), call)
         return await future
 
     async def request(  # type: ignore[override]
@@ -1463,6 +1466,7 @@ __all__ = [
     "StreamClosed",
     # Client lifecycle exceptions
     "ClientClosed",
+    "ClientReopenedWarning",
     "InvalidURL",
     "CookieConflict",
 ]

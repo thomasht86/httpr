@@ -32,12 +32,12 @@ async def test_asyncclient_init(base_url_ssl, ca_bundle):
 def test_default_max_concurrency():
     client = httpr.AsyncClient()
     assert client.max_concurrency == httpr.DEFAULT_MAX_CONCURRENCY
-    assert client._executor._max_workers == httpr.DEFAULT_MAX_CONCURRENCY
+    assert client._dispatch_executor()._max_workers == httpr.DEFAULT_MAX_CONCURRENCY
 
 
 def test_max_concurrency_sizes_the_pool():
     client = httpr.AsyncClient(max_concurrency=7)
-    assert client._executor._max_workers == 7
+    assert client._dispatch_executor()._max_workers == 7
 
 
 @pytest.mark.asyncio
@@ -55,7 +55,7 @@ async def test_requests_run_on_the_clients_own_pool(base_url):
 @pytest.mark.asyncio
 async def test_max_concurrency_none_uses_default_executor():
     client = httpr.AsyncClient(max_concurrency=None)
-    assert client._executor is None
+    assert client._dispatch_executor() is None
     thread_name = await client._run_sync_asyncio(lambda: threading.current_thread().name)
     assert thread_name.startswith("asyncio_")
 
@@ -97,15 +97,12 @@ async def test_concurrency_is_not_capped_by_the_default_executor():
 
 
 @pytest.mark.asyncio
-async def test_client_is_reusable_until_closed(base_url):
-    """One client serves many requests; leaving `async with` closes it (issue #88).
+async def test_client_is_reusable_across_context_blocks(base_url):
+    """Leaving `async with` closes the client (issue #88); using it again reopens it.
 
-    This replaces a test that asserted the opposite -- that a client kept working
-    after `aclose()` and across repeated `async with` blocks -- which only held
-    because `aclose()` used to be a no-op. Downstream wrappers that own their
-    httpr client and re-enter the same wrapper object (pyvespa's VespaSync /
-    VespaAsync without an external session) now see ClientClosed on the second
-    entry; wrappers given an external client never close it and are unaffected.
+    0.7.0 and 0.7.1 raised ClientClosed here, which broke every released pyvespa
+    (VespaSync/VespaAsync re-enter the same wrapper, and `visit()` generators
+    run after the block). Since 0.7.2 the request reopens the client and warns.
     See tests/unit/test_close.py for the full contract.
     """
     client = httpr.AsyncClient(max_concurrency=2)
@@ -114,7 +111,9 @@ async def test_client_is_reusable_until_closed(base_url):
 
     async with client:
         assert (await client.get(f"{base_url}/anything")).status_code == 200
-
     assert client.is_closed
-    with pytest.raises(httpr.ClientClosed):
-        await client.get(f"{base_url}/anything")
+
+    with pytest.warns(httpr.ClientReopenedWarning):
+        async with client:
+            assert (await client.get(f"{base_url}/anything")).status_code == 200
+    assert client.is_closed
