@@ -11,6 +11,7 @@ import asyncio
 import gc
 import threading
 import time
+import warnings
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
@@ -129,29 +130,73 @@ def test_context_manager_exit_releases_pooled_connections(server):
     assert server.wait_for_open_connections(0), "__exit__ must release the pooled connection"
 
 
-def test_request_after_close_raises_client_closed(server):
+def test_request_after_close_reopens_with_warning(server):
+    """Use after close reopens the client with a fresh pool (requests.Session semantics)."""
     client = httpr.Client()
     client.get(server.url)
     client.close()
+    assert server.wait_for_open_connections(0)
 
-    with pytest.raises(httpr.ClientClosed, match="client has been closed"):
-        client.get(server.url)
-    with pytest.raises(httpr.ClientClosed):
-        client.request("GET", server.url)
-    with pytest.raises(httpr.ClientClosed):
-        with client.stream("GET", server.url):
-            pass
+    with pytest.warns(httpr.ClientReopenedWarning, match="reopening"):
+        assert client.get(server.url).status_code == 200
+    assert client.is_closed is False
+    assert server.wait_for_open_connections(1), "the reopened client pools its connection again"
 
-    # Nothing reached the server.
-    assert server.requests_served == 1
+    # Only the request that reopens warns; the client is open again afterwards.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert client.request("GET", server.url).status_code == 200
+        with client.stream("GET", server.url) as response:
+            assert response.status_code == 200
+    assert server.requests_served == 4
+
+    client.close()
+    assert client.is_closed
+    assert server.wait_for_open_connections(0), "close() releases the reopened pool as well"
 
 
-def test_client_closed_is_a_runtime_error(server):
-    """httpx raises RuntimeError on use-after-close; code written for it keeps working."""
+def test_stream_after_close_reopens(server):
     client = httpr.Client()
     client.close()
-    with pytest.raises(RuntimeError):
-        client.get(server.url)
+    with pytest.warns(httpr.ClientReopenedWarning):
+        with client.stream("GET", server.url) as response:
+            assert response.read()
+    assert not client.is_closed
+
+
+def test_generator_consumed_after_with_block(server):
+    """The pyvespa pattern: a lazy generator created inside `with`, consumed after it.
+
+    Every released pyvespa does this in `Vespa.visit()`; 0.7.0 and 0.7.1 broke it.
+    """
+
+    def pages(client):
+        for _ in range(3):
+            yield client.get(server.url).status_code
+
+    with httpr.Client() as client:
+        gen = pages(client)
+    assert client.is_closed
+    with pytest.warns(httpr.ClientReopenedWarning):
+        assert list(gen) == [200, 200, 200]
+
+
+def test_reopened_warning_can_be_made_an_error(server):
+    """Filtering the warning as an error restores httpx's strict use-after-close."""
+    client = httpr.Client()
+    client.get(server.url)
+    client.close()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", httpr.ClientReopenedWarning)
+        with pytest.raises(httpr.ClientReopenedWarning):
+            client.get(server.url)
+    assert server.requests_served == 1, "no request is sent when the warning is an error"
+
+
+def test_reopened_warning_is_a_resource_warning():
+    assert issubclass(httpr.ClientReopenedWarning, ResourceWarning)
+    # Kept for code written against 0.7.0/0.7.1.
+    assert issubclass(httpr.ClientClosed, RuntimeError)
 
 
 def test_close_is_idempotent(server):
@@ -171,20 +216,27 @@ def test_is_closed_property():
     assert client.is_closed is True
 
 
-def test_close_never_used_client():
+def test_close_never_used_client(server):
     client = httpr.Client()
     client.close()
     assert client.is_closed
     client.close()  # still a no-op
-    with pytest.raises(httpr.ClientClosed):
-        client.get("http://127.0.0.1:9/")
+    with pytest.warns(httpr.ClientReopenedWarning):
+        assert client.get(server.url).status_code == 200
 
 
-def test_proxy_setter_after_close_raises():
+def test_proxy_setter_after_close_applies_on_reopen(server):
+    """Assigning the proxy on a closed client is recorded and used by the rebuild."""
     client = httpr.Client()
+    client.get(server.url)
     client.close()
-    with pytest.raises(httpr.ClientClosed):
-        client.proxy = "http://127.0.0.1:1"
+    client.proxy = "http://127.0.0.1:1"
+    assert client.is_closed, "assigning a proxy does not reopen the client by itself"
+    assert client.proxy == "http://127.0.0.1:1"
+    with pytest.warns(httpr.ClientReopenedWarning), pytest.raises(httpr.HTTPError):
+        client.get(server.url)  # nothing listens on port 1
+    client.proxy = None
+    assert client.get(server.url).status_code == 200
 
 
 def test_headers_still_readable_after_close():
@@ -289,10 +341,12 @@ async def test_aclose_releases_connections_and_shuts_down_executor(server):
     assert (await client.get(server.url)).status_code == 200
     assert server.wait_for_open_connections(1)
 
+    executor = client._executor
     await client.aclose()
 
     assert client.is_closed
-    assert client._executor._shutdown, "aclose() must shut down the client's own thread pool"
+    assert executor._shutdown, "aclose() must shut down the client's own thread pool"
+    assert client._executor is None
     assert server.wait_for_open_connections(0)
 
 
@@ -303,22 +357,27 @@ async def test_async_context_manager_exit_closes(server):
         assert server.wait_for_open_connections(1)
 
     assert client.is_closed
-    assert client._executor._shutdown
+    assert client._executor is None
     assert server.wait_for_open_connections(0)
 
 
 @pytest.mark.asyncio
-async def test_async_request_after_aclose_raises_client_closed(server):
-    client = httpr.AsyncClient()
+async def test_async_request_after_aclose_reopens(server):
+    client = httpr.AsyncClient(max_concurrency=4)
     await client.get(server.url)
     await client.aclose()
 
-    with pytest.raises(httpr.ClientClosed, match="client has been closed"):
-        await client.get(server.url)
-    with pytest.raises(httpr.ClientClosed):
-        async with client.stream("GET", server.url):
-            pass
-    assert server.requests_served == 1
+    with pytest.warns(httpr.ClientReopenedWarning):
+        assert (await client.get(server.url)).status_code == 200
+    assert not client.is_closed
+    assert client._executor is not None and not client._executor._shutdown, "a new thread pool"
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        async with client.stream("GET", server.url) as response:
+            assert await response.aread()
+    assert server.requests_served == 3
+    await client.aclose()
+    assert server.wait_for_open_connections(0)
 
 
 @pytest.mark.asyncio
@@ -330,12 +389,12 @@ async def test_aclose_is_idempotent():
 
 
 @pytest.mark.asyncio
-async def test_aclose_never_used_client():
+async def test_aclose_never_used_client(server):
     client = httpr.AsyncClient()
     await client.aclose()
     assert client.is_closed
-    with pytest.raises(httpr.ClientClosed):
-        await client.get("http://127.0.0.1:9/")
+    with pytest.warns(httpr.ClientReopenedWarning):
+        assert (await client.get(server.url)).status_code == 200
 
 
 @pytest.mark.asyncio

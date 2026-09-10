@@ -130,8 +130,10 @@ def test_client_identity_survives_rebuild(tmp_path):
     client.proxy = "http://127.0.0.1:1"
 
 
-def test_proxy_setter_after_close_raises_client_closed():
-    client = httpr.Client()
+def test_proxy_setter_after_close_is_recorded():
+    """A closed client has no reqwest client to rebuild; the proxy is kept for the reopen."""
+    client = httpr.Client(proxy="http://127.0.0.1:1")
     client.close()
-    with pytest.raises(httpr.ClientClosed):
-        client.proxy = None
+    client.proxy = None
+    assert client.proxy is None
+    assert client.is_closed

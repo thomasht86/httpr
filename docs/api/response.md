@@ -635,7 +635,7 @@ async with httpr.AsyncClient() as client:
             handle(line)
 ```
 
-The synchronous `iter_bytes()`, `iter_text()`, `iter_lines()` and `read()` remain available on the async response but block the event loop until the next chunk arrives; prefer the `a`-prefixed methods in async code. After `client.aclose()`, the next async step raises `httpr.ClientClosed`.
+The synchronous `iter_bytes()`, `iter_text()`, `iter_lines()` and `read()` remain available on the async response but block the event loop until the next chunk arrives; prefer the `a`-prefixed methods in async code. A stream that is open when `client.aclose()` is called keeps its connection and can still be read to the end.
 
 ---
 

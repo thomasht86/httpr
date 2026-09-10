@@ -1,5 +1,5 @@
 use pyo3::create_exception;
-use pyo3::exceptions::{PyException, PyRuntimeError};
+use pyo3::exceptions::{PyException, PyResourceWarning, PyRuntimeError};
 use pyo3::prelude::*;
 
 use crate::timeout::TimedOut;
@@ -184,7 +184,13 @@ create_exception!(
     httpr,
     ClientClosed,
     PyRuntimeError,
-    "Attempted to use a client after `close()` was called. Subclasses RuntimeError, matching httpx."
+    "Raised when a request cannot be started because the client was closed underneath it. Subclasses RuntimeError, matching httpx. Since 0.7.2 a request on a closed client reopens it instead (see `ClientReopenedWarning`), so this is only seen when `close()` races the request itself."
+);
+create_exception!(
+    httpr,
+    ClientReopenedWarning,
+    PyResourceWarning,
+    "A request was made on a client after `close()`; the client was reopened with a fresh connection pool. Filter this warning with `error` to make use-after-close raise instead."
 );
 
 // Other exceptions
@@ -405,6 +411,10 @@ pub fn register_exceptions(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Client lifecycle exceptions
     m.add("ClientClosed", m.py().get_type::<ClientClosed>())?;
+    m.add(
+        "ClientReopenedWarning",
+        m.py().get_type::<ClientReopenedWarning>(),
+    )?;
 
     // Other exceptions
     m.add("InvalidURL", m.py().get_type::<InvalidURL>())?;

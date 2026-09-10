@@ -28,6 +28,13 @@
 //! A client that never started a request has nothing to release: its pool
 //! holds no connection and its connector has no connect pending, so closing
 //! or dropping it skips the whole procedure.
+//!
+//! A closed client is not dead. A request made after `close()` rebuilds the
+//! `reqwest::Client` from the constructor settings and carries on with a fresh
+//! pool (`requests.Session` semantics), after warning. [`ClientState::reopen`]
+//! installs the rebuilt client together with a new cancellation token, since
+//! the old token was cancelled by the close and would kill every connect of the
+//! new pool on sight.
 
 use std::fmt;
 use std::future::Future;
@@ -83,8 +90,9 @@ pub struct ClientState {
     /// Whether any request was ever started. Until then the pool cannot hold a
     /// connection or a pending connect, so there is nothing to release.
     used: AtomicBool,
-    /// Cancels every connect still pending in the pool's connector.
-    connects: CancellationToken,
+    /// Cancels every connect still pending in the pool's connector. Replaced
+    /// together with the client on [`ClientState::reopen`].
+    connects: Mutex<CancellationToken>,
 }
 
 impl ClientState {
@@ -95,14 +103,19 @@ impl ClientState {
             client: Mutex::new(Some(client)),
             in_flight: AtomicUsize::new(0),
             used: AtomicBool::new(false),
-            connects,
+            connects: Mutex::new(connects),
         })
     }
 
-    /// The layer to install on any `reqwest::ClientBuilder` whose client will
-    /// live in this state, so `close()` can cancel its pending connects.
+    /// The layer to install on a `reqwest::ClientBuilder` whose client will
+    /// replace the current one via [`ClientState::replace`], so `close()` can
+    /// cancel its pending connects.
     pub fn connector_layer(&self) -> CancelConnectsLayer {
-        CancelConnectsLayer(self.connects.clone())
+        CancelConnectsLayer(self.token().clone())
+    }
+
+    fn token(&self) -> MutexGuard<'_, CancellationToken> {
+        self.connects.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     /// The slot holding the client. A poisoned lock is recovered rather than
@@ -151,6 +164,24 @@ impl ClientState {
         true
     }
 
+    /// Bring a closed client back with a rebuilt `reqwest::Client`. `connects`
+    /// must be the fresh token its [`CancelConnectsLayer`] was created from; the
+    /// previous token was cancelled by `close()` and must not be reused. Returns
+    /// `false`, leaving `new` unused, if the client is open (another thread
+    /// reopened it first, or it was never closed).
+    pub fn reopen(&self, new: reqwest::Client, connects: CancellationToken) -> bool {
+        let mut slot = self.slot();
+        if slot.is_some() {
+            return false;
+        }
+        *slot = Some(new);
+        *self.token() = connects;
+        // The new pool has no connection and nothing pending; `used` describes
+        // the pool in the slot, so it starts over.
+        self.used.store(false, Ordering::SeqCst);
+        true
+    }
+
     /// Close the client. Returns `false` if it was already closed.
     pub fn close(&self) -> bool {
         let Some(client) = self.slot().take() else {
@@ -174,7 +205,7 @@ impl ClientState {
             // alive. With requests in flight this is skipped: their connects
             // must not be interrupted, and the last of them to finish will
             // cancel instead (see `InFlight`).
-            self.connects.cancel();
+            self.token().cancel();
         }
         settle_dropped_pool();
     }

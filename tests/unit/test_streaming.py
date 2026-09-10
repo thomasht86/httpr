@@ -343,14 +343,14 @@ class TestStreamingAsyncClient:
                 async with client.stream("INVALID", f"{base_url_ssl}/get") as _:  # type: ignore[arg-type]
                     pass
 
-    async def test_async_stream_after_close_raises_client_closed(self, base_url_ssl, ca_bundle):
-        """Once the client is closed, async iteration reports ClientClosed."""
+    async def test_async_stream_survives_client_close(self, base_url_ssl, ca_bundle):
+        """An open stream holds its own handle to the pool and reads to the end after aclose()."""
         client = httpr.AsyncClient(ca_cert_file=ca_bundle)
         async with client.stream("GET", f"{base_url_ssl}/html") as response:
             await client.aclose()
-            with pytest.raises(httpr.ClientClosed):
-                async for _ in response.aiter_bytes():
-                    pass
+            body = b"".join([chunk async for chunk in response.aiter_bytes()])
+        assert b"<html" in body.lower()
+        assert client.is_closed, "reading an in-flight stream does not reopen the client"
 
     # -- Issue #85: iteration must not block the event loop ---------------------
 
