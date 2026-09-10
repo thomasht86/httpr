@@ -101,8 +101,13 @@ jobs:
           uv pip install --python .venv-pyvespa/bin/python --no-deps --reinstall dist/httpr-*.whl
           .venv-pyvespa/bin/python -c "import importlib.metadata as m; v = m.version('httpr'); assert v.startswith('0.0.0'), v; print('httpr', v)"
       - name: pyvespa unit tests
+        # The venv's bin goes first on PATH: the deployment tests create a
+        # throwaway Vespa Cloud cert/key pair with the `vespa` CLI (from the
+        # `vespacli` package in pyvespa's unittest extra) and skip it otherwise.
         working-directory: pyvespa
-        run: ../.venv-pyvespa/bin/python -m pytest tests/unit -q -p no:cacheprovider
+        run: |
+          export PATH="$GITHUB_WORKSPACE/.venv-pyvespa/bin:$PATH"
+          python -m pytest tests/unit -q -p no:cacheprovider
 
   # E2E tests with httpbun Docker container - runs on PRs, main branch, and tag pushes
   e2e:
