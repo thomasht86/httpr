@@ -242,7 +242,7 @@ jobs:
           name: wheels-linux-${{ matrix.platform.arch }}
           path: dist
       - name: pytest
-        if: ${{ matrix.platform.target == 'x86_64' || matrix.platform.target == 'aarch64' }}
+        if: ${{ matrix.platform.arch == 'x86_64' || matrix.platform.arch == 'aarch64' }}
         shell: bash
         env:
           RUSTC_WRAPPER: ""
