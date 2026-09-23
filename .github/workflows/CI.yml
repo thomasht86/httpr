@@ -190,13 +190,25 @@ jobs:
       matrix:
         platform:
           - runner: ubuntu-22.04
-            target: x86_64
+            target: x86_64-unknown-linux-gnu
+            arch: x86_64
+            manylinux: auto
           - runner: ubuntu-22.04
-            target: x86
+            target: i686-unknown-linux-gnu
+            arch: x86
+            manylinux: auto
           - runner: ubuntu-24.04-arm
-            target: aarch64
+            target: aarch64-unknown-linux-gnu
+            arch: aarch64
+            manylinux: auto
           - runner: ubuntu-22.04
-            target: armv7
+            target: armv7-unknown-linux-gnueabihf
+            arch: armv7
+            manylinux: auto
+          - runner: ubuntu-24.04-riscv
+            target: riscv64gc-unknown-linux-gnu
+            arch: riscv64
+            manylinux: 2_39
           # - runner: ubuntu-22.04
           #   target: s390x
           # - runner: ubuntu-22.04
@@ -216,21 +228,21 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist
           sccache: true
-          manylinux: auto
+          manylinux: ${{ matrix.platform.manylinux }}
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist -i python3.14t
           sccache: true
-          manylinux: auto
+          manylinux: ${{ matrix.platform.manylinux }}
       - name: Upload wheels
         uses: actions/upload-artifact@v6
         with:
-          name: wheels-linux-${{ matrix.platform.target }}
+          name: wheels-linux-${{ matrix.platform.arch }}
           path: dist
       - name: pytest
-        if: ${{ matrix.platform.target == 'x86_64' || matrix.platform.target == 'aarch64' }}
+        if: ${{ matrix.platform.arch == 'x86_64' || matrix.platform.arch == 'aarch64' }}
         shell: bash
         env:
           RUSTC_WRAPPER: ""
@@ -249,11 +261,14 @@ jobs:
       matrix:
         platform:
           - runner: ubuntu-22.04
-            target: x86_64
+            target: x86_64-unknown-linux-musl
+            arch: x86_64
           - runner: ubuntu-22.04
-            target: x86
+            target: i686-unknown-linux-musl
+            arch: x86
           - runner: ubuntu-24.04-arm
-            target: aarch64
+            target: aarch64-unknown-linux-musl
+            arch: aarch64
           # - runner: ubuntu-22.04
           #   target: armv7
     steps:
@@ -282,10 +297,10 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v6
         with:
-          name: wheels-musllinux-${{ matrix.platform.target }}
+          name: wheels-musllinux-${{ matrix.platform.arch }}
           path: dist
       - name: pytest
-        if: ${{ matrix.platform.target == 'x86_64' || matrix.platform.target == 'aarch64' }}
+        if: ${{ matrix.platform.arch == 'x86_64' || matrix.platform.arch == 'aarch64' }}
         uses: addnab/docker-run-action@v3
         with:
           image: alpine:latest
