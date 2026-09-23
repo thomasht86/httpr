@@ -300,7 +300,7 @@ jobs:
           name: wheels-musllinux-${{ matrix.platform.arch }}
           path: dist
       - name: pytest
-        if: ${{ matrix.platform.target == 'x86_64' || matrix.platform.target == 'aarch64' }}
+        if: ${{ matrix.platform.arch == 'x86_64' || matrix.platform.arch == 'aarch64' }}
         uses: addnab/docker-run-action@v3
         with:
           image: alpine:latest
