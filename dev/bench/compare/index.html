@@ -12,7 +12,7 @@
   .meta { color: #555; }
 </style>
 <h1>HTTP client comparison</h1>
-<p class="meta">Generated 2026-09-21 by <a href="https://github.com/thomasht86/httpr/actions/runs/35595981952">workflow run</a> against the latest release of every library.
+<p class="meta">Generated 2026-09-28 by <a href="https://github.com/thomasht86/httpr/actions/runs/36423651362">workflow run</a> against the latest release of every library.
 400 requests per cell against a local uvicorn server with gzip responses; wall-clock seconds, lower is better.
 Absolute numbers depend on the GitHub runner, so compare rows, not weeks.
 See also the <a href="../">httpr performance trend</a> and the
@@ -34,10 +34,10 @@ See also the <a href="../">httpr performance trend</a> and the
   <tbody>
     <tr>
       <td>httpr 0.7.2</td>
-      <td>0.60</td>
-      <td>0.23</td>
+      <td>0.54</td>
+      <td>0.22</td>
       <td>0.15</td>
-      <td>0.45</td>
+      <td>0.42</td>
       <td>0.11</td>
       <td>0.03</td>
     </tr>
@@ -45,53 +45,53 @@ See also the <a href="../">httpr performance trend</a> and the
       <td>pycurl 7.48.0</td>
       <td>0.73</td>
       <td>0.28</td>
-      <td>0.14</td>
-      <td>0.60</td>
       <td>0.16</td>
-      <td>0.03</td>
+      <td>0.59</td>
+      <td>0.15</td>
+      <td>0.04</td>
     </tr>
     <tr>
       <td>curl_cffi 0.16.3</td>
-      <td>0.84</td>
-      <td>0.38</td>
-      <td>0.24</td>
+      <td>0.82</td>
+      <td>0.35</td>
+      <td>0.23</td>
       <td>0.69</td>
+      <td>0.23</td>
+      <td>0.10</td>
+    </tr>
+    <tr>
+      <td>httpx2 2.13.1</td>
+      <td>0.83</td>
+      <td>0.39</td>
       <td>0.25</td>
-      <td>0.11</td>
+      <td>0.71</td>
+      <td>0.28</td>
+      <td>0.14</td>
     </tr>
     <tr>
       <td>httpx 0.28.1</td>
-      <td>0.86</td>
-      <td>0.47</td>
-      <td>0.27</td>
-      <td>0.75</td>
-      <td>0.33</td>
-      <td>0.17</td>
-    </tr>
-    <tr>
-      <td>httpx2 2.13.0</td>
-      <td>0.86</td>
-      <td>0.42</td>
-      <td>0.27</td>
-      <td>0.73</td>
-      <td>0.29</td>
-      <td>0.16</td>
+      <td>0.93</td>
+      <td>0.44</td>
+      <td>0.28</td>
+      <td>0.78</td>
+      <td>0.32</td>
+      <td>0.18</td>
     </tr>
     <tr>
       <td>requests 2.34.2</td>
-      <td>1.02</td>
-      <td>0.60</td>
-      <td>0.38</td>
-      <td>0.91</td>
-      <td>0.45</td>
-      <td>0.26</td>
+      <td>1.06</td>
+      <td>0.56</td>
+      <td>0.44</td>
+      <td>0.92</td>
+      <td>0.43</td>
+      <td>0.29</td>
     </tr>
     <tr>
       <td>tls_client 1.0.1</td>
       <td>1.56</td>
       <td>0.61</td>
       <td>0.32</td>
-      <td>1.71</td>
+      <td>1.70</td>
       <td>0.56</td>
       <td>0.22</td>
     </tr>
@@ -112,66 +112,66 @@ See also the <a href="../">httpr performance trend</a> and the
   <tbody>
     <tr>
       <td>httpr 0.7.2</td>
-      <td>0.68</td>
-      <td>0.32</td>
-      <td>0.25</td>
-      <td>0.51</td>
-      <td>0.17</td>
-      <td>0.09</td>
+      <td>0.66</td>
+      <td>0.30</td>
+      <td>0.20</td>
+      <td>0.50</td>
+      <td>0.16</td>
+      <td>0.06</td>
     </tr>
     <tr>
       <td>pycurl 7.48.0</td>
-      <td>0.80</td>
-      <td>0.38</td>
-      <td>0.24</td>
-      <td>0.63</td>
-      <td>0.22</td>
-      <td>0.09</td>
+      <td>0.79</td>
+      <td>0.33</td>
+      <td>0.19</td>
+      <td>0.62</td>
+      <td>0.18</td>
+      <td>0.05</td>
     </tr>
     <tr>
       <td>curl_cffi 0.16.3</td>
-      <td>0.91</td>
+      <td>0.89</td>
       <td>0.51</td>
-      <td>0.33</td>
-      <td>0.75</td>
-      <td>0.33</td>
-      <td>0.17</td>
+      <td>0.31</td>
+      <td>0.74</td>
+      <td>0.34</td>
+      <td>0.16</td>
     </tr>
     <tr>
-      <td>httpx2 2.13.0</td>
-      <td>1.12</td>
-      <td>0.65</td>
-      <td>0.56</td>
-      <td>0.98</td>
+      <td>httpx2 2.13.1</td>
+      <td>1.07</td>
+      <td>0.66</td>
+      <td>0.60</td>
+      <td>0.95</td>
       <td>0.53</td>
-      <td>0.45</td>
+      <td>0.47</td>
     </tr>
     <tr>
       <td>requests 2.34.2</td>
-      <td>1.19</td>
-      <td>0.69</td>
-      <td>0.51</td>
-      <td>1.02</td>
-      <td>0.53</td>
-      <td>0.35</td>
+      <td>1.12</td>
+      <td>0.65</td>
+      <td>0.47</td>
+      <td>0.97</td>
+      <td>0.50</td>
+      <td>0.32</td>
     </tr>
     <tr>
       <td>tls_client 1.0.1</td>
       <td>1.70</td>
       <td>0.75</td>
-      <td>0.45</td>
+      <td>0.46</td>
       <td>1.88</td>
       <td>0.73</td>
-      <td>0.36</td>
+      <td>0.38</td>
     </tr>
     <tr>
       <td>httpx 0.28.1</td>
-      <td>7.05</td>
-      <td>6.59</td>
-      <td>6.54</td>
-      <td>6.90</td>
-      <td>6.44</td>
-      <td>6.40</td>
+      <td>7.02</td>
+      <td>6.55</td>
+      <td>6.53</td>
+      <td>6.88</td>
+      <td>6.41</td>
+      <td>6.39</td>
     </tr>
   </tbody>
 </table><h2>Async, one client reused</h2>
@@ -198,88 +198,88 @@ See also the <a href="../">httpr performance trend</a> and the
   <tbody>
     <tr>
       <td>httpr 0.7.2</td>
-      <td>0.26</td>
+      <td>0.30</td>
       <td>0.16</td>
-      <td>0.15</td>
-      <td>0.36</td>
-      <td>0.44</td>
+      <td>0.16</td>
+      <td>0.38</td>
+      <td>0.47</td>
       <td>0.15</td>
       <td>0.14</td>
-      <td>0.67</td>
-      <td>0.26</td>
-      <td>0.13</td>
-      <td>0.44</td>
-      <td>0.80</td>
+      <td>0.66</td>
+      <td>0.25</td>
+      <td>0.14</td>
+      <td>0.47</td>
+      <td>0.82</td>
       <td>0.17</td>
-      <td>0.18</td>
+      <td>0.17</td>
     </tr>
     <tr>
       <td>aiohttp 3.14.3</td>
-      <td>0.63</td>
-      <td>0.23</td>
-      <td>0.17</td>
-      <td>0.22</td>
-      <td>0.46</td>
+      <td>0.66</td>
+      <td>0.24</td>
+      <td>0.18</td>
       <td>0.19</td>
-      <td>0.19</td>
-      <td>0.62</td>
-      <td>0.22</td>
-      <td>0.11</td>
-      <td>0.16</td>
       <td>0.44</td>
+      <td>0.20</td>
+      <td>0.19</td>
+      <td>0.64</td>
+      <td>0.22</td>
+      <td>0.12</td>
+      <td>0.13</td>
+      <td>0.42</td>
       <td>0.09</td>
-      <td>0.14</td>
+      <td>0.15</td>
     </tr>
     <tr>
       <td>curl_cffi 0.16.3</td>
+      <td>0.75</td>
+      <td>0.29</td>
+      <td>0.14</td>
+      <td>0.99</td>
+      <td>1.33</td>
+      <td>0.22</td>
+      <td>0.24</td>
       <td>0.74</td>
       <td>0.28</td>
-      <td>0.15</td>
-      <td>0.98</td>
-      <td>1.31</td>
-      <td>0.23</td>
-      <td>0.27</td>
-      <td>0.74</td>
-      <td>0.27</td>
-      <td>0.15</td>
+      <td>0.14</td>
       <td>0.95</td>
-      <td>1.28</td>
-      <td>0.23</td>
-      <td>0.27</td>
+      <td>1.30</td>
+      <td>0.22</td>
+      <td>0.24</td>
     </tr>
     <tr>
-      <td>httpx2 2.13.0</td>
+      <td>httpx2 2.13.1</td>
       <td>0.85</td>
-      <td>0.37</td>
-      <td>0.25</td>
-      <td>1.17</td>
-      <td>1.43</td>
-      <td>0.32</td>
+      <td>0.38</td>
+      <td>0.26</td>
+      <td>1.15</td>
+      <td>1.44</td>
+      <td>0.33</td>
       <td>0.37</td>
       <td>0.85</td>
+      <td>0.38</td>
+      <td>0.26</td>
+      <td>1.15</td>
+      <td>1.44</td>
+      <td>0.33</td>
       <td>0.37</td>
-      <td>0.25</td>
-      <td>1.17</td>
-      <td>1.43</td>
-      <td>0.32</td>
-      <td>0.36</td>
     </tr>
     <tr>
       <td>httpx 0.28.1</td>
-      <td>2.87</td>
-      <td>2.37</td>
-      <td>2.24</td>
-      <td>3.28</td>
-      <td>3.49</td>
-      <td>2.31</td>
+      <td>2.93</td>
+      <td>2.45</td>
       <td>2.33</td>
-      <td>2.87</td>
-      <td>2.37</td>
-      <td>2.24</td>
-      <td>3.27</td>
-      <td>3.49</td>
-      <td>2.30</td>
+      <td>3.24</td>
+      <td>3.50</td>
+      <td>2.40</td>
+      <td>2.42</td>
+      <td>2.93</td>
+      <td>2.45</td>
       <td>2.33</td>
+      <td>3.24</td>
+      <td>3.50</td>
+      <td>2.40</td>
+      <td>2.42</td>
     </tr>
   </tbody>
 </table><h2>32 threads, one client reused</h2>
@@ -298,66 +298,66 @@ See also the <a href="../">httpr performance trend</a> and the
   <tbody>
     <tr>
       <td>httpr 0.7.2</td>
-      <td>0.20</td>
-      <td>0.12</td>
-      <td>0.11</td>
+      <td>0.21</td>
+      <td>0.13</td>
+      <td>0.13</td>
       <td>0.51</td>
-      <td>0.17</td>
-      <td>0.06</td>
+      <td>0.16</td>
+      <td>0.07</td>
     </tr>
     <tr>
       <td>pycurl 7.48.0</td>
       <td>0.40</td>
       <td>0.14</td>
-      <td>0.12</td>
+      <td>0.11</td>
       <td>1.04</td>
-      <td>0.20</td>
+      <td>0.21</td>
       <td>0.05</td>
     </tr>
     <tr>
-      <td>httpx2 2.13.0</td>
+      <td>httpx2 2.13.1</td>
       <td>0.48</td>
       <td>0.26</td>
-      <td>0.22</td>
-      <td>1.01</td>
+      <td>0.24</td>
+      <td>1.00</td>
       <td>0.42</td>
-      <td>0.27</td>
+      <td>0.29</td>
     </tr>
     <tr>
       <td>curl_cffi 0.16.3</td>
       <td>0.61</td>
-      <td>0.34</td>
+      <td>0.32</td>
       <td>0.23</td>
-      <td>1.36</td>
-      <td>0.60</td>
-      <td>0.36</td>
+      <td>1.37</td>
+      <td>0.59</td>
+      <td>0.35</td>
     </tr>
     <tr>
       <td>tls_client 1.0.1</td>
-      <td>0.73</td>
-      <td>0.30</td>
-      <td>0.15</td>
-      <td>2.01</td>
-      <td>0.72</td>
+      <td>0.75</td>
+      <td>0.31</td>
+      <td>0.14</td>
+      <td>1.99</td>
+      <td>0.71</td>
       <td>0.22</td>
     </tr>
     <tr>
       <td>requests 2.34.2</td>
-      <td>0.86</td>
-      <td>0.47</td>
+      <td>0.85</td>
+      <td>0.50</td>
       <td>0.35</td>
       <td>1.47</td>
-      <td>0.64</td>
-      <td>0.38</td>
+      <td>0.67</td>
+      <td>0.39</td>
     </tr>
     <tr>
       <td>httpx 0.28.1</td>
-      <td>1.02</td>
-      <td>0.74</td>
-      <td>0.70</td>
-      <td>3.09</td>
-      <td>2.35</td>
-      <td>2.19</td>
+      <td>1.01</td>
+      <td>0.77</td>
+      <td>0.69</td>
+      <td>3.07</td>
+      <td>2.46</td>
+      <td>2.18</td>
     </tr>
   </tbody>
 </table>
