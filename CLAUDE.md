@@ -186,7 +186,13 @@ builds in debug mode and the numbers are meaningless.
 
 ### Proxy
 - Set via `proxy` param or `HTTPR_PROXY` env var; the env var is read once in `new()`, never in the setter
-- Changing `client.proxy` rebuilds the entire reqwest client (expensive). `RClient.config: ClientConfig` keeps the construction settings (loaded root certs, mTLS `Identity`, redirects, verify, https_only, http2_only, cookie_store, referer) and `ClientConfig::build()` is the single place a `reqwest::Client` is built, used by `new()` and `set_proxy()`; add any new builder setting there, not inline (issue #84). The setter takes `Option<String>`; `None` removes the proxy. The rebuilt client starts with an empty cookie store
+- Changing `client.proxy` rebuilds the entire reqwest client (expensive). `RClient.config: ClientConfig` keeps the construction settings (loaded root certs, mTLS `Identity`, redirects, verify, https_only, http2_only, http1_only, cookie_store, referer) and `ClientConfig::build()` is the single place a `reqwest::Client` is built, used by `new()` and `set_proxy()`; add any new builder setting there, not inline (issue #84). The setter takes `Option<String>`; `None` removes the proxy. The rebuilt client starts with an empty cookie store
+
+### HTTP Version (issue #113)
+- Default (`http2_only=False`, `http1_only=False`) is reqwest's ALPN negotiation: HTTP/2 over TLS when the server offers it, else HTTP/1.1; plain `http://` is HTTP/1.1. It is not "HTTP/1 only", whatever older docs said
+- `http2_only=True` → `http2_prior_knowledge()` (h2c on `http://`); `http1_only=True` → `http1_only()`; both at once raises `ValueError` in `new()`. Both live in `ClientConfig`
+- pyvespa relies on both current modes (sync client: negotiation, gets h2 on Vespa Cloud; `VespaAsync`: `http2_only=True`, h2c locally). Do not switch the default to httpx's HTTP/1.1-only or deprecate `http2_only` without Thomas's approval (issue #111)
+- `Response.http_version` / `StreamingResponse.http_version` use httpx spelling (`"HTTP/1.1"`, `"HTTP/2"`), set from `ResponseMeta::from_response` in `src/response.rs`
 
 ### Client Lifecycle (issue #88)
 - All lifecycle state lives in `src/lifecycle.rs`: `ClientState` (`Arc`-shared between an `RClient` and its in-flight requests) holds `client: Mutex<Option<reqwest::Client>>`, an `in_flight` counter and a `CancellationToken` for pending connects. `RClient::close()` takes the client (`None`); dropping the `reqwest::Client` drops the client's handle to its connection pool

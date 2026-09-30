@@ -223,6 +223,7 @@ class Client(RClient):
         client_pem_data: bytes | None = None,
         https_only: bool | None = False,
         http2_only: bool | None = False,
+        http1_only: bool | None = False,
     ):
         """
         Initialize an HTTP client.
@@ -253,7 +254,12 @@ class Client(RClient):
             client_pem_data: Client certificate and key as bytes for mTLS (PEM format).
                 Use this instead of client_pem when you have the certificate in memory.
             https_only: Only allow HTTPS requests. Default is False.
-            http2_only: Use HTTP/2 only (False uses HTTP/1.1). Default is False.
+            http2_only: Speak HTTP/2 from the first byte (prior knowledge), including
+                cleartext h2c on `http://` URLs. Default is False, which negotiates:
+                over TLS, HTTP/2 when the server offers it (ALPN), otherwise HTTP/1.1;
+                plain `http://` uses HTTP/1.1.
+            http1_only: Only use HTTP/1.1, never HTTP/2. Default is False. Cannot be
+                combined with `http2_only`.
 
         Example:
             ```python
@@ -685,6 +691,11 @@ class AsyncStreamingResponse:
     def url(self) -> str:
         """Final URL after any redirects."""
         return self._response.url
+
+    @property
+    def http_version(self) -> str:
+        """Protocol the response arrived over, e.g. "HTTP/1.1" or "HTTP/2"."""
+        return self._response.http_version
 
     @property
     def is_informational(self) -> bool:

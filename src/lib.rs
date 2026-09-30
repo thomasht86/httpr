@@ -27,7 +27,9 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 use tokio_util::sync::CancellationToken;
 
 mod response;
-use response::{CaseInsensitiveHeaderMap, LineIterator, Response, StreamingResponse, TextIterator};
+use response::{
+    CaseInsensitiveHeaderMap, LineIterator, Response, ResponseMeta, StreamingResponse, TextIterator,
+};
 
 mod params;
 use params::{merge_params, normalize_params, params_to_py, Pairs};
@@ -76,6 +78,7 @@ struct ClientConfig {
     identity: Option<Identity>,
     https_only: bool,
     http2_only: bool,
+    http1_only: bool,
 }
 
 impl ClientConfig {
@@ -118,8 +121,13 @@ impl ClientConfig {
         if let Some(identity) = &self.identity {
             builder = builder.identity(identity.clone());
         }
+        // Neither flag: ALPN offers h2 and http/1.1 over TLS, plain http:// is
+        // HTTP/1.1. `new()` rejects both flags at once.
         if self.http2_only {
             builder = builder.http2_prior_knowledge();
+        }
+        if self.http1_only {
+            builder = builder.http1_only();
         }
         builder.build().map_err(map_reqwest_error)
     }
@@ -325,21 +333,6 @@ async fn send_request(
     timeout::with_timeout(timeout, Phase::Headers, builder.send()).await
 }
 
-/// Cookies, headers, status and final URL of a response.
-fn response_meta(resp: &reqwest::Response) -> (IndexMapSSR, IndexMapSSR, u16, String) {
-    let cookies: IndexMapSSR = resp
-        .cookies()
-        .map(|cookie| (cookie.name().to_string(), cookie.value().to_string()))
-        .collect();
-    let headers: IndexMapSSR = resp.headers().to_indexmap();
-    (
-        cookies,
-        headers,
-        resp.status().as_u16(),
-        resp.url().to_string(),
-    )
-}
-
 #[pymethods]
 impl RClient {
     /// Initializes an HTTP client that can impersonate web browsers.
@@ -366,7 +359,11 @@ impl RClient {
     /// * `verify` - An optional boolean indicating whether to verify SSL certificates. Default is `true`.
     /// * `ca_cert_file` - Path to CA certificate store. Default is None.
     /// * `https_only` - Restrict the Client to be used with HTTPS only requests. Default is `false`.
-    /// * `http2_only` - If true - use only HTTP/2, if false - use only HTTP/1. Default is `false`.
+    /// * `http2_only` - Speak HTTP/2 from the first byte (prior knowledge), including cleartext h2c on
+    ///         `http://` URLs. Default is `false`, which negotiates: over TLS, HTTP/2 when the server
+    ///         offers it via ALPN, otherwise HTTP/1.1; plain `http://` uses HTTP/1.1.
+    /// * `http1_only` - Only use HTTP/1.1, never HTTP/2. Default is `false`. Cannot be combined with
+    ///         `http2_only`.
     ///
     /// # Example
     ///
@@ -394,7 +391,7 @@ impl RClient {
     #[new]
     #[pyo3(signature = (auth=None, auth_bearer=None, params=None, headers=None, cookies=None,
         cookie_store=true, referer=true, proxy=None, timeout=30.0, follow_redirects=true,
-        max_redirects=20, verify=true, ca_cert_file=None, client_pem=None, client_pem_data=None, https_only=false, http2_only=false))]
+        max_redirects=20, verify=true, ca_cert_file=None, client_pem=None, client_pem_data=None, https_only=false, http2_only=false, http1_only=false))]
     fn new(
         auth: Option<(String, Option<String>)>,
         auth_bearer: Option<String>,
@@ -413,10 +410,18 @@ impl RClient {
         client_pem_data: Option<Vec<u8>>,
         https_only: Option<bool>,
         http2_only: Option<bool>,
+        http1_only: Option<bool>,
     ) -> PyResult<Self> {
         if client_pem.is_some() && client_pem_data.is_some() {
             return Err(PyValueError::new_err(
                 "Only one of client_pem or client_pem_data may be set.",
+            ));
+        }
+        let http2_only = http2_only.unwrap_or(false);
+        let http1_only = http1_only.unwrap_or(false);
+        if http1_only && http2_only {
+            return Err(PyValueError::new_err(
+                "Only one of http1_only or http2_only may be set.",
             ));
         }
         let params = params.map(|p| normalize_params(p, "params")).transpose()?;
@@ -476,7 +481,8 @@ impl RClient {
             root_certs,
             identity,
             https_only: https_only.unwrap_or(false),
-            http2_only: http2_only.unwrap_or(false),
+            http2_only,
+            http1_only,
         };
 
         let connects = CancellationToken::new();
@@ -727,17 +733,11 @@ impl RClient {
 
         let future = async move {
             let resp = send_request(builder, files, timeout).await?;
-            let (cookies, headers, status_code, url) = response_meta(&resp);
+            let meta = ResponseMeta::from_response(&resp);
             let buf = timeout::read_body(resp, timeout).await?;
 
-            tracing::info!("response: {} {} {}", url, status_code, buf.len());
-            Ok::<(Bytes, IndexMapSSR, IndexMapSSR, u16, String), anyhow::Error>((
-                buf,
-                cookies,
-                headers,
-                status_code,
-                url,
-            ))
+            tracing::info!("response: {} {} {}", meta.url, meta.status_code, buf.len());
+            Ok::<(Bytes, ResponseMeta), anyhow::Error>((buf, meta))
         };
 
         // Execute an async future, releasing the Python GIL for concurrency.
@@ -752,17 +752,9 @@ impl RClient {
             drop(in_flight);
             result
         });
-        let (f_buf, f_cookies, f_headers, f_status_code, f_url) =
-            result.map_err(map_anyhow_error)?;
+        let (buf, meta) = result.map_err(map_anyhow_error)?;
 
-        Ok(Response {
-            content: PyBytes::new(py, &f_buf).unbind(),
-            cookies: f_cookies,
-            encoding: String::new(),
-            headers: CaseInsensitiveHeaderMap::from_indexmap(f_headers),
-            status_code: f_status_code,
-            url: f_url,
-        })
+        Ok(Response::new(PyBytes::new(py, &buf).unbind(), meta))
     }
 
     /// Constructs an HTTP request and returns a StreamingResponse for iterating over chunks.
@@ -823,34 +815,19 @@ impl RClient {
         let future = async move {
             // Send the request and await the response (but don't read body)
             let resp = send_request(builder, files, timeout).await?;
-            let (cookies, headers, status_code, url) = response_meta(&resp);
+            let meta = ResponseMeta::from_response(&resp);
 
-            tracing::info!("streaming response: {} {}", url, status_code);
-            Ok::<(reqwest::Response, IndexMapSSR, IndexMapSSR, u16, String), anyhow::Error>((
-                resp,
-                cookies,
-                headers,
-                status_code,
-                url,
-            ))
+            tracing::info!("streaming response: {} {}", meta.url, meta.status_code);
+            Ok::<(reqwest::Response, ResponseMeta), anyhow::Error>((resp, meta))
         };
 
         // Execute an async future, releasing the Python GIL for concurrency.
         let result = py.detach(|| RUNTIME.block_on(future));
-        let (f_resp, f_cookies, f_headers, f_status_code, f_url) =
-            result.map_err(map_anyhow_error)?;
+        let (resp, meta) = result.map_err(map_anyhow_error)?;
 
         // The response keeps the request in flight until it is closed: its
         // connection stays busy, and a `close()` meanwhile must wait for it.
-        Ok(StreamingResponse::new(
-            f_resp,
-            in_flight,
-            f_cookies,
-            CaseInsensitiveHeaderMap::from_indexmap(f_headers),
-            f_status_code,
-            f_url,
-            timeout,
-        ))
+        Ok(StreamingResponse::new(resp, in_flight, meta, timeout))
     }
 }
 

@@ -5,6 +5,7 @@
 use crate::exceptions::{map_anyhow_error, HTTPStatusError, StreamClosed, StreamConsumed};
 use crate::lifecycle::InFlight;
 use crate::timeout::{next_chunk, read_body, TimedOut};
+use crate::traits::HeadersTraits;
 use crate::utils::{get_encoding_from_case_insensitive_headers, get_encoding_from_content};
 use crate::RUNTIME;
 use anyhow::{anyhow, Result};
@@ -192,6 +193,43 @@ impl CaseInsensitiveHeaderMap {
     }
 }
 
+/// The protocol version as httpx spells it (`response.http_version`).
+fn http_version_str(version: reqwest::Version) -> &'static str {
+    match version {
+        reqwest::Version::HTTP_09 => "HTTP/0.9",
+        reqwest::Version::HTTP_10 => "HTTP/1.0",
+        reqwest::Version::HTTP_11 => "HTTP/1.1",
+        reqwest::Version::HTTP_2 => "HTTP/2",
+        reqwest::Version::HTTP_3 => "HTTP/3",
+        _ => "HTTP/unknown",
+    }
+}
+
+/// Everything about a response except its body: what both `Response` and
+/// `StreamingResponse` are built from.
+pub struct ResponseMeta {
+    pub cookies: IndexMap<String, String, RandomState>,
+    pub headers: CaseInsensitiveHeaderMap,
+    pub status_code: u16,
+    pub url: String,
+    pub http_version: &'static str,
+}
+
+impl ResponseMeta {
+    pub fn from_response(resp: &reqwest::Response) -> Self {
+        ResponseMeta {
+            cookies: resp
+                .cookies()
+                .map(|cookie| (cookie.name().to_string(), cookie.value().to_string()))
+                .collect(),
+            headers: CaseInsensitiveHeaderMap::from_indexmap(resp.headers().to_indexmap()),
+            status_code: resp.status().as_u16(),
+            url: resp.url().to_string(),
+            http_version: http_version_str(resp.version()),
+        }
+    }
+}
+
 #[pyclass]
 pub struct Response {
     #[pyo3(get)]
@@ -206,10 +244,31 @@ pub struct Response {
     pub status_code: u16,
     #[pyo3(get)]
     pub url: String,
+    pub http_version: &'static str,
+}
+
+impl Response {
+    pub fn new(content: Py<PyBytes>, meta: ResponseMeta) -> Self {
+        Response {
+            content,
+            cookies: meta.cookies,
+            encoding: String::new(),
+            headers: meta.headers,
+            status_code: meta.status_code,
+            url: meta.url,
+            http_version: meta.http_version,
+        }
+    }
 }
 
 #[pymethods]
 impl Response {
+    /// The protocol the response arrived over: `"HTTP/1.1"`, `"HTTP/2"`, ...
+    #[getter]
+    fn http_version(&self) -> &'static str {
+        self.http_version
+    }
+
     #[getter]
     fn reason_phrase(&self) -> &'static str {
         reason_phrase(self.status_code)
@@ -369,6 +428,7 @@ pub struct StreamingResponse {
     pub status_code: u16,
     #[pyo3(get)]
     pub url: String,
+    http_version: &'static str,
     closed: Arc<Mutex<bool>>,
     consumed: Arc<Mutex<bool>>,
     encoding: Arc<Mutex<Option<String>>>,
@@ -385,18 +445,16 @@ impl StreamingResponse {
     pub fn new(
         response: reqwest::Response,
         in_flight: InFlight,
-        cookies: IndexMap<String, String, RandomState>,
-        headers: CaseInsensitiveHeaderMap,
-        status_code: u16,
-        url: String,
+        meta: ResponseMeta,
         timeout: Option<Duration>,
     ) -> Self {
         StreamingResponse {
             response: Arc::new(Mutex::new(Some(response))),
-            cookies,
-            headers,
-            status_code,
-            url,
+            cookies: meta.cookies,
+            headers: meta.headers,
+            status_code: meta.status_code,
+            url: meta.url,
+            http_version: meta.http_version,
             closed: Arc::new(Mutex::new(false)),
             consumed: Arc::new(Mutex::new(false)),
             encoding: Arc::new(Mutex::new(None)),
@@ -447,6 +505,12 @@ impl StreamingResponse {
 
 #[pymethods]
 impl StreamingResponse {
+    /// The protocol the response arrived over: `"HTTP/1.1"`, `"HTTP/2"`, ...
+    #[getter]
+    fn http_version(&self) -> &'static str {
+        self.http_version
+    }
+
     #[getter]
     fn reason_phrase(&self) -> &'static str {
         reason_phrase(self.status_code)

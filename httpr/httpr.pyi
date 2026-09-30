@@ -181,6 +181,10 @@ class Response:
         """Final URL after any redirects."""
         ...
     @property
+    def http_version(self) -> str:
+        """Protocol the response arrived over, e.g. "HTTP/1.1" or "HTTP/2"."""
+        ...
+    @property
     def encoding(self) -> str:
         """
         Character encoding of the response.
@@ -314,6 +318,10 @@ class StreamingResponse:
         """Final URL after any redirects."""
         ...
     @property
+    def http_version(self) -> str:
+        """Protocol the response arrived over, e.g. "HTTP/1.1" or "HTTP/2"."""
+        ...
+    @property
     def is_closed(self) -> bool:
         """Whether the stream has been closed."""
         ...
@@ -381,6 +389,7 @@ class RClient:
         client_pem_data: bytes | None = None,
         https_only: bool | None = False,
         http2_only: bool | None = False,
+        http1_only: bool | None = False,
     ): ...
     @property
     def headers(self) -> dict[str, str]: ...
@@ -479,6 +488,7 @@ class Client(RClient):
         client_pem_data: bytes | None = None,
         https_only: bool | None = False,
         http2_only: bool | None = False,
+        http1_only: bool | None = False,
     ) -> None:
         """
         Initialize an HTTP client.
@@ -503,7 +513,12 @@ class Client(RClient):
             client_pem: Path to client certificate for mTLS (PEM format).
             client_pem_data: Client certificate and key as bytes for mTLS (PEM format).
             https_only: Only allow HTTPS requests. Default is False.
-            http2_only: Use HTTP/2 only. Default is False.
+            http2_only: Speak HTTP/2 from the first byte (prior knowledge), including
+                cleartext h2c on `http://` URLs. Default is False, which negotiates:
+                over TLS, HTTP/2 when the server offers it (ALPN), otherwise HTTP/1.1;
+                plain `http://` uses HTTP/1.1.
+            http1_only: Only use HTTP/1.1, never HTTP/2. Default is False. Cannot be
+                combined with `http2_only`.
         """
         ...
     def __enter__(self) -> Client: ...
@@ -588,6 +603,7 @@ class AsyncClient(Client):
         client_pem_data: bytes | None = None,
         https_only: bool | None = False,
         http2_only: bool | None = False,
+        http1_only: bool | None = False,
         max_concurrency: int | None = 64,
     ) -> None:
         """Initialize an async HTTP client.
