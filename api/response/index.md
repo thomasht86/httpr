@@ -215,6 +215,24 @@ print(response.url)  # https://httpbin.org/get
 
 ______________________________________________________________________
 
+### http_version
+
+```python
+@property
+def http_version(self) -> str
+```
+
+The protocol the response arrived over: `"HTTP/1.1"` or `"HTTP/2"` (also `"HTTP/1.0"`, `"HTTP/0.9"` or `"HTTP/3"`). Also available on streaming responses.
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/get")
+print(response.http_version)  # HTTP/2
+```
+
+______________________________________________________________________
+
 ### encoding
 
 ```python

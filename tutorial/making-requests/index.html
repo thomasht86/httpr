@@ -863,10 +863,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#http2" class="md-nav__link">
+  <a href="#http-version" class="md-nav__link">
     <span class="md-ellipsis">
       
-        HTTP/2
+        HTTP version
       
     </span>
   </a>
@@ -1708,10 +1708,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#http2" class="md-nav__link">
+  <a href="#http-version" class="md-nav__link">
     <span class="md-ellipsis">
       
-        HTTP/2
+        HTTP version
       
     </span>
   </a>
@@ -2074,17 +2074,27 @@ client and included in subsequent requests:</p>
 </span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="c1"># Fails - HTTP not allowed</span>
 </span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="c1"># response = client.get("http://example.com")</span>
 </span></code></pre></div>
-<h3 id="http2">HTTP/2<a class="headerlink" href="#http2" title="Permanent link">&para;</a></h3>
-<p>Enable HTTP/2 only mode:</p>
+<h3 id="http-version">HTTP version<a class="headerlink" href="#http-version" title="Permanent link">&para;</a></h3>
+<p>By default httpr negotiates the protocol: over TLS it offers both HTTP/2 and
+HTTP/1.1 (ALPN) and uses HTTP/2 whenever the server supports it; plain <code>http://</code>
+URLs use HTTP/1.1. <code>response.http_version</code> tells you which one was used.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpr</span>
 </span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
-</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="c1"># Use only HTTP/2</span>
-</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">http2_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://example.com"</span><span class="p">)</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://http2.example.com"</span><span class="p">)</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">http_version</span><span class="p">)</span>  <span class="c1"># "HTTP/2" if the server supports it, else "HTTP/1.1"</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="c1"># Never use HTTP/2</span>
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="n">client</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">http1_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>
+</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="c1"># Speak HTTP/2 from the first byte, also over plain http:// (h2c)</span>
+</span><span id="__span-17-11"><a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a><span class="n">client</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">http2_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </span></code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>When <code>http2_only=False</code> (default), httpr uses HTTP/1.1. Set to <code>True</code> for HTTP/2.</p>
+<p><code>http2_only=True</code> skips negotiation (HTTP/2 "prior knowledge"), so the server
+must support HTTP/2; over <code>http://</code> it must accept cleartext h2c. <code>http1_only</code>
+and <code>http2_only</code> cannot both be set.</p>
 </div>
 <h2 id="complete-example">Complete Example<a class="headerlink" href="#complete-example" title="Permanent link">&para;</a></h2>
 <p>Here's a complete example showing various request options:</p>

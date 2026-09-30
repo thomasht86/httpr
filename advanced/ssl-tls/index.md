@@ -175,21 +175,27 @@ with client:
     print(response.json())
 ```
 
-## HTTP/2
+## HTTP version
 
-httpr supports HTTP/2 over TLS:
+By default httpr negotiates the protocol: over TLS it offers both HTTP/2 and HTTP/1.1 (ALPN) and uses HTTP/2 whenever the server supports it; plain `http://` URLs use HTTP/1.1. `response.http_version` tells you which one was used.
 
 ```python
 import httpr
 
-# HTTP/2 only mode
-client = httpr.Client(http2_only=True)
+client = httpr.Client()
 response = client.get("https://http2.example.com")
+print(response.http_version)  # "HTTP/2" if the server supports it, else "HTTP/1.1"
+
+# Never use HTTP/2
+client = httpr.Client(http1_only=True)
+
+# Speak HTTP/2 from the first byte, also over plain http:// (h2c)
+client = httpr.Client(http2_only=True)
 ```
 
 Note
 
-HTTP/2 requires TLS. The `http2_only` option forces HTTP/2 protocol. When `http2_only=False` (default), httpr uses HTTP/1.1.
+`http2_only=True` skips negotiation (HTTP/2 "prior knowledge"), so the server must support HTTP/2; over `http://` it must accept cleartext h2c. `http1_only` and `http2_only` cannot both be set.
 
 ## HTTPS Only Mode
 
@@ -282,7 +288,7 @@ The CA certificate chain is incomplete:
 Protocol mismatch:
 
 1. Server may not support modern TLS versions
-1. Try `http2_only=False` if using HTTP/2
+1. Try `http1_only=True` to rule out HTTP/2, or drop `http2_only=True` if the server does not support HTTP/2
 
 ### mTLS Errors
 

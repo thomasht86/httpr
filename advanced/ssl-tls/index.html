@@ -974,10 +974,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#http2" class="md-nav__link">
+  <a href="#http-version" class="md-nav__link">
     <span class="md-ellipsis">
       
-        HTTP/2
+        HTTP version
       
     </span>
   </a>
@@ -1601,10 +1601,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#http2" class="md-nav__link">
+  <a href="#http-version" class="md-nav__link">
     <span class="md-ellipsis">
       
-        HTTP/2
+        HTTP version
       
     </span>
   </a>
@@ -1913,18 +1913,27 @@ Only use this for local development or testing.</p>
 </span><span id="__span-9-23"><a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://secure-api.example.com/data"</span><span class="p">)</span>
 </span><span id="__span-9-24"><a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
 </span></code></pre></div>
-<h2 id="http2">HTTP/2<a class="headerlink" href="#http2" title="Permanent link">&para;</a></h2>
-<p>httpr supports HTTP/2 over TLS:</p>
+<h2 id="http-version">HTTP version<a class="headerlink" href="#http-version" title="Permanent link">&para;</a></h2>
+<p>By default httpr negotiates the protocol: over TLS it offers both HTTP/2 and
+HTTP/1.1 (ALPN) and uses HTTP/2 whenever the server supports it; plain <code>http://</code>
+URLs use HTTP/1.1. <code>response.http_version</code> tells you which one was used.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpr</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># HTTP/2 only mode</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">http2_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://http2.example.com"</span><span class="p">)</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://http2.example.com"</span><span class="p">)</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">http_version</span><span class="p">)</span>  <span class="c1"># "HTTP/2" if the server supports it, else "HTTP/1.1"</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1"># Never use HTTP/2</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="n">client</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">http1_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="c1"># Speak HTTP/2 from the first byte, also over plain http:// (h2c)</span>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="n">client</span> <span class="o">=</span> <span class="n">httpr</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">http2_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </span></code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>HTTP/2 requires TLS. The <code>http2_only</code> option forces HTTP/2 protocol.
-When <code>http2_only=False</code> (default), httpr uses HTTP/1.1.</p>
+<p><code>http2_only=True</code> skips negotiation (HTTP/2 "prior knowledge"), so the server
+must support HTTP/2; over <code>http://</code> it must accept cleartext h2c. <code>http1_only</code>
+and <code>http2_only</code> cannot both be set.</p>
 </div>
 <h2 id="https-only-mode">HTTPS Only Mode<a class="headerlink" href="#https-only-mode" title="Permanent link">&para;</a></h2>
 <p>Restrict the client to HTTPS connections only:</p>
@@ -1997,7 +2006,7 @@ When <code>http2_only=False</code> (default), httpr uses HTTP/1.1.</p>
 <p>Protocol mismatch:</p>
 <ol>
 <li>Server may not support modern TLS versions</li>
-<li>Try <code>http2_only=False</code> if using HTTP/2</li>
+<li>Try <code>http1_only=True</code> to rule out HTTP/2, or drop <code>http2_only=True</code> if the server does not support HTTP/2</li>
 </ol>
 <h3 id="mtls-errors">mTLS Errors<a class="headerlink" href="#mtls-errors" title="Permanent link">&para;</a></h3>
 <p><strong>"no client certificate presented"</strong></p>

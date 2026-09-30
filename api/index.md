@@ -48,6 +48,7 @@ client = httpr.Client(
     # Protocol
     https_only=False,
     http2_only=False,
+    http1_only=False,
 )
 ```
 

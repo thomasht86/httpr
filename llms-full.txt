@@ -920,21 +920,27 @@ response = client.get("https://example.com")
 # response = client.get("http://example.com")
 ```
 
-### HTTP/2
+### HTTP version
 
-Enable HTTP/2 only mode:
+By default httpr negotiates the protocol: over TLS it offers both HTTP/2 and HTTP/1.1 (ALPN) and uses HTTP/2 whenever the server supports it; plain `http://` URLs use HTTP/1.1. `response.http_version` tells you which one was used.
 
 ```python
 import httpr
 
-# Use only HTTP/2
+client = httpr.Client()
+response = client.get("https://http2.example.com")
+print(response.http_version)  # "HTTP/2" if the server supports it, else "HTTP/1.1"
+
+# Never use HTTP/2
+client = httpr.Client(http1_only=True)
+
+# Speak HTTP/2 from the first byte, also over plain http:// (h2c)
 client = httpr.Client(http2_only=True)
-response = client.get("https://example.com")
 ```
 
 Note
 
-When `http2_only=False` (default), httpr uses HTTP/1.1. Set to `True` for HTTP/2.
+`http2_only=True` skips negotiation (HTTP/2 "prior knowledge"), so the server must support HTTP/2; over `http://` it must accept cleartext h2c. `http1_only` and `http2_only` cannot both be set.
 
 ## Complete Example
 
@@ -2586,21 +2592,27 @@ with client:
     print(response.json())
 ```
 
-## HTTP/2
+## HTTP version
 
-httpr supports HTTP/2 over TLS:
+By default httpr negotiates the protocol: over TLS it offers both HTTP/2 and HTTP/1.1 (ALPN) and uses HTTP/2 whenever the server supports it; plain `http://` URLs use HTTP/1.1. `response.http_version` tells you which one was used.
 
 ```python
 import httpr
 
-# HTTP/2 only mode
-client = httpr.Client(http2_only=True)
+client = httpr.Client()
 response = client.get("https://http2.example.com")
+print(response.http_version)  # "HTTP/2" if the server supports it, else "HTTP/1.1"
+
+# Never use HTTP/2
+client = httpr.Client(http1_only=True)
+
+# Speak HTTP/2 from the first byte, also over plain http:// (h2c)
+client = httpr.Client(http2_only=True)
 ```
 
 Note
 
-HTTP/2 requires TLS. The `http2_only` option forces HTTP/2 protocol. When `http2_only=False` (default), httpr uses HTTP/1.1.
+`http2_only=True` skips negotiation (HTTP/2 "prior knowledge"), so the server must support HTTP/2; over `http://` it must accept cleartext h2c. `http1_only` and `http2_only` cannot both be set.
 
 ## HTTPS Only Mode
 
@@ -2693,7 +2705,7 @@ The CA certificate chain is incomplete:
 Protocol mismatch:
 
 1. Server may not support modern TLS versions
-1. Try `http2_only=False` if using HTTP/2
+1. Try `http1_only=True` to rule out HTTP/2, or drop `http2_only=True` if the server does not support HTTP/2
 
 ### mTLS Errors
 
@@ -2830,7 +2842,7 @@ print(client.proxy)  # "http://proxy.example.com:8080"
 client.proxy = None
 ```
 
-Every other setting from construction is carried over: `verify`, `ca_cert_file`, the mTLS identity, `follow_redirects`/`max_redirects`, `https_only`, `http2_only`, the current headers and the timeout. Two things to know:
+Every other setting from construction is carried over: `verify`, `ca_cert_file`, the mTLS identity, `follow_redirects`/`max_redirects`, `https_only`, `http2_only`, `http1_only`, the current headers and the timeout. Two things to know:
 
 - Assigning `None` removes the proxy; the `HTTPR_PROXY` environment variable is only consulted when the client is constructed.
 - With `cookie_store=True`, cookies collected from responses so far are discarded, because the store belongs to the rebuilt client.
@@ -3438,6 +3450,7 @@ client = httpr.Client(
     # Protocol
     https_only=False,
     http2_only=False,
+    http1_only=False,
 )
 ```
 
@@ -3530,7 +3543,7 @@ The synchronous HTTP client with connection pooling.
 ## Client
 
 ```python
-Client(auth: tuple[str, str | None] | None = None, auth_bearer: str | None = None, params: QueryParamTypes | None = None, headers: dict[str, str] | None = None, cookies: dict[str, str] | None = None, cookie_store: bool | None = True, referer: bool | None = True, proxy: str | None = None, timeout: float | None = 30, follow_redirects: bool | None = True, max_redirects: int | None = 20, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, client_pem_data: bytes | None = None, https_only: bool | None = False, http2_only: bool | None = False)
+Client(auth: tuple[str, str | None] | None = None, auth_bearer: str | None = None, params: QueryParamTypes | None = None, headers: dict[str, str] | None = None, cookies: dict[str, str] | None = None, cookie_store: bool | None = True, referer: bool | None = True, proxy: str | None = None, timeout: float | None = 30, follow_redirects: bool | None = True, max_redirects: int | None = 20, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, client_pem_data: bytes | None = None, https_only: bool | None = False, http2_only: bool | None = False, http1_only: bool | None = False)
 ```
 
 A synchronous HTTP client with connection pooling.
@@ -3607,7 +3620,12 @@ Attributes:
         client_pem_data: Client certificate and key as bytes for mTLS (PEM format).
             Use this instead of client_pem when you have the certificate in memory.
         https_only: Only allow HTTPS requests. Default is False.
-        http2_only: Use HTTP/2 only (False uses HTTP/1.1). Default is False.
+        http2_only: Speak HTTP/2 from the first byte (prior knowledge), including
+            cleartext h2c on `http://` URLs. Default is False, which negotiates:
+            over TLS, HTTP/2 when the server offers it (ALPN), otherwise HTTP/1.1;
+            plain `http://` uses HTTP/1.1.
+        http1_only: Only use HTTP/1.1, never HTTP/2. Default is False. Cannot be
+            combined with `http2_only`.
 
     Example:
         ```python
@@ -4632,6 +4650,24 @@ Final URL after following any redirects.
 ```python
 response = httpr.get("https://httpbin.org/redirect/3")
 print(response.url)  # https://httpbin.org/get
+```
+
+______________________________________________________________________
+
+### http_version
+
+```python
+@property
+def http_version(self) -> str
+```
+
+The protocol the response arrived over: `"HTTP/1.1"` or `"HTTP/2"` (also `"HTTP/1.0"`, `"HTTP/0.9"` or `"HTTP/3"`). Also available on streaming responses.
+
+**Example:**
+
+```python
+response = httpr.get("https://httpbin.org/get")
+print(response.http_version)  # HTTP/2
 ```
 
 ______________________________________________________________________

@@ -5,7 +5,7 @@ The synchronous HTTP client with connection pooling.
 ## Client
 
 ```python
-Client(auth: tuple[str, str | None] | None = None, auth_bearer: str | None = None, params: QueryParamTypes | None = None, headers: dict[str, str] | None = None, cookies: dict[str, str] | None = None, cookie_store: bool | None = True, referer: bool | None = True, proxy: str | None = None, timeout: float | None = 30, follow_redirects: bool | None = True, max_redirects: int | None = 20, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, client_pem_data: bytes | None = None, https_only: bool | None = False, http2_only: bool | None = False)
+Client(auth: tuple[str, str | None] | None = None, auth_bearer: str | None = None, params: QueryParamTypes | None = None, headers: dict[str, str] | None = None, cookies: dict[str, str] | None = None, cookie_store: bool | None = True, referer: bool | None = True, proxy: str | None = None, timeout: float | None = 30, follow_redirects: bool | None = True, max_redirects: int | None = 20, verify: bool | None = True, ca_cert_file: str | None = None, client_pem: str | None = None, client_pem_data: bytes | None = None, https_only: bool | None = False, http2_only: bool | None = False, http1_only: bool | None = False)
 ```
 
 A synchronous HTTP client with connection pooling.
@@ -82,7 +82,12 @@ Attributes:
         client_pem_data: Client certificate and key as bytes for mTLS (PEM format).
             Use this instead of client_pem when you have the certificate in memory.
         https_only: Only allow HTTPS requests. Default is False.
-        http2_only: Use HTTP/2 only (False uses HTTP/1.1). Default is False.
+        http2_only: Speak HTTP/2 from the first byte (prior knowledge), including
+            cleartext h2c on `http://` URLs. Default is False, which negotiates:
+            over TLS, HTTP/2 when the server offers it (ALPN), otherwise HTTP/1.1;
+            plain `http://` uses HTTP/1.1.
+        http1_only: Only use HTTP/1.1, never HTTP/2. Default is False. Cannot be
+            combined with `http2_only`.
 
     Example:
         ```python
