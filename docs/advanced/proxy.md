@@ -101,7 +101,7 @@ client.proxy = None
 
 Every other setting from construction is carried over: `verify`, `ca_cert_file`,
 the mTLS identity, `follow_redirects`/`max_redirects`, `https_only`, `http2_only`,
-the current headers and the timeout. Two things to know:
+`http1_only`, the current headers and the timeout. Two things to know:
 
 - Assigning `None` removes the proxy; the `HTTPR_PROXY` environment variable is
   only consulted when the client is constructed.

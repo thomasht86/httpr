@@ -105,7 +105,11 @@ class Client:
         verify (bool | None): Verify SSL certificates. Default is True.
         ca_cert_file (str | None): Path to CA certificate store. Default is None.
         https_only` (bool | None): Restrict the Client to be used with HTTPS only requests. Default is `false`.
-        http2_only` (bool | None): If true - use only HTTP/2; if false - use only HTTP/1. Default is `false`.
+        http2_only` (bool | None): Speak HTTP/2 from the first byte (prior knowledge), including cleartext h2c on
+            `http://` URLs. Default is `false`, which negotiates: over TLS, HTTP/2 when the server offers it,
+            otherwise HTTP/1.1; plain `http://` uses HTTP/1.1.
+        http1_only` (bool | None): Only use HTTP/1.1, never HTTP/2. Cannot be combined with `http2_only`.
+            Default is `false`.
 
     """
 ```
