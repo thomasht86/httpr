@@ -196,18 +196,20 @@ def test_timeout_survives_proxy_rebuild(slow):
 
 
 def test_slow_stream_is_not_cut_off(slow):
-    """Five chunks 0.3 s apart take 1.2 s in total, longer than the 0.5 s
-    timeout, but no single wait exceeds it."""
-    client = httpr.Client(timeout=0.5)
-    with client.stream("GET", f"{slow.url}/trickle/5/0.3") as response:
+    """Eight chunks 0.2 s apart take 1.4 s in total, longer than the 1 s
+    timeout, but no single wait exceeds it. The 5x margin per gap absorbs
+    sleep overshoot on slow CI runners (macOS overshoots by >100%); overshoot
+    only lengthens the total, so the body still outlasts the timeout."""
+    client = httpr.Client(timeout=1.0)
+    with client.stream("GET", f"{slow.url}/trickle/8/0.2") as response:
         chunks = list(response.iter_bytes())
-    assert b"".join(chunks) == b"".join(f"chunk{i}\n".encode() for i in range(5))
+    assert b"".join(chunks) == b"".join(f"chunk{i}\n".encode() for i in range(8))
 
 
 def test_slow_buffered_body_is_not_cut_off(slow):
-    client = httpr.Client(timeout=0.5)
-    response = client.get(f"{slow.url}/trickle/5/0.3")
-    assert response.text == "".join(f"chunk{i}\n" for i in range(5))
+    client = httpr.Client(timeout=1.0)
+    response = client.get(f"{slow.url}/trickle/8/0.2")
+    assert response.text == "".join(f"chunk{i}\n" for i in range(8))
 
 
 def test_stalled_stream_times_out(slow):
@@ -248,10 +250,10 @@ def test_stalled_stream_read_times_out(slow):
 
 @pytest.mark.asyncio
 async def test_async_slow_stream_is_not_cut_off(slow):
-    async with httpr.AsyncClient(timeout=0.5) as client:
-        async with client.stream("GET", f"{slow.url}/trickle/5/0.3") as response:
+    async with httpr.AsyncClient(timeout=1.0) as client:
+        async with client.stream("GET", f"{slow.url}/trickle/8/0.2") as response:
             lines = [line async for line in response.aiter_lines()]
-    assert lines == [f"chunk{i}\n" for i in range(5)]
+    assert lines == [f"chunk{i}\n" for i in range(8)]
 
 
 @pytest.mark.asyncio
