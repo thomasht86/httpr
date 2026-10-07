@@ -63,17 +63,17 @@ class TestBearerAuth:
         assert data["token"] == "my-secret-token"
 
     def test_bearer_auth_failure(self, e2e_base_url: str, e2e_ca_cert: str) -> None:
-        """Test bearer auth with wrong token returns authenticated=false."""
+        """Test bearer auth with wrong token returns 401."""
         client = httpr.Client(ca_cert_file=e2e_ca_cert)
         response = client.get(
             f"{e2e_base_url}/bearer/expected-token",
             auth_bearer="wrong-token",
         )
 
-        # httpbun returns 200 with authenticated=false for wrong tokens
-        assert response.status_code == 200
-        data = response.json()
-        assert data["authenticated"] is False
+        # httpbun returns 401 for a wrong token (it returned 200 with
+        # authenticated=false before sharat87/httpbun@2d6a28f9)
+        assert response.status_code == 401
+        assert response.headers["www-authenticate"].startswith("Bearer")
 
     def test_bearer_auth_client_level(self, e2e_base_url: str, e2e_ca_cert: str) -> None:
         """Test bearer auth configured at client level."""
