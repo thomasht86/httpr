@@ -399,7 +399,7 @@ Provides precompiled wheels for the following platforms:
 
 - 🐧 linux: `amd64`, `aarch64`, `armv7` (aarch64 and armv7 builds are `manylinux_2_34` compatible. `ubuntu>=22.04`, `debian>=12`)
 - 🐧 musllinux: `amd64`, `aarch64`
-- 🪟 windows: `amd64`
+- 🪟 windows: `amd64`, `arm64`
 - 🍏 macos: `amd64`, `aarch64`.
 
 ## Development
