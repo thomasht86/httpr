@@ -324,15 +324,22 @@ jobs:
             target: x64
           - runner: windows-latest
             target: x86
+            python-arch: x86
+          - runner: windows-11-arm
+            target: aarch64
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
+        id: setup-python
         with:
           python-version: "3.12"
-          architecture: ${{ matrix.platform.target }}
+          # Empty means the runner's native architecture (x64 / arm64).
+          architecture: ${{ matrix.platform.python-arch }}
       - uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.12"
+          # Pin uv to the interpreter above: given just "3.12", uv may pick an
+          # x64 Python on the ARM64 runner and test the wrong wheel under emulation.
+          python-version: ${{ steps.setup-python.outputs.python-path }}
       - name: Set version
         uses: ./.github/actions/set-version
         with:
@@ -354,17 +361,33 @@ jobs:
         with:
           name: wheels-windows-${{ matrix.platform.target }}
           path: dist
+      - name: Install OpenSSL for cryptography
+        # cryptography (pulled in via the trustme dev dependency) ships no
+        # win_arm64 wheels yet, so it is built from source against vcpkg's
+        # OpenSSL. This step can be removed with their next release as
+        # win_arm64 support was merged in pyca/cryptography#15350.
+        if: ${{ matrix.platform.target == 'aarch64' }}
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install openssl:arm64-windows-static-md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "OPENSSL_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\arm64-windows-static-md" >> $env:GITHUB_ENV
+          "OPENSSL_STATIC=1" >> $env:GITHUB_ENV
       - name: pytest
         # Skip pytest on x86 - cryptography (pulled in via the trustme dev
         # dependency) no longer ships 32-bit Windows wheels and fails to build
-        # from source. The x64 job provides test coverage for Windows.
-        if: ${{ matrix.platform.target == 'x64' }}
+        # from source. The x64 and aarch64 jobs provide test coverage for
+        # Windows.
+        if: ${{ matrix.platform.target != 'x86' }}
         shell: bash
         env:
           RUSTC_WRAPPER: ""
         run: |
           set -e
           uv sync --extra dev --find-links dist --reinstall
+          if [ "${{ matrix.platform.target }}" = "aarch64" ]; then
+            uv run python -c "import platform; m = platform.machine(); assert m == 'ARM64', m"
+          fi
           uv run pytest
 
   macos:
