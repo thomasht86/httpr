@@ -1,0 +1,6 @@
+name,session,cpu_time 200k,cpu_time 50k,cpu_time 5k,cpu_time json/10?gzip=false,cpu_time json/10?gzip=true,cpu_time json/1?gzip=false,cpu_time json/1?gzip=true,time 200k,time 50k,time 5k,time json/10?gzip=false,time json/10?gzip=true,time json/1?gzip=false,time json/1?gzip=true
+aiohttp 3.14.5,Async,0.42,0.18,0.08,0.14,0.32,0.09,0.12,0.43,0.19,0.13,0.18,0.32,0.17,0.15
+curl_cffi 0.16.3,Async,0.42,0.17,0.09,1.06,1.32,0.17,0.19,0.42,0.17,0.1,1.09,1.34,0.17,0.19
+httpr 0.7.6,Async,0.45,0.17,0.12,0.33,0.58,0.09,0.11,0.18,0.1,0.11,0.26,0.31,0.09,0.1
+httpx 0.28.1,Async,2.05,1.78,1.66,2.82,2.93,1.75,1.78,2.06,1.79,1.66,2.83,2.93,1.76,1.78
+httpx2 2.13.1,Async,0.5,0.23,0.18,1.23,1.43,0.25,0.28,0.5,0.23,0.18,1.23,1.44,0.25,0.28

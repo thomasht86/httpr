@@ -1,0 +1,8 @@
+name,session,cpu_time 200k,cpu_time 50k,cpu_time 5k,cpu_time json/10?gzip=false,cpu_time json/10?gzip=true,cpu_time json/1?gzip=false,cpu_time json/1?gzip=true,time 200k,time 50k,time 5k,time json/10?gzip=false,time json/10?gzip=true,time json/1?gzip=false,time json/1?gzip=true
+curl_cffi 0.16.3,True,0.4,0.15,0.08,,,,,0.48,0.23,0.16,,,,
+httpr 0.7.6,True,0.3,0.1,0.02,,,,,0.38,0.18,0.09,,,,
+httpx 0.28.1,True,0.47,0.18,0.11,,,,,0.54,0.25,0.17,,,,
+httpx2 2.13.1,True,0.42,0.17,0.09,,,,,0.51,0.24,0.15,,,,
+pycurl 7.48.0,True,0.32,0.1,0.03,,,,,0.4,0.18,0.1,,,,
+requests 2.34.2,True,0.58,0.25,0.18,,,,,0.69,0.32,0.27,,,,
+tls_client 2.0.0,True,1.73,0.5,0.16,,,,,1.36,0.47,0.21,,,,
