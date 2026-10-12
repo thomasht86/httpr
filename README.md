@@ -470,13 +470,13 @@ task httpbun:logs  # Show container logs
 | Job | PRs | Push to main | Tags (Release) | Manual |
 |-----|:---:|:------------:|:--------------:|:------:|
 | `lint` | ✓ | | | |
-| `test` (Python 3.10-3.14) | ✓ | ✓ | ✓ | |
+| `test` (Python 3.10-3.15, 3.15t) | ✓ | ✓ | ✓ | |
 | `docs` (build) | ✓ | | | |
 | `benchmarks` (CodSpeed) | ✓ | ✓ | | ✓ |
 | `linux`, `musllinux`, `windows`, `macos`, `sdist` | | | ✓ | ✓ |
 | `release` (PyPI publish) | | | ✓ | ✓ |
 
-- **PRs**: Run lint, tests across Python 3.10-3.14 matrix, verify docs build, and report the CPU cost of the CodSpeed benchmark suite
+- **PRs**: Run lint, tests across Python 3.10-3.15 (plus free-threaded 3.15t) matrix, verify docs build, and report the CPU cost of the CodSpeed benchmark suite
 - **Push to main**: Run tests and the CodSpeed benchmarks, then the separate `Benchmark` workflow runs the wall-clock suite and publishes results to the [live benchmark charts](https://thomasht86.github.io/httpr/dev/bench/)
 - **Weekly (Monday 06:00 UTC)**: The `Client comparison` workflow benchmarks httpr against the latest release of each other client and publishes the [comparison page](https://thomasht86.github.io/httpr/dev/bench/compare/)
 - **Tags**: Run tests, build wheels, publish stable release to PyPI
