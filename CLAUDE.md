@@ -165,6 +165,7 @@ builds in debug mode and the numbers are meaningless.
 - mTLS via `client_pem` parameter (file path, PEM format) or `client_pem_data` (bytes, PEM format)
 - `client_pem_data` allows passing certificates without filesystem access (useful for containers/secrets managers)
 - `verify=False` enables `danger_accept_invalid_certs()`
+- Built-in roots (`webpki-roots`) and verification (`rustls-webpki`, no revocation checks) are compiled into the wheel, so certifi/OS trust-store updates don't reach httpr: a CA distrust/compromise needs a `cargo update -p rustls-webpki -p webpki-roots -p webpki-root-certs` and a new release (eMudhra, #119)
 
 ### Headers Behavior
 - Headers are lowercased internally (HTTP/2 spec)
