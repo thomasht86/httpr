@@ -1,0 +1,54 @@
+# TEMPORARY: try cross-compiling the riscv64 wheels on a GitHub-hosted x86_64 runner, like armv7. No release steps.
+name: tmp-verify-riscv
+on:
+  push:
+    branches: [tmp/verify-riscv-cross]
+permissions:
+  contents: read
+jobs:
+  riscv-cross:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: riscv64gc-unknown-linux-gnu
+          args: --release --out dist
+          sccache: true
+          manylinux: auto
+      - name: Build free-threaded wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: riscv64gc-unknown-linux-gnu
+          args: --release --out dist -i python3.14t python3.15t
+          sccache: true
+          manylinux: auto
+      - run: ls -la dist
+      - uses: actions/upload-artifact@v6
+        with:
+          name: wheels-riscv64-cross
+          path: dist
+  # Smoke-test the cross-built wheel on real riscv64 hardware under QEMU (import + one request).
+  riscv-smoke:
+    needs: riscv-cross
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: wheels-riscv64-cross
+          path: dist
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: riscv64
+      - name: Import and request under riscv64 emulation
+        run: |
+          docker run --rm --platform linux/riscv64 -v "$PWD/dist:/dist" python:3.12-slim-trixie sh -c '
+            set -e
+            uname -m
+            pip install --no-index --find-links /dist httpr
+            python -c "import httpr, platform; print(platform.machine()); r = httpr.Client().get(\"https://pypi.org/simple/httpr/\", headers={\"Accept\": \"application/vnd.pypi.simple.v1+json\"}); print(r.status_code, r.http_version)"
+          '
