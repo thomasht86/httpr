@@ -114,7 +114,7 @@ Regression tracking:
 ```bash
 task test:benchmark        # Wall-clock suite (tests/benchmark/test_performance.py),
                            # charted by github-action-benchmark on pushes to main
-task test:codspeed         # CodSpeed CPU-simulation suite (tests/benchmark/codspeed/),
+task test:codspeed         # CodSpeed walltime suite (tests/benchmark/codspeed/),
                            # reported on every PR by .github/workflows/codspeed.yml
 task test:codspeed:wall    # Same suite with plain wall-clock timings, no CodSpeed CLI
 ```

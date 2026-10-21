@@ -1,9 +1,9 @@
 """Fixtures shared by the benchmark suite.
 
 `payload_server` starts `bench_server.py` in a subprocess and yields its base
-URL. Serving the payloads from another process keeps the server's own CPU cost
-out of the measurements when the suite runs under CodSpeed's CPU simulation
-instrument.
+URL. Serving the payloads from another process keeps the server off the
+benchmark process's interpreter and GIL, so the server's Python code does not
+compete with httpr for the measured thread.
 
 The `*_response` fixtures fetch a payload once, outside the measured region, so
 the decoding benchmarks measure only httpr's decoding work.
