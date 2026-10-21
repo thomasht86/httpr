@@ -15,6 +15,11 @@ permissions:
 jobs:
   benchmarks:
     name: Run benchmarks
+    # The walltime instrument measures elapsed time, so it inherits the
+    # machine's noise. CodSpeed recommends its bare-metal macro runners
+    # (e.g. `codspeed-macro-x64-ryzen-9950x-ubuntu-24-04`), but those are only
+    # available to repositories owned by a GitHub organization; until then the
+    # suite runs on a shared GitHub-hosted runner.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -30,9 +35,11 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: rust-codspeed-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          # runner.arch keeps the cache valid if the job moves to a macro
+          # runner with a different architecture.
+          key: rust-codspeed-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            rust-codspeed-${{ runner.os }}-
+            rust-codspeed-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Install dependencies
         run: uv sync --extra dev
@@ -45,6 +52,8 @@ jobs:
       - name: Run benchmarks
         uses: CodSpeedHQ/action@v5
         with:
-          mode: simulation
+          # httpr's benchmarks do real socket I/O against a local server.
+          # Walltime counts that I/O; CPU simulation excludes syscalls.
+          mode: walltime
           # --no-sync keeps uv from replacing the release build made above.
           run: uv run --no-sync pytest tests/benchmark/codspeed --codspeed

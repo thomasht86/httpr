@@ -24,12 +24,13 @@ pytest-benchmark and the results are appended to the
 The runners are shared, so a single run can swing by 1.5x; look at the trend,
 not at individual points.
 
-## CPU cost per pull request
+## Timings per pull request
 
-[CodSpeed](https://app.codspeed.io/thomasht86/httpr) measures the CPU
-instructions of `tests/benchmark/codspeed/` on every pull request and reports
-the difference against `main` on the PR. This is deterministic to about one
-percent and is what catches regressions before they merge.
+[CodSpeed](https://app.codspeed.io/thomasht86/httpr) runs
+`tests/benchmark/codspeed/` under its walltime instrument on every pull request
+and reports the difference against `main` on the PR. Walltime includes the
+socket I/O that dominates an HTTP client, which CPU simulation leaves out. It
+runs on a shared GitHub runner, so small differences can be noise.
 
 ## Running locally
 
