@@ -1124,10 +1124,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#cpu-cost-per-pull-request" class="md-nav__link">
+  <a href="#timings-per-pull-request" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CPU cost per pull request
+        Timings per pull request
       
     </span>
   </a>
@@ -1231,10 +1231,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#cpu-cost-per-pull-request" class="md-nav__link">
+  <a href="#timings-per-pull-request" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CPU cost per pull request
+        Timings per pull request
       
     </span>
   </a>
@@ -1298,11 +1298,12 @@ pytest-benchmark and the results are appended to the
 <a href="https://thomasht86.github.io/httpr/dev/bench/">live trend chart</a>.
 The runners are shared, so a single run can swing by 1.5x; look at the trend,
 not at individual points.</p>
-<h2 id="cpu-cost-per-pull-request">CPU cost per pull request<a class="headerlink" href="#cpu-cost-per-pull-request" title="Permanent link">&para;</a></h2>
-<p><a href="https://app.codspeed.io/thomasht86/httpr">CodSpeed</a> measures the CPU
-instructions of <code>tests/benchmark/codspeed/</code> on every pull request and reports
-the difference against <code>main</code> on the PR. This is deterministic to about one
-percent and is what catches regressions before they merge.</p>
+<h2 id="timings-per-pull-request">Timings per pull request<a class="headerlink" href="#timings-per-pull-request" title="Permanent link">&para;</a></h2>
+<p><a href="https://app.codspeed.io/thomasht86/httpr">CodSpeed</a> runs
+<code>tests/benchmark/codspeed/</code> under its walltime instrument on every pull request
+and reports the difference against <code>main</code> on the PR. Walltime includes the
+socket I/O that dominates an HTTP client, which CPU simulation leaves out. It
+runs on a shared GitHub runner, so small differences can be noise.</p>
 <h2 id="running-locally">Running locally<a class="headerlink" href="#running-locally" title="Permanent link">&para;</a></h2>
 <p>See <a href="https://github.com/thomasht86/httpr/blob/main/benchmark/README.md">benchmark/README.md</a>.</p>
 
