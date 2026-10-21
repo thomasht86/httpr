@@ -52,6 +52,11 @@ class KeepAliveServer:
                     outer.open_connections -= 1
 
             def do_GET(self) -> None:
+                # Count before responding: counted after the body, the client can
+                # have its response before this thread increments, and an assert
+                # right after the request reads a stale count (seen on Windows CI).
+                with outer._lock:
+                    outer.requests_served += 1
                 # /delay/<seconds> lets a test hold a request in flight.
                 if self.path.startswith("/delay/"):
                     time.sleep(float(self.path.rsplit("/", 1)[-1]))
@@ -69,8 +74,6 @@ class KeepAliveServer:
                     self.wfile.write(body[1:])
                 else:
                     self.wfile.write(body)
-                with outer._lock:
-                    outer.requests_served += 1
 
             def log_message(self, *args) -> None:
                 pass
