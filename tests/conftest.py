@@ -1,11 +1,33 @@
 import os
+import ssl
+from wsgiref.simple_server import WSGIServer
 
 import pytest
-from pytest_httpbin import certs
+from pytest_httpbin import certs, serve
 
 # =============================================================================
 # Unit test fixtures (pytest-httpbin)
 # =============================================================================
+
+# pytest-httpbin's TLS server does each handshake on its single accept thread with a
+# hardcoded 1 s socket timeout. A stall of more than 1 s on a loaded CI runner makes
+# it drop the connection, and the test fails with RequestError (the Windows x64 wheel
+# job of v0.7.8). Handshakes normally take under 10 ms, so allow 10 s instead.
+HTTPBIN_TLS_HANDSHAKE_TIMEOUT = 10.0
+
+
+def _httpbin_secure_get_request(self):
+    sock, address = WSGIServer.get_request(self)
+    sock.settimeout(HTTPBIN_TLS_HANDSHAKE_TIMEOUT)
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(
+        os.path.join(serve.CERT_DIR, "server.pem"),
+        os.path.join(serve.CERT_DIR, "server.key"),
+    )
+    return context.wrap_socket(sock, server_side=True, suppress_ragged_eofs=True), address
+
+
+serve.SecureWSGIServer.get_request = _httpbin_secure_get_request  # type: ignore[method-assign]
 
 
 @pytest.fixture
